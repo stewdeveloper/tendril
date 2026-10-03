@@ -16,7 +16,7 @@
 
 ## Global Constraints
 
-- Every Global Constraint of Phase 1A applies: tokens, type, shape, motion, copy and accessibility, `npx expo install`, async RNTL `render` and `fireEvent` (always awaited), and ESLint pinned to 9.x.
+- Every Global Constraint of Phase 1A applies: tokens, type, shape, motion, copy and accessibility, `npx expo install`, async RNTL `render` and `fireEvent` (always awaited), ESLint pinned to 9.x, and no test files under `src/app/` (route tests go in `src/__tests__/routes/`).
 - **Where pixel values come from:** `design/frames/<id>.html` is the source for spacing, sizes, radii, fonts and colours. Use the Phase 1A components wherever they fit, and don't restyle them per screen.
 - **Precedence (spec §6.3):**
   - Where a 4-series frame and a hero or onboarding frame show the same screen, the hero frame sets the layout and the 4-series frame sets the state's content.

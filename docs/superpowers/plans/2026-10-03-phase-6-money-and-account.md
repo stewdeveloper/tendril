@@ -250,7 +250,7 @@ git commit -m "feat: Premium household sharing and holiday hand-over"
   - `apps/mobile/src/api/supabase/SupabaseApi.ts`: `startPreview` and `getEntitlement` (the preview's days left)
   - the camera, diagnosis and household containers: a quota or Premium refusal opens the Limit sheet, then the paywall or the preview offer
   - `apps/mobile/src/services/notifications.ts`: `schedulePreviewEndingReminder(activeUntil)`
-- Test: `apps/mobile/src/services/purchases.test.ts`, `apps/mobile/src/app/paywallFlow.test.tsx`
+- Test: `apps/mobile/src/services/purchases.test.ts`, `apps/mobile/src/__tests__/routes/paywallFlow.test.tsx`
 
 **Interfaces:**
 - Produces:
@@ -298,7 +298,7 @@ git commit -m "feat(mobile): RevenueCat purchases, server-confirmed Premium and 
   - `apps/mobile/src/screens/profile/HouseholdScreen.tsx`: an invite share sheet, and a hand-over sheet (choose a member, start and end dates)
   - `apps/mobile/src/hooks/useCareReminders.ts`: skip a household's tasks when `responsibleUserId` names someone else
   - `apps/mobile/src/app/h/[code].tsx`: household invite deep link; join after sign-in
-- Test: `apps/mobile/src/app/deleteAccountFlow.test.tsx`, `apps/mobile/src/hooks/useCareReminders.handover.test.ts`
+- Test: `apps/mobile/src/__tests__/routes/deleteAccountFlow.test.tsx`, `apps/mobile/src/hooks/useCareReminders.handover.test.ts`
 
 **Interfaces:**
 - Produces: the new `TendrilApi` methods `inviteMember(): Promise<{ url: string }>`, `joinHousehold(code): Promise<void>`, `startHandover(input: { toUserId: string; startsOn: IsoDate; endsOn: IsoDate }): Promise<void>` and `endHandover(id): Promise<void>`.

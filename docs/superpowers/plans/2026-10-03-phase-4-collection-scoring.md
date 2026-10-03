@@ -375,7 +375,7 @@ git commit -m "feat: collection RPCs and SupabaseApi Plantdex, sets, finds and b
 - Modify:
   - `apps/mobile/src/components/FindsMap.tsx` (native: exact pins for finds with coordinates; sensitive finds appear only in the list, as "Location private")
   - `apps/mobile/src/app/scan/[id]/new-species.tsx` (polls `getOutcome` every 1 s for up to 8 s while `processing`, showing the photo with a subtle progress indicator; on timeout shows "Points are on their way." and continues)
-- Test: `apps/mobile/src/components/FindsMap.test.tsx`, `apps/mobile/src/app/scan/newSpeciesPolling.test.tsx`
+- Test: `apps/mobile/src/components/FindsMap.test.tsx`, `apps/mobile/src/__tests__/routes/newSpeciesPolling.test.tsx`
 
 **Interfaces:**
 - Consumes: `my_finds`, `getOutcome`.
