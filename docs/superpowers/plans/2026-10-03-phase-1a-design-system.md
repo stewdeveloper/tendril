@@ -76,7 +76,10 @@
   - Add Expo-side packages only with `npx expo install <pkg>`, run inside `apps/mobile`.
   - RNTL 14's `render` and `fireEvent` are async, so always write `await render(...)` and `await fireEvent.press(...)`.
 - ESLint stays on 9.x: eslint-plugin-react, through eslint-config-expo, crashes on ESLint 10. Never `expo install eslint` without pinning `eslint@^9`.
-- Run root-level tools with `pnpm exec` or `pnpm dlx`, not `npx`. The root `devEngines` Deno pin makes `npx` fail with EBADDEVENGINES at the repo root, though `npx expo install` inside `apps/mobile` works.
+- Prefer `pnpm exec` or `pnpm dlx` for root-level tools.
+- pnpm 12 fails installs of new dependencies that have install scripts (`ERR_PNPM_IGNORED_BUILDS`), and `pnpm approve-builds` is interactive. Add an explicit entry under `allowBuilds:` in `pnpm-workspace.yaml` instead (`true` when the build is needed, `false` when it isn't).
+- `@tendril/core` production code may not use Node or DOM APIs. Its `tsconfig.json` has `types: []` and tests use `tsconfig.test.json`. The import guard requires every specifier in non-test files to be relative and end in `.ts`.
+- `experiments.typedRoutes` is off until a step generates `.expo/types` before typecheck, so route strings are plain `string`.
   - `@tendril/core` has zero runtime dependencies, and every relative import ends in `.ts`.
   - Screens and components take props only. Data comes in through containers in `src/app`.
 
@@ -1410,9 +1413,9 @@ git commit -m "feat(mobile): theme, AppText type scale and dev catalog with iPho
 }
 ```
 
-Install: `pnpm --filter @tendril/visual add -D playwright pngjs pixelmatch @types/pngjs vitest@^5 tsx @types/node@^22`, then `pnpm --filter @tendril/visual exec playwright install chromium`.
+**First** add `tools/*` to the `pnpm-workspace.yaml` packages and run `pnpm install`. Otherwise `--filter @tendril/visual` matches nothing, installs nothing, and still exits 0.
 
-Add `tools/*` to `pnpm-workspace.yaml` packages.
+Then install: `pnpm --filter @tendril/visual add -D playwright pngjs pixelmatch @types/pngjs vitest@^5 tsx @types/node@^22` and `pnpm --filter @tendril/visual exec playwright install chromium`. `tsx` needs esbuild's build script, which is already allowed in `allowBuilds`. Confirm with `ls tools/visual/node_modules/.bin/tsx || ls node_modules/.bin/tsx`.
 
 Add these root scripts:
 - `"visual:design": "tsx tools/visual/src/shoot-design.ts"`

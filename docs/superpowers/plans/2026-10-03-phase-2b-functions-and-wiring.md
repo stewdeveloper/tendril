@@ -34,6 +34,7 @@
   - Paths must start with `<uid>/`, or the request is rejected with 403.
   - The server strips EXIF (piexifjs `remove`), asserts no GPS remains (exifr), and re-uploads the stripped bytes before sending them anywhere.
   - At most 5 photos, each a JPEG of at most 10 MB.
+- **Exact versions:** the functions run with `"lock": false`, because the edge runtime is Deno 2.1 and can't read v5 lockfiles. So every `npm:` and `jsr:` import in `supabase/functions/deno.json` must be pinned to an exact version (e.g. `npm:h3-js@4.5.0`, `npm:@supabase/supabase-js@2.117.2`), never a range. Resolve the exact current versions with `npm view <pkg> version` at implementation time.
 - **H3:** res-7 and res-5 cells are computed with h3-js and stored as `bigint` via `BigInt('0x' + cell)`. `public_cell_r5` is null when the point is inside the user's privacy zone or the species is sensitive.
 - **Pet toxicity:** returned rows come only from `species_toxicity`. A missing row means Unknown, and the server never invents a verdict.
 - **Providers are chosen by environment variable:**

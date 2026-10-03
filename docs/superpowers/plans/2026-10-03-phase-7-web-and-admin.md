@@ -94,7 +94,7 @@ pnpm dlx create-next-app@latest apps/web --ts --app --src-dir --eslint --no-tail
 
 If a flag isn't accepted, answer the interactive prompts to match these choices. Then:
 1. Set `"name": "@tendril/web"` and add `"@tendril/core": "workspace:*"`.
-2. Add `transpilePackages: ['@tendril/core']` to `next.config.ts`.
+2. Add `transpilePackages: ['@tendril/core']` to `next.config.ts`. Add `"allowImportingTsExtensions": true` to `apps/web/tsconfig.json`, because core uses `.ts` import suffixes (TS5097 otherwise, as in mobile).
 3. Delete the starter content.
 4. Install vitest: `pnpm --filter @tendril/web add -D vitest@^5 @vitejs/plugin-react jsdom @testing-library/react @testing-library/dom vite-tsconfig-paths`.
 

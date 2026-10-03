@@ -103,6 +103,8 @@ git commit -m "feat: Tendril spiral app icon, adaptive icon, splash and favicons
 ```
 
 - [ ] **Step 1: Write the file and the config changes.** `expo-dev-client` is needed for `development`: run `npx expo install expo-dev-client`.
+
+EAS installs the whole workspace. That pulls in the 146 MB Supabase CLI binary and Deno, which slows builds. Add an `eas-build-pre-install` script, or set `build.*.env` with `PNPM_FLAGS`, so EAS does a filtered install (`pnpm install --filter @tendril/mobile...`). Pin pnpm 12.8.1 in `eas.json` (`"pnpm": "12.8.1"` on each profile). Do the same for Vercel in Phase 7: an install command of `pnpm install --filter @tendril/web...`.
 - [ ] **Step 2: Verify:** `npx expo config --type public` prints the resolved config without errors, both with and without `EAS_PROJECT_ID` set. `npx expo-doctor` passes.
 - [ ] **Step 3: Commit**
 
@@ -284,7 +286,7 @@ git commit -m "ci: database, functions e2e and web e2e jobs; env documentation c
   13. **Operations:** the cron jobs and what they do, queue dead-letter checks, the held-points review cadence, credit usage monitoring.
   14. **Deferred items:** the remaining parked or deferred findings from every phase's ledger, each with its owner and why it's safe to defer.
 
-- [ ] **Step 1: Write `RUNBOOK.md`** from the spec, the research doc, the env-example files and the phase ledgers (collect `Ruling:` and `minor (deferred)` lines from `.superpowers/sdd/*/progress.md`).
+- [ ] **Step 1: Write `RUNBOOK.md`** from the spec, the research doc, the env-example files and the phase ledgers (collect the `Ruling:` and deferred lines from `docs/superpowers/ledger/phase-*.md`).
 - [ ] **Step 2: Run** `pnpm env:check`. Expected: it passes. Fix the runbook, not the checker, until it does.
 - [ ] **Step 3: Commit**
 

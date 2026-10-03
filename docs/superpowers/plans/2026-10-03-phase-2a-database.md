@@ -69,6 +69,15 @@
 Run: `docker info >/dev/null && pnpm exec supabase start -x studio,postgres-meta,logflare,vector,imgproxy,supavisor`
 Expected: the API URL, the DB URL and the keys are printed. If Docker is missing, stop and report BLOCKED.
 
+- [ ] **Step 1b: Smoke-test function bundling (deferred here from Phase 0)**
+
+Run: `pnpm exec supabase functions serve --no-verify-jwt > /tmp/serve.log 2>&1 &`. Then poll `curl -s http://127.0.0.1:54321/functions/v1/health` for up to 60 s.
+Expected: `{"ok":true,"core":"very_likely"}`. That proves the edge runtime bundles `@tendril/core` through the shared `supabase/functions/deno.json` import map.
+
+If it fails because of the import map or the outside-`supabase/` import, switch to one `deno.json` per function, each with the same `@core/` mapping, and remove `import_map` from `config.toml`. If it still fails, fall back to the spec §4 copy step (`packages/core/src` → `supabase/functions/_shared/core/`, plus a CI check that the copy is current).
+
+Record the outcome in the report. Stop the serve process afterwards. Deploys later use `supabase functions deploy --use-api`, which supports imports from outside `supabase/`.
+
 - [ ] **Step 2: Vendor the test helpers**
 
 1. Download `https://raw.githubusercontent.com/usebasejump/supabase-test-helpers/main/supabase/migrations/20240106120000_supabase_test_helpers--0.0.6.sql` (if that path 404s, find the 0.0.6 SQL file in that repository).
