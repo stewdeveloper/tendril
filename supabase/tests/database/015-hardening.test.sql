@@ -1,5 +1,5 @@
 begin;
-select plan(10);
+select plan(16);
 
 select tests.create_supabase_user('aoife');
 
@@ -12,33 +12,58 @@ select lives_ok(
   $$insert into public.profiles (id, handle) values (tests.get_supabase_uid('aoife'), 'aoifegrows')$$,
   'lowercase handles are accepted');
 
--- Catalog-driven grants audit: what can the client roles actually do to relations in public? Uses
--- has_*_privilege, which sees direct grants, PUBLIC grants and column-level grants alike.
-create temp table held_privs on commit drop as
+-- Catalog-driven grants audit: what can the client roles actually do to relations in public and private?
+-- Uses has_*_privilege, which sees direct grants, PUBLIC grants and column-level grants alike. It is a view
+-- so that it is evaluated when queried and can be pointed at probe tables created later in this test.
+-- MAINTAIN (Postgres 17) is a table-level privilege only, so it sits with the table-level list.
+create temp view held_privs as
 with roles(role_name) as (values ('anon'), ('authenticated')),
 rels as (
-  select c.oid, c.relname::text as relname, c.relkind
+  select c.oid, n.nspname::text as schema_name, c.relname::text as relname, c.relkind
   from pg_class c join pg_namespace n on n.oid = c.relnamespace
-  where n.nspname = 'public' and c.relkind in ('r', 'p', 'v', 'm', 'f', 'S')
+  where n.nspname in ('public', 'private') and c.relkind in ('r', 'p', 'v', 'm', 'f', 'S')
 )
-select role_name, relname, priv from roles, rels, (values ('SELECT'), ('INSERT'), ('UPDATE'), ('REFERENCES')) as p(priv)
+select role_name, schema_name, relname, priv from roles, rels, (values ('SELECT'), ('INSERT'), ('UPDATE'), ('REFERENCES')) as p(priv)
   where rels.relkind <> 'S' and has_any_column_privilege(role_name, rels.oid, priv)
 union all
-select role_name, relname, priv from roles, rels, (values ('DELETE'), ('TRUNCATE'), ('TRIGGER')) as p(priv)
+select role_name, schema_name, relname, priv from roles, rels, (values ('DELETE'), ('TRUNCATE'), ('TRIGGER'), ('MAINTAIN')) as p(priv)
   where rels.relkind <> 'S' and has_table_privilege(role_name, rels.oid, priv)
 union all
-select role_name, relname, priv from roles, rels, (values ('USAGE'), ('SELECT'), ('UPDATE')) as p(priv)
+select role_name, schema_name, relname, priv from roles, rels, (values ('USAGE'), ('SELECT'), ('UPDATE')) as p(priv)
   where rels.relkind = 'S' and has_sequence_privilege(role_name, rels.oid, priv);
 
 select isnt_empty(
-  $$select 1 from held_privs where role_name = 'authenticated' and relname = 'profiles' and priv = 'SELECT'$$,
+  $$select 1 from held_privs where role_name = 'authenticated' and schema_name = 'public' and relname = 'profiles' and priv = 'SELECT'$$,
   'the audit can see the grants it is meant to police');
 select is_empty(
-  $$select * from held_privs where role_name = 'anon' and not (relname in ('species', 'species_toxicity') and priv = 'SELECT')$$,
+  $$select * from held_privs where schema_name = 'public' and role_name = 'anon' and not (relname in ('species', 'species_toxicity') and priv = 'SELECT')$$,
   'anon holds nothing in public except select on the species catalogue');
 select is_empty(
-  $$select * from held_privs where role_name = 'authenticated' and priv <> 'SELECT'$$,
+  $$select * from held_privs where schema_name = 'public' and role_name = 'authenticated' and priv <> 'SELECT'$$,
   'authenticated holds nothing in public but select');
+select is_empty(
+  $$select * from held_privs where schema_name = 'private'$$,
+  'neither client role holds any privilege on any private relation');
+
+-- The private audit is not vacuous: a probe with deliberate grants (SELECT, and MAINTAIN which is new in
+-- Postgres 17) shows up.
+create table private.zz_probe (id int);
+grant select on private.zz_probe to authenticated;
+grant maintain on private.zz_probe to anon;
+select isnt_empty(
+  $$select 1 from held_privs where schema_name = 'private' and relname = 'zz_probe' and role_name = 'authenticated' and priv = 'SELECT'$$,
+  'the audit sees a grant on a private relation');
+select isnt_empty(
+  $$select 1 from held_privs where schema_name = 'private' and relname = 'zz_probe' and role_name = 'anon' and priv = 'MAINTAIN'$$,
+  'the audit sees MAINTAIN');
+
+-- Every table in private has row level security on (with no policies), so a stray grant still exposes nothing.
+select cmp_ok(
+  (select count(*)::int from pg_tables where schemaname = 'private' and tablename <> 'zz_probe'), '>=', 2,
+  'private holds the tables the RLS check is meant to cover');
+select is_empty(
+  $$select tablename from pg_tables where schemaname = 'private' and tablename <> 'zz_probe' and not rowsecurity$$,
+  'every private table has row level security enabled');
 
 -- Default privileges: new objects start closed to clients.
 create table public.zz_tmp (id int);
@@ -46,7 +71,7 @@ create sequence public.zz_seq;
 create function public.zz_fn() returns int language sql as $$ select 1 $$;
 select is(
   (select count(*)::int from pg_class c, (values ('anon'), ('authenticated')) as r(role_name),
-     (values ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE'), ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')) as p(priv)
+     (values ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE'), ('TRUNCATE'), ('REFERENCES'), ('TRIGGER'), ('MAINTAIN')) as p(priv)
    where c.oid = 'public.zz_tmp'::regclass and has_table_privilege(r.role_name, c.oid, p.priv)),
   0, 'a new table grants clients nothing');
 select is(
@@ -58,6 +83,11 @@ select is(
   (select count(*)::int from (values ('anon'), ('authenticated')) as r(role_name)
    where has_function_privilege(r.role_name, 'public.zz_fn()', 'execute')),
   0, 'a new function is not executable by clients');
+
+-- A blank taxon would never match anything and would look like coverage that is not there.
+select throws_ok(
+  $$insert into private.sensitive_taxa (rank, taxon, reason, source) values ('genus', '  ', 'Poaching risk', 'test')$$,
+  '23514', null, 'a blank sensitive taxon is rejected');
 
 -- updated_at triggers on the tables that carry the column.
 insert into public.households (id, name) values ('00000000-0000-0000-0000-0000000000b1', 'Our flat');
