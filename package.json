@@ -8,7 +8,7 @@
   "scripts": {
     "test": "pnpm -r --if-present test && pnpm test:functions",
     "typecheck": "pnpm -r --if-present typecheck && pnpm check:functions",
-    "lint": "prettier --check . && pnpm -r --if-present lint",
+    "lint": "prettier --check . && pnpm -r --if-present lint && deno lint packages/core/src supabase/functions",
     "format": "prettier --write .",
     "test:functions": "deno test --config supabase/functions/deno.json --allow-env --allow-net --allow-read supabase/functions/tests/",
     "check:functions": "deno check --config supabase/functions/deno.json supabase/functions/*/index.ts",

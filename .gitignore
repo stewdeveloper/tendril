@@ -15,5 +15,5 @@ apps/mobile/android/
 apps/mobile/expo-env.d.ts
 supabase/.temp/
 supabase/.branches/
-supabase/functions/deno.lock
+deno.lock
 design/compare/
