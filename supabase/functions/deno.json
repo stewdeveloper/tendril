@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "@core/": "../../packages/core/src/",
+    "@std/assert": "jsr:@std/assert@^1"
+  },
+  "compilerOptions": { "strict": true }
+}
