@@ -1,0 +1,11 @@
+begin;
+select plan(6);
+select has_extension('postgis', 'postgis is installed');
+select has_extension('citext', 'citext is installed');
+select has_schema('private', 'private schema exists');
+select function_privs_are('private', 'is_admin', '{}', 'anon', '{}', 'anon cannot execute private.is_admin');
+select tests.authenticate_as_service_role();
+select is((select private.is_admin()), false, 'service role JWT is not an admin user');
+select schema_privs_are('private', 'anon', '{}', 'anon has no access to private');
+select * from finish();
+rollback;
