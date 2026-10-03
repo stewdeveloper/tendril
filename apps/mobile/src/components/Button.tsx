@@ -14,7 +14,10 @@ export interface ButtonProps {
   loading?: boolean;
   /** An icon component (a lucide icon or one from icons.tsx), drawn 20 pt in the label colour. */
   icon?: ComponentType<IconProps>;
+  /** 48 pt tall instead of 52: the buttons inside cards (the pet check in 2a, "Check in" in 2e). */
+  compact?: boolean;
   accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
 
 const RING = 1.5;
@@ -32,7 +35,9 @@ export function Button({
   disabled = false,
   loading = false,
   icon: Icon,
+  compact = false,
   accessibilityLabel,
+  accessibilityHint,
 }: ButtonProps) {
   const { c } = useTheme();
   const look = {
@@ -47,11 +52,13 @@ export function Button({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={loading ? `${baseLabel}, loading` : accessibilityLabel}
+      accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: inert, busy: loading }}
       disabled={inert}
       onPress={onPress}
       style={[
         styles.base,
+        compact && styles.compact,
         {
           backgroundColor: look.bg,
           borderColor: look.ring,
@@ -117,6 +124,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
+  compact: { minHeight: 48 },
   content: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   hidden: { opacity: 0 },
   overlay: { ...StyleSheet.absoluteFill, pointerEvents: 'none' },

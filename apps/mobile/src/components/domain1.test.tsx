@@ -1,0 +1,160 @@
+import { aoife } from '@tendril/core';
+import { fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
+import { ThemeProvider } from '../theme';
+import {
+  ConfidenceLabel,
+  PermissionPrimer,
+  PetCheckCard,
+  QuotaMeter,
+  RarityBadge,
+  StreakCalendar,
+  StreakCounter,
+  VerdictChip,
+} from './index';
+
+const wrap = (ui: React.ReactElement, scheme: 'light' | 'dark' = 'light') =>
+  render(<ThemeProvider scheme={scheme}>{ui}</ThemeProvider>);
+const lilyTox = aoife.speciesToxicity['peace-lily']!;
+
+describe('ConfidenceLabel', () => {
+  it('reads word first and spells percent for screen readers', async () => {
+    await wrap(<ConfidenceLabel probability={0.94} />);
+    expect(screen.getByText('Very likely, 94%')).toBeTruthy();
+    expect(screen.getByLabelText('Very likely, 94 percent')).toBeTruthy();
+  });
+});
+
+describe('VerdictChip', () => {
+  it('names the animal and verdict in text and for screen readers', async () => {
+    await wrap(<VerdictChip animal="cat" severity="moderate" />);
+    expect(screen.getByText('Cats: Moderate')).toBeTruthy();
+    expect(screen.getByLabelText('Cats: moderate toxicity')).toBeTruthy();
+  });
+  it('switches chip text to #0E1A13 in dark mode', async () => {
+    await wrap(<VerdictChip animal="dog" severity="none" />, 'dark');
+    const text = screen.getByText('Dogs: No known toxicity');
+    expect(StyleSheet.flatten(text.props.style)).toMatchObject({ color: '#0E1A13' });
+    expect(text.props.numberOfLines).toBeUndefined();
+  });
+  it('shows other pets as unknown even if data says none', async () => {
+    await wrap(<VerdictChip animal="other" severity="none" />);
+    expect(screen.getByText('Other pets: Unknown')).toBeTruthy();
+  });
+});
+
+describe('PetCheckCard', () => {
+  const pets = aoife.household.pets;
+  it('one row per pet with the plain line and source, plus the match footer', async () => {
+    const onPetAte = jest.fn();
+    await wrap(
+      <PetCheckCard
+        pets={pets}
+        toxicity={lilyTox}
+        matchProbability={0.94}
+        speciesName="Peace lily"
+        onPetAte={onPetAte}
+      />,
+    );
+    expect(screen.getByText('Miso and Bran')).toBeTruthy();
+    expect(screen.getByText('Cats: Moderate')).toBeTruthy();
+    expect(screen.getByText('Dogs: Moderate')).toBeTruthy();
+    expect(
+      screen.getByText(
+        /Moderate for cats\. Peace lily can irritate the mouth and cause drooling and vomiting\./,
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText('Based on the match: Very likely, 94%')).toBeTruthy();
+    expect(
+      screen.queryByText('This depends on the match. Confirm the plant to be sure.'),
+    ).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'My pet ate this' }));
+    expect(onPetAte).toHaveBeenCalled();
+  });
+  it('adds the likely-match note when the match is only likely', async () => {
+    await wrap(
+      <PetCheckCard
+        pets={pets}
+        toxicity={lilyTox}
+        matchProbability={0.71}
+        speciesName="Peace lily"
+        onPetAte={() => {}}
+      />,
+    );
+    expect(
+      screen.getByText('This depends on the match. Confirm the plant to be sure.'),
+    ).toBeTruthy();
+  });
+  it('unknown toxicity names the pet and never says safe', async () => {
+    await wrap(
+      <PetCheckCard
+        pets={pets}
+        toxicity={[]}
+        matchProbability={0.96}
+        speciesName="Swiss cheese plant"
+        onPetAte={() => {}}
+      />,
+    );
+    expect(
+      screen.getByText('Not reviewed yet. Keep it away from Miso until we know more.'),
+    ).toBeTruthy();
+    expect(
+      screen.getByText('Not reviewed yet. Keep it away from Bran until we know more.'),
+    ).toBeTruthy();
+    expect(screen.queryByText(/safe/i)).toBeNull();
+  });
+  it('renders nothing with no pets', async () => {
+    await wrap(
+      <PetCheckCard
+        pets={[]}
+        toxicity={lilyTox}
+        matchProbability={0.94}
+        speciesName="Peace lily"
+        onPetAte={() => {}}
+      />,
+    );
+    expect(screen.queryByText('Pet check')).toBeNull();
+  });
+});
+
+describe('progress components', () => {
+  it('RarityBadge reads its tier', async () => {
+    await wrap(<RarityBadge tier="rare" />);
+    expect(screen.getByText('Rare')).toBeTruthy();
+    expect(screen.getByLabelText('Rarity: Rare')).toBeTruthy();
+  });
+  it('QuotaMeter reads "7 of 10 left this month" and reveals the reset date on press', async () => {
+    await wrap(<QuotaMeter quota={aoife.today.identifications} variant="bar" />);
+    expect(screen.getByText('7 of 10 left this month')).toBeTruthy();
+    await fireEvent.press(screen.getByText('7 of 10 left this month'));
+    expect(screen.getByText('Resets 1 November')).toBeTruthy();
+  });
+  it('QuotaMeter card follows the Today tile (frame 2e)', async () => {
+    await wrap(<QuotaMeter quota={aoife.today.identifications} variant="card" />);
+    expect(screen.getByText('Identifications')).toBeTruthy();
+    expect(screen.getByText('7 of 10 left')).toBeTruthy();
+  });
+  it('a broken streak turns grey, never red', async () => {
+    await wrap(<StreakCounter days={0} label="day care streak" state="broken" size="stat" />);
+    expect(StyleSheet.flatten(screen.getByText('0').props.style)).toMatchObject({
+      color: '#56605A',
+    });
+  });
+  it('StreakCalendar labels each day for screen readers', async () => {
+    await wrap(<StreakCalendar marks={['checked', 'freeze', 'missed', 'empty']} />);
+    expect(screen.getByLabelText('Checked in')).toBeTruthy();
+    expect(screen.getByLabelText('Freeze used')).toBeTruthy();
+    expect(screen.getByLabelText('Missed')).toBeTruthy();
+    expect(screen.getByLabelText('No check-in')).toBeTruthy();
+  });
+  it('PermissionPrimer says why and always offers Not now', async () => {
+    const onNotNow = jest.fn();
+    await wrap(<PermissionPrimer kind="location" onContinue={() => {}} onNotNow={onNotNow} />);
+    expect(screen.getByText('Use your location')).toBeTruthy();
+    expect(
+      screen.getByText('To place your finds. Others only ever see an area, never a pin.'),
+    ).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Not now' }));
+    expect(onNotNow).toHaveBeenCalled();
+  });
+});
