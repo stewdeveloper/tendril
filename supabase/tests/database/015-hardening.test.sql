@@ -1,5 +1,5 @@
 begin;
-select plan(16);
+select plan(19);
 
 select tests.create_supabase_user('aoife');
 
@@ -99,6 +99,32 @@ update public.privacy_zones set radius_m = 3000;
 update public.household_vets set name = 'Dublin Vets Ltd';
 select cmp_ok((select updated_at from public.privacy_zones), '>', '2020-01-01'::timestamptz, 'privacy_zones.updated_at is maintained');
 select cmp_ok((select updated_at from public.household_vets), '>', '2020-01-01'::timestamptz, 'household_vets.updated_at is maintained');
+
+-- Postgres does not index foreign key columns by itself, and cascades, set-null and joins scan them. Every
+-- foreign key in public and private must have an index whose leading column is the key's first column
+-- (all of ours are single-column). A view, so the probe below can be added after it is defined.
+create temp view fk_cols as
+select n.nspname::text as schema_name, c.relname::text as relname, a.attname::text as attname,
+  exists (
+    select 1 from pg_index i
+    where i.indrelid = k.conrelid and i.indkey[0] = k.conkey[1] and i.indisvalid
+  ) as indexed
+from pg_constraint k
+join pg_class c on c.oid = k.conrelid
+join pg_namespace n on n.oid = c.relnamespace
+join pg_attribute a on a.attrelid = k.conrelid and a.attnum = k.conkey[1]
+where k.contype = 'f' and n.nspname in ('public', 'private');
+
+select isnt_empty(
+  $$select 1 from fk_cols where schema_name = 'public' and relname = 'plants' and attname = 'household_id' and indexed$$,
+  'the foreign key audit can see an indexed foreign key');
+select is_empty(
+  $$select schema_name, relname, attname from fk_cols where not indexed$$,
+  'every foreign key column is indexed');
+create table public.zz_fk_probe (species_id uuid references public.species);
+select isnt_empty(
+  $$select 1 from fk_cols where relname = 'zz_fk_probe' and attname = 'species_id' and not indexed$$,
+  'the foreign key audit sees an unindexed foreign key');
 
 select * from finish();
 rollback;
