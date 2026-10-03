@@ -16,7 +16,7 @@
 
 ## Global Constraints
 
-- Every Global Constraint of Phase 1A applies: tokens, type, shape, motion, copy and accessibility, `npx expo install`, and async RNTL `render`.
+- Every Global Constraint of Phase 1A applies: tokens, type, shape, motion, copy and accessibility, `npx expo install`, async RNTL `render` and `fireEvent` (always awaited), and ESLint pinned to 9.x.
 - **Where pixel values come from:** `design/frames/<id>.html` is the source for spacing, sizes, radii, fonts and colours. Use the Phase 1A components wherever they fit, and don't restyle them per screen.
 - **Precedence (spec §6.3):**
   - Where a 4-series frame and a hero or onboarding frame show the same screen, the hero frame sets the layout and the 4-series frame sets the state's content.
@@ -131,7 +131,7 @@ describe('onboarding', () => {
     const onContinue = jest.fn();
     await wrap(<AgeScreen initial={{ year: 1998, month: 9 }} onContinue={onContinue} onBack={() => {}} />);
     expect(screen.queryByText(/13|under|old enough|limit/i)).toBeNull();
-    fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
     expect(onContinue).toHaveBeenCalledWith({ year: 1998, month: 9 });
   });
   it('age stop has no way back', async () => {
@@ -143,24 +143,24 @@ describe('onboarding', () => {
     const onApple = jest.fn();
     const onEmail = jest.fn();
     await wrap(<SignInScreen showApple onApple={onApple} onGoogle={() => {}} onEmail={onEmail} onBack={() => {}} />);
-    fireEvent.press(screen.getByRole('button', { name: 'Continue with Apple' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue with Apple' }));
     expect(onApple).toHaveBeenCalled();
-    fireEvent.changeText(screen.getByPlaceholderText('you@example.com'), 'aoife@example.com');
-    fireEvent.press(screen.getByRole('button', { name: 'Email me a sign-in link' }));
+    await fireEvent.changeText(screen.getByPlaceholderText('you@example.com'), 'aoife@example.com');
+    await fireEvent.press(screen.getByRole('button', { name: 'Email me a sign-in link' }));
     expect(onEmail).toHaveBeenCalledWith('aoife@example.com');
   });
   it('pets: picking None clears others and shows the note', async () => {
     const onContinue = jest.fn();
     await wrap(<PetsScreen initial={[{ animal: 'cat', name: 'Miso' }]} onContinue={onContinue} onBack={() => {}} />);
-    fireEvent.press(screen.getByRole('checkbox', { name: 'None' }));
+    await fireEvent.press(screen.getByRole('checkbox', { name: 'None' }));
     expect(screen.getByText('No pet checks for now. Add a pet any time in Settings and every plant gets checked.')).toBeTruthy();
-    fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
     expect(onContinue).toHaveBeenCalledWith([]);
   });
   it('pets: names are optional and empty names save as null', async () => {
     const onContinue = jest.fn();
     await wrap(<PetsScreen initial={[{ animal: 'dog', name: '' }]} onContinue={onContinue} onBack={() => {}} />);
-    fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
     expect(onContinue).toHaveBeenCalledWith([{ animal: 'dog', name: null }]);
   });
 });
@@ -282,14 +282,14 @@ describe('TodayScreen', () => {
     const onScanLabel = jest.fn();
     await wrap(<TodayScreen summary={summary} checkIn={null} {...handlers} onScanLabel={onScanLabel} />);
     expect(screen.getByText("Add your first plant and we'll tell you when to check its soil.")).toBeTruthy();
-    fireEvent.press(screen.getByRole('button', { name: 'Scan your plant label' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Scan your plant label' }));
     expect(onScanLabel).toHaveBeenCalled();
   });
   it('answer buttons are disabled while an answer is pending (no double check-ins)', async () => {
     const onAnswer = jest.fn();
     await wrap(<TodayScreen summary={aoife.today} checkIn={{ taskId: 't-monty', state: 'unanswered' }} {...handlers} onAnswer={onAnswer} />);
-    fireEvent.press(screen.getByRole('button', { name: 'Yes, dry' }));
-    fireEvent.press(screen.getByRole('button', { name: 'Yes, dry' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Yes, dry' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Yes, dry' }));
     expect(onAnswer).toHaveBeenCalledTimes(1);
   });
 });
@@ -403,8 +403,8 @@ describe('plants screens', () => {
     const initial = { nickname: 'Lily', room: null, light: 'unknown', potMaterial: 'unknown', potSizeCm: null, drainage: 'unknown', indoor: true } as const;
     await wrap(<PlantSetupScreen speciesName="Peace lily" initial={initial} onSave={onSave} onCancel={noop} />);
     expect(screen.getByText("Not sure is fine. We'll start with the species' basic schedule and you can change it later.")).toBeTruthy();
-    fireEvent.press(screen.getByRole('radio', { name: 'Bright' }));
-    fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Bright' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ nickname: 'Lily', light: 'bright', drainage: 'unknown' }));
   });
   it('label adoption says no identification is used; unknown code offers a scan', async () => {
@@ -413,7 +413,7 @@ describe('plants screens', () => {
     expect(screen.getByText('No identification used.')).toBeTruthy();
     first.unmount();
     await wrap(<LabelAdoptionScreen label={null} pets={aoife.household.pets} onAdd={noop} onScanPlant={onScanPlant} onBack={noop} onPetAte={noop} />);
-    fireEvent.press(screen.getByRole('button', { name: 'Scan the plant' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Scan the plant' }));
     expect(onScanPlant).toHaveBeenCalled();
   });
 });
@@ -514,7 +514,7 @@ describe('PetEmergencyScreen', () => {
     expect(screen.getByText('Source: ASPCA. Based on a very likely match, 94%.')).toBeTruthy();
     const buttons = screen.getAllByRole('button').map((b) => b.props.accessibilityLabel ?? '');
     expect(buttons.findIndex((l) => l.startsWith('Call your vet'))).toBeLessThan(buttons.findIndex((l) => l.startsWith('Call ASPCA')));
-    fireEvent.press(screen.getByRole('button', { name: /Call your vet/ }));
+    await fireEvent.press(screen.getByRole('button', { name: /Call your vet/ }));
     expect(onCallVet).toHaveBeenCalled();
   });
   it('without a vet or a poison line it says what to do', async () => {
@@ -632,7 +632,7 @@ describe('CameraScreen', () => {
     const onShutter = jest.fn();
     await wrap(<CameraScreen preview={<Text>p</Text>} quota={aoife.today.identifications} organ="leaf" photos={['1', '2', '3', '4', '5']} healthCheck={false} diagnosisQuota={dq} onOrgan={noop} onShutter={onShutter} onRemovePhoto={noop} onGallery={noop} onToggleHealth={noop} onIdentify={noop} onClose={noop} />);
     expect(screen.getByText('5 of 5')).toBeTruthy();
-    fireEvent.press(screen.getByRole('button', { name: 'Take photo' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Take photo' }));
     expect(onShutter).not.toHaveBeenCalled();
   });
 });
@@ -738,7 +738,7 @@ describe('ResultScreen', () => {
     expect(screen.getByText('Very likely, 94%')).toBeTruthy();
     expect(screen.getByText('Peace lily')).toBeTruthy();
     expect(screen.getByText('Cats: Moderate')).toBeTruthy();
-    fireEvent.press(screen.getByRole('button', { name: 'Add to My Plants' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Add to My Plants' }));
     expect(onAdd).toHaveBeenCalled();
   });
   it('likely: compares two and adds the match note', async () => {
@@ -921,7 +921,7 @@ describe('CollectionScreen', () => {
     const onTurnOn = jest.fn();
     await wrap(<CollectionScreen segment="map" {...base} locationGranted={false} onTurnOnLocation={onTurnOn} />);
     expect(screen.getByText('Location is off, so your finds show as a list.')).toBeTruthy();
-    fireEvent.press(screen.getByRole('button', { name: 'Turn on location' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Turn on location' }));
     expect(onTurnOn).toHaveBeenCalled();
   });
 });
@@ -1015,9 +1015,9 @@ describe('leagues', () => {
   it('searches only on submit, exact handle', async () => {
     const onQuery = jest.fn();
     await wrap(<AddFriendsScreen query="" result={null} onQuery={onQuery} onAdd={noop} onInvite={noop} onBack={noop} />);
-    fireEvent.changeText(screen.getByLabelText('Handle'), '@siobhanplant');
+    await fireEvent.changeText(screen.getByLabelText('Handle'), '@siobhanplant');
     expect(onQuery).not.toHaveBeenCalled();
-    fireEvent(screen.getByLabelText('Handle'), 'submitEditing');
+    await fireEvent(screen.getByLabelText('Handle'), 'submitEditing');
     expect(onQuery).toHaveBeenCalledWith('@siobhanplant');
   });
   it('handle not found suggests an invite', async () => {
@@ -1109,7 +1109,7 @@ describe('profile and account', () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_t, _m, buttons) => buttons?.find((b) => b.text === 'Delete')?.onPress?.());
     await wrap(<DeleteAccountScreen counts={{ plants: 3, species: 37 }} activeSubscription onManageSubscription={noop} onDelete={onDelete} onBack={noop} />);
     expect(screen.getByText('Billing continues through the App Store until you cancel it there.')).toBeTruthy();
-    fireEvent.press(screen.getByRole('button', { name: 'Delete account' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Delete account' }));
     expect(alertSpy).toHaveBeenCalledTimes(1);
     expect(onDelete).toHaveBeenCalledTimes(1);
     alertSpy.mockRestore();

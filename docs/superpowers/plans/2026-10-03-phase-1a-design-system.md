@@ -74,7 +74,9 @@
 - **Accessibility:** verdict chips read in full ("Cats: moderate toxicity"), confidence reads "Very likely, 94 percent", and missing tiles read "Not found yet".
 - **Tooling and code rules:**
   - Add Expo-side packages only with `npx expo install <pkg>`, run inside `apps/mobile`.
-  - RNTL 14's `render` is async, so always write `await render(...)`.
+  - RNTL 14's `render` and `fireEvent` are async, so always write `await render(...)` and `await fireEvent.press(...)`.
+- ESLint stays on 9.x: eslint-plugin-react, through eslint-config-expo, crashes on ESLint 10. Never `expo install eslint` without pinning `eslint@^9`.
+- Run root-level tools with `pnpm exec` or `pnpm dlx`, not `npx`. The root `devEngines` Deno pin makes `npx` fail with EBADDEVENGINES at the repo root, though `npx expo install` inside `apps/mobile` works.
   - `@tendril/core` has zero runtime dependencies, and every relative import ends in `.ts`.
   - Screens and components take props only. Data comes in through containers in `src/app`.
 
@@ -1621,14 +1623,14 @@ describe('Button', () => {
   it('fires onPress and exposes a button role', async () => {
     const onPress = jest.fn();
     await wrap(<Button label="Add to My Plants" onPress={onPress} />);
-    fireEvent.press(screen.getByRole('button', { name: 'Add to My Plants' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Add to My Plants' }));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
   it('does not fire when disabled or loading, and says it is loading', async () => {
     const onPress = jest.fn();
     await wrap(<><Button label="Continue" onPress={onPress} disabled /><Button label="Save" onPress={onPress} loading /></>);
-    fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
-    fireEvent.press(screen.getByRole('button', { name: 'Save, loading' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save, loading' }));
     expect(onPress).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
   });
@@ -1663,15 +1665,15 @@ describe('Sheet', () => {
     );
     expect(screen.getByText('Check-in')).toBeTruthy();
     expect(screen.getByText("Is the top of Monty's soil dry?")).toBeTruthy();
-    fireEvent.press(screen.getByRole('button', { name: 'Close' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Close' }));
     expect(onClose).toHaveBeenCalledTimes(1);
-    fireEvent.press(screen.getByTestId('sheet-backdrop'));
+    await fireEvent.press(screen.getByTestId('sheet-backdrop'));
     expect(onClose).toHaveBeenCalledTimes(2);
   });
   it('Android back (Modal onRequestClose) calls onClose', async () => {
     const onClose = jest.fn();
     await render(<ThemeProvider scheme="light"><Sheet visible title="Log a find" onClose={onClose}><Text>x</Text></Sheet></ThemeProvider>);
-    fireEvent(screen.getByTestId('sheet-modal'), 'requestClose');
+    await fireEvent(screen.getByTestId('sheet-modal'), 'requestClose');
     expect(onClose).toHaveBeenCalledTimes(1);
   });
   it('renders nothing when not visible', async () => {
@@ -1695,20 +1697,20 @@ describe('controls', () => {
     const onChange = jest.fn();
     await wrap(<OptionPills options={[{ value: 'bright', label: 'Bright' }, { value: 'medium', label: 'Medium' }]} value="medium" onChange={onChange} />);
     expect(screen.getByRole('radio', { name: 'Medium' })).toBeChecked();
-    fireEvent.press(screen.getByRole('radio', { name: 'Bright' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Bright' }));
     expect(onChange).toHaveBeenCalledWith('bright');
   });
   it('OptionPills in multiple mode toggles values', async () => {
     const onChange = jest.fn();
     await wrap(<OptionPills multiple options={[{ value: 'yellowing', label: 'Yellowing' }, { value: 'spots', label: 'Spots' }]} value={['spots']} onChange={onChange} />);
-    fireEvent.press(screen.getByRole('checkbox', { name: 'Yellowing' }));
+    await fireEvent.press(screen.getByRole('checkbox', { name: 'Yellowing' }));
     expect(onChange).toHaveBeenCalledWith(['spots', 'yellowing']);
   });
   it('SegmentedControl selects tabs', async () => {
     const onChange = jest.fn();
     await wrap(<SegmentedControl options={[{ value: 'league', label: 'League' }, { value: 'friends', label: 'Friends' }]} value="league" onChange={onChange} />);
     expect(screen.getByRole('tab', { name: 'League' })).toBeSelected();
-    fireEvent.press(screen.getByRole('tab', { name: 'Friends' }));
+    await fireEvent.press(screen.getByRole('tab', { name: 'Friends' }));
     expect(onChange).toHaveBeenCalledWith('friends');
   });
   it('RowsCard renders lead, title, subtitle and right text; highlight uses the tint', async () => {
@@ -1725,7 +1727,7 @@ describe('controls', () => {
   it('Snackbar offers Undo', async () => {
     const onUndo = jest.fn();
     await wrap(<Snackbar text="Check-in saved." onUndo={onUndo} bottomOffset={106} />);
-    fireEvent.press(screen.getByRole('button', { name: 'Undo' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Undo' }));
     expect(onUndo).toHaveBeenCalled();
   });
   it('Note and EmptyState render their sentence', async () => {
@@ -1845,7 +1847,7 @@ describe('PetCheckCard', () => {
     expect(screen.getByText(/Moderate for cats\. Peace lily can irritate the mouth and cause drooling and vomiting\./)).toBeTruthy();
     expect(screen.getByText('Based on the match: Very likely, 94%')).toBeTruthy();
     expect(screen.queryByText('This depends on the match. Confirm the plant to be sure.')).toBeNull();
-    fireEvent.press(screen.getByRole('button', { name: 'My pet ate this' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'My pet ate this' }));
     expect(onPetAte).toHaveBeenCalled();
   });
   it('adds the likely-match note when the match is only likely', async () => {
@@ -1873,7 +1875,7 @@ describe('progress components', () => {
   it('QuotaMeter reads "7 of 10 left this month" and reveals the reset date on press', async () => {
     await wrap(<QuotaMeter quota={aoife.today.identifications} variant="card" />);
     expect(screen.getByText('7 of 10 left this month')).toBeTruthy();
-    fireEvent.press(screen.getByText('7 of 10 left this month'));
+    await fireEvent.press(screen.getByText('7 of 10 left this month'));
     expect(screen.getByText('Resets 1 November')).toBeTruthy();
   });
   it('a broken streak turns grey, never red', async () => {
@@ -1892,7 +1894,7 @@ describe('progress components', () => {
     await wrap(<PermissionPrimer kind="location" onContinue={() => {}} onNotNow={onNotNow} />);
     expect(screen.getByText('Use your location')).toBeTruthy();
     expect(screen.getByText('To place your finds. Others only ever see an area, never a pin.')).toBeTruthy();
-    fireEvent.press(screen.getByRole('button', { name: 'Not now' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Not now' }));
     expect(onNotNow).toHaveBeenCalled();
   });
 });
@@ -2003,7 +2005,7 @@ describe('TaskRow', () => {
     const onCheck = jest.fn();
     await wrap(<TaskRow task={due} onPress={() => {}} primaryAction={{ label: 'Check in', onPress: onCheck }} />);
     expect(screen.getByText("Time to check Monty's soil.")).toBeTruthy();
-    fireEvent.press(screen.getByRole('button', { name: 'Check in' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Check in' }));
     expect(onCheck).toHaveBeenCalled();
   });
 });
@@ -2039,8 +2041,8 @@ describe('CheckInSheet', () => {
     const onAnswer = jest.fn();
     await wrap(<CheckInSheet visible plantNickname="Monty" state="unanswered" onAnswer={onAnswer} onAddPhoto={() => {}} onClose={() => {}} onDone={() => {}} />);
     expect(screen.getByText("Is the top of Monty's soil dry?")).toBeTruthy();
-    fireEvent.press(screen.getByRole('checkbox', { name: 'Yellowing' }));
-    fireEvent.press(screen.getByRole('button', { name: 'No, still damp' }));
+    await fireEvent.press(screen.getByRole('checkbox', { name: 'Yellowing' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'No, still damp' }));
     expect(onAnswer).toHaveBeenCalledWith(false, ['yellowing']);
   });
   it('answered No says when the next check is', async () => {
@@ -2259,9 +2261,9 @@ describe('TabBar', () => {
     await render(<ThemeProvider scheme="light"><TabBarView active="today" onTab={onTab} onScan={onScan} /></ThemeProvider>);
     for (const label of ['Today', 'My Plants', 'Scan', 'Collection', 'Leagues']) expect(screen.getByText(label)).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Today' })).toBeSelected();
-    fireEvent.press(screen.getByRole('tab', { name: 'Leagues' }));
+    await fireEvent.press(screen.getByRole('tab', { name: 'Leagues' }));
     expect(onTab).toHaveBeenCalledWith('leagues');
-    fireEvent.press(screen.getByRole('tab', { name: 'Scan' }));
+    await fireEvent.press(screen.getByRole('tab', { name: 'Scan' }));
     expect(onScan).toHaveBeenCalled();
     expect(onTab).not.toHaveBeenCalledWith('scan');
   });
