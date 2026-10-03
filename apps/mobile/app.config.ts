@@ -20,7 +20,7 @@ const config: ExpoConfig = {
       { backgroundColor: '#FBFAF6', image: './assets/images/splash-icon.png', imageWidth: 76 },
     ],
   ],
-  experiments: { typedRoutes: true, reactCompiler: true },
+  experiments: { typedRoutes: false, reactCompiler: true },
 };
 
 export default config;
