@@ -703,7 +703,7 @@ git commit -m "feat(functions): me (bootstrap, pets, vet, home area) and identif
       - The RPC's JSON is not `LabelInfo`. Its keys are `code`, `growerName`, `cultivar`, `species {id, slug, commonName, scientificName, imageUrl, light, checkIntervalDays, warmth}` and `toxicity[] {animal, severity, summary, symptoms, sourceName, sourceUrl, reviewStatus}`, ordered by animal. Map it with a tested `labelFromRpc` in `labels/handler.ts`:
         - `species` becomes `SpeciesRef`.
         - `care` comes from `light`, `checkIntervalDays` and `warmth`.
-        - `careLines` is the light line plus "Check the soil every N to M days", using the same copy the plant detail uses.
+        - `careLines` is the light text as-is (no " light" appended), then "Check the soil every <N−1> to <N+1> days" from `checkIntervalDays` (6 gives "5 to 7", matching the fixture). With a null interval, omit the soil line.
         - `toxicity` passes through, keeping `reviewStatus`.
       - Add an optional `reviewStatus?: 'seed_pending_vet' | 'reviewed'` to core's `ToxicityEntry`. Rows still at `seed_pending_vet` must never read as vet-reviewed.
       - `labels_test.ts` also checks that the mapped `GET /PL-0001` body equals the `aoife` fixture label's shape.

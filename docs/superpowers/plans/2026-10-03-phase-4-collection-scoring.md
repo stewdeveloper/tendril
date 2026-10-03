@@ -169,6 +169,7 @@ git commit -m "feat(core): integrity checks, scoring rules v1, rarity tiers, set
     - owner select only; the service role can insert, plus update `held` and `revoked_at`; no one can delete
     - trigger `score_events_guard`: `before update` raises unless only `held` or `revoked_at` changed
   - `public.sets(id text pk, name, description, sort)` and `public.set_species(set_id, species_id, sort)`: public read
+    - `set_species.species_id references public.species(id) on delete cascade`. Five Phase 2A pgTAP files delete seeded species inside their transactions, and a non-cascading FK would break them.
   - `public.user_set_progress(user_id, set_id, found, total, completed_at)`: owner read
   - `public.badges(id text pk, name, description, target, sort)`: public read
   - `public.user_badges(user_id, badge_id, current, earned_at)`: owner read; earned badges also show in the public profile RPC (Phase 5)
