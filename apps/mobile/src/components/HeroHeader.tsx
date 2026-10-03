@@ -1,9 +1,13 @@
+import { colors } from '@tendril/core';
 import ChevronLeft from 'lucide-react-native/icons/chevron-left';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTheme } from '../theme';
 import { PhotoSlot } from './PhotoSlot';
 import { useInsets } from './useInsets';
+
+// White over a photo in both schemes, like the status bar in DeviceChrome.
+const ON_PHOTO = colors.light.surface;
 
 /** Photo-led screens (4o, 2d): the photo is 236 pt tall and the content sheet overlaps it from 212. */
 export const HERO_PHOTO_HEIGHT = 236;
@@ -52,7 +56,7 @@ export function HeroHeader({
           onPress={onBack}
           style={[styles.circle, { backgroundColor: c.photoButton }]}
         >
-          <ChevronLeft size={24} color="#FFFFFF" strokeWidth={2} />
+          <ChevronLeft size={24} color={ON_PHOTO} strokeWidth={2} />
         </Pressable>
         {right}
       </View>

@@ -1,6 +1,6 @@
-import { radius } from '@tendril/core';
+import { radius, typeScale } from '@tendril/core';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { AppText, useTheme } from '../theme';
+import { AppText, fontFamilyFor, useTheme } from '../theme';
 
 export interface SegmentOption {
   value: string;
@@ -59,5 +59,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 8,
   },
-  label: { fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
+  label: { fontFamily: fontFamilyFor(typeScale.bodyStrong), textAlign: 'center' },
 });

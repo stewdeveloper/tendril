@@ -1,7 +1,33 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { AccessibilityInfo, StyleSheet, Text } from 'react-native';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
+import { AccessibilityInfo, Dimensions, StyleSheet, Text } from 'react-native';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { ThemeProvider } from '../theme';
-import { Sheet } from './Sheet';
+import { Sheet, SheetOverlay, SheetPanel } from './index';
+
+interface Node {
+  type: string;
+  children?: (Node | string)[] | null;
+}
+
+/** Every host element type in the rendered tree. */
+function hostTypes(node: Node | Node[] | string | null, out = new Set<string>()): Set<string> {
+  if (node == null || typeof node === 'string') return out;
+  if (Array.isArray(node)) {
+    node.forEach((n) => hostTypes(n, out));
+    return out;
+  }
+  out.add(node.type);
+  node.children?.forEach((n) => hostTypes(n, out));
+  return out;
+}
+
+const withInsets = (ui: React.ReactElement, top = 59) => (
+  <ThemeProvider scheme="light">
+    <SafeAreaInsetsContext.Provider value={{ top, bottom: 34, left: 0, right: 0 }}>
+      {ui}
+    </SafeAreaInsetsContext.Provider>
+  </ThemeProvider>
+);
 
 describe('Sheet', () => {
   it('shows a title, content and a close button; close and backdrop each call onClose once', async () => {
@@ -61,6 +87,86 @@ describe('Sheet', () => {
     reduce.mockResolvedValue(true);
     await render(sheet);
     await waitFor(() => expect(transformOf()).toEqual([]));
-    reduce.mockRestore();
+    // RN's jest setup makes this a jest.fn, so restore its resolved-false default by hand.
+    reduce.mockResolvedValue(false);
+  });
+});
+
+describe('SheetPanel and SheetOverlay', () => {
+  it('SheetOverlay draws the scrim and the panel inline, with no Modal', async () => {
+    const onClose = jest.fn();
+    await render(
+      <ThemeProvider scheme="light">
+        <SheetOverlay title="Check-in" onClose={onClose} height={522}>
+          <Text>Is the top of the soil dry?</Text>
+        </SheetOverlay>
+      </ThemeProvider>,
+    );
+    expect(screen.getByText('Check-in')).toBeTruthy();
+    expect(screen.getByText('Is the top of the soil dry?')).toBeTruthy();
+    expect(hostTypes(screen.toJSON() as never).has('Modal')).toBe(false);
+    expect(StyleSheet.flatten(screen.getByTestId('sheet-overlay-scrim').props.style)).toMatchObject(
+      {
+        backgroundColor: 'rgba(18,23,20,0.45)',
+      },
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'Close' }));
+    await fireEvent.press(screen.getByTestId('sheet-overlay-scrim'));
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it('Sheet, by contrast, is a Modal', async () => {
+    await render(
+      <ThemeProvider scheme="light">
+        <Sheet visible title="Check-in" onClose={() => {}}>
+          <Text>x</Text>
+        </Sheet>
+      </ThemeProvider>,
+    );
+    expect(hostTypes(screen.toJSON() as never).has('Modal')).toBe(true);
+  });
+
+  it('keeps the title outside a scrolling body', async () => {
+    await render(
+      <ThemeProvider scheme="light">
+        <SheetPanel title="Check-in" onClose={() => {}}>
+          <Text>Long content</Text>
+        </SheetPanel>
+      </ThemeProvider>,
+    );
+    const body = screen.getByTestId('sheet-body');
+    expect(body.type).toBe('RCTScrollView');
+    expect(within(body).getByText('Long content')).toBeTruthy();
+    expect(within(body).queryByText('Check-in')).toBeNull();
+    expect(within(body).queryByRole('button', { name: 'Close' })).toBeNull();
+    expect(screen.getByRole('header', { name: 'Check-in' })).toBeTruthy();
+  });
+
+  it.each([['auto' as const], [2000]])(
+    'never grows past the window minus the top inset (height %s)',
+    async (height) => {
+      await render(
+        withInsets(
+          <SheetPanel title="Check-in" onClose={() => {}} height={height}>
+            <Text>x</Text>
+          </SheetPanel>,
+        ),
+      );
+      const style = StyleSheet.flatten(screen.getByTestId('sheet-panel').props.style);
+      expect(style.maxHeight).toBe(Dimensions.get('window').height - 59 - 8);
+    },
+  );
+
+  it('passes a fixed height through below the cap', async () => {
+    await render(
+      withInsets(
+        <SheetPanel title="Check-in" onClose={() => {}} height={522}>
+          <Text>x</Text>
+        </SheetPanel>,
+      ),
+    );
+    expect(StyleSheet.flatten(screen.getByTestId('sheet-panel').props.style)).toMatchObject({
+      height: 522,
+    });
   });
 });

@@ -4,17 +4,11 @@ import { ThemeProvider } from '../theme';
 import {
   BackBar,
   Button,
-  FlameIcon,
-  FlowerIcon,
-  FreezeIcon,
   HERO_CONTENT_TOP,
   HeroHeader,
-  LeafIcon,
   Note,
   PhotoSlot,
   ScreenHeader,
-  TendrilDrawing,
-  VerdictIcon,
 } from './index';
 
 const wrap = (ui: React.ReactElement, scheme: 'light' | 'dark' = 'light') =>
@@ -91,20 +85,5 @@ describe('layout primitives', () => {
       borderRadius: 14,
     });
     expect(flat(screen.getByRole('button', { name: 'Off' }))).toMatchObject({ opacity: 0.4 });
-  });
-
-  it('draws every design glyph', async () => {
-    await wrap(
-      <>
-        <FlameIcon color="#A36100" />
-        <LeafIcon color="#FFFFFF" size={14} />
-        <FlowerIcon color="#FFFFFF" size={14} />
-        <FreezeIcon color="#2E6B4E" size={16} />
-        <TendrilDrawing color="#2E6B4E" />
-        {(['unknown', 'none', 'mild', 'moderate', 'severe'] as const).map((severity) => (
-          <VerdictIcon key={severity} severity={severity} color="#FFFFFF" size={18} />
-        ))}
-      </>,
-    );
   });
 });

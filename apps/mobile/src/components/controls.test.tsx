@@ -106,4 +106,27 @@ describe('controls', () => {
       screen.getByText('No plants yet. Scan one, or scan the label it came with.'),
     ).toBeTruthy();
   });
+  it('TextField announces its error and keeps it as the input hint', async () => {
+    await wrap(
+      <TextField
+        label="Handle"
+        value="@taken"
+        onChangeText={() => {}}
+        error="That handle is taken."
+      />,
+    );
+    const error = screen.getByRole('alert');
+    expect(error).toHaveTextContent('That handle is taken.');
+    expect(error.props.accessibilityLiveRegion).toBe('polite');
+    expect(screen.getByDisplayValue('@taken').props.accessibilityHint).toBe(
+      'That handle is taken.',
+    );
+    expect(StyleSheet.flatten(screen.getByDisplayValue('@taken').props.style)).toMatchObject({
+      borderColor: '#9B1C1C',
+    });
+  });
+  it('TextField without an error has no alert', async () => {
+    await wrap(<TextField label="Handle" value="@free" onChangeText={() => {}} />);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
 });

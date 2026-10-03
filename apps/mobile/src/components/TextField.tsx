@@ -1,7 +1,7 @@
-import { radius } from '@tendril/core';
+import { radius, typeScale } from '@tendril/core';
 import { useState } from 'react';
 import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
-import { AppText, useTheme } from '../theme';
+import { AppText, fontFamilyFor, useTheme } from '../theme';
 
 export interface TextFieldProps extends Pick<
   TextInputProps,
@@ -20,7 +20,10 @@ export interface TextFieldProps extends Pick<
   placeholder?: string;
   /** Forces the focused look (the catalog frames show it without a real focus). */
   focused?: boolean;
-  /** A message for the field. It turns the ring to the danger colour and is read out with it. */
+  /**
+   * A message for the field. It turns the ring to the danger colour, is announced when it
+   * appears (alert role, polite live region) and is the input's accessibility hint.
+   */
   error?: string;
 }
 
@@ -47,6 +50,7 @@ export function TextField({
       <TextInput
         {...input}
         accessibilityLabel={label}
+        accessibilityHint={error}
         aria-invalid={error ? true : undefined}
         value={value}
         onChangeText={onChangeText}
@@ -67,7 +71,7 @@ export function TextField({
         ]}
       />
       {error ? (
-        <AppText variant="caption" color="danger">
+        <AppText variant="caption" color="danger" role="alert" accessibilityLiveRegion="polite">
           {error}
         </AppText>
       ) : null}
@@ -80,7 +84,7 @@ const styles = StyleSheet.create({
   input: {
     minHeight: 52,
     borderRadius: radius.input,
-    fontFamily: 'Inter_400Regular',
-    fontSize: 17,
+    fontFamily: fontFamilyFor(typeScale.body),
+    fontSize: typeScale.body.size,
   },
 });

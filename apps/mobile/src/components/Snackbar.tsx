@@ -1,6 +1,6 @@
-import { radius } from '@tendril/core';
+import { radius, typeScale } from '@tendril/core';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
-import { AppText, useTheme } from '../theme';
+import { AppText, fontFamilyFor, useTheme } from '../theme';
 
 // The word is 21 pt tall; the slop takes its touch target to 49 x 52 without changing the layout.
 const UNDO_SLOP = { top: 14, bottom: 14, left: 8, right: 8 };
@@ -52,5 +52,5 @@ const styles = StyleSheet.create({
     boxShadow: '0 8px 24px rgba(29, 36, 32, 0.25)',
   },
   text: { flex: 1 },
-  undoText: { fontFamily: 'Inter_600SemiBold', textDecorationLine: 'underline' },
+  undoText: { fontFamily: fontFamilyFor(typeScale.bodyStrong), textDecorationLine: 'underline' },
 });
