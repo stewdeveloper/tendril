@@ -1,0 +1,11 @@
+begin;
+select plan(7);
+select cmp_ok((select count(*)::int from public.species), '>=', 30, 'catalogue seeded');
+select is((select severity from public.species_toxicity t join public.species s on s.id = t.species_id where s.slug = 'easter-lily' and t.animal = 'cat'), 'severe', 'Easter lily is severe for cats');
+select is((select severity from public.species_toxicity t join public.species s on s.id = t.species_id where s.slug = 'easter-lily' and t.animal = 'dog'), 'none', 'Easter lily has no known toxicity for dogs');
+select is_empty($$select 1 from public.species_toxicity t join public.species s on s.id = t.species_id where s.slug in ('zz-plant', 'bluebell', 'gorse', 'swiss-cheese-plant') and t.severity = 'none'$$, 'plants without a reviewed source are never no-known-toxicity');
+select is((select sensitive from public.species where slug = 'early-purple-orchid'), true, 'orchids are sensitive');
+select is((public.public_label('PL-0001') -> 'species' ->> 'slug'), 'peace-lily', 'demo label resolves');
+select is_empty($$select 1 from public.species_toxicity where review_status <> 'seed_pending_vet'$$, 'every seeded verdict awaits vet review');
+select * from finish();
+rollback;

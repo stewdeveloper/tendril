@@ -1,5 +1,9 @@
 begin;
 select plan(9);
+-- supabase/seed.sql loads a real catalogue, and this test inserts its own species with the same slugs and names. Clear the
+-- seeded reference data inside the transaction; the rollback at the end puts it back.
+delete from public.qr_codes;
+delete from public.species;
 select tests.create_supabase_user('leaver');
 insert into public.profiles (id, handle) values (tests.get_supabase_uid('leaver'), 'leaver1');
 insert into public.privacy_zones (user_id, center, radius_m) values (tests.get_supabase_uid('leaver'), extensions.st_geogfromtext('POINT(0 0)'), 1000);

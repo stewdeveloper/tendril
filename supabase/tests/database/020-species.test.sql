@@ -1,5 +1,10 @@
 begin;
 select plan(9);
+-- supabase/seed.sql loads a real catalogue, and this test inserts its own species with the same slugs and names. Clear the
+-- seeded reference data inside the transaction; the rollback at the end puts it back.
+delete from public.qr_codes;
+delete from public.species;
+delete from private.sensitive_taxa;
 insert into private.sensitive_taxa (rank, taxon, reason, source)
 values ('family', 'Orchidaceae', 'Poaching risk', 'iNaturalist geoprivacy practice'),
        ('genus', 'Cypripedium', 'Poaching risk', 'iNaturalist geoprivacy practice');

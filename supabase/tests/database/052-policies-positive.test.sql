@@ -1,5 +1,9 @@
 begin;
 select plan(14);
+-- supabase/seed.sql loads a real catalogue, and this test inserts its own species with the same slugs and names. Clear the
+-- seeded reference data inside the transaction; the rollback at the end puts it back.
+delete from public.qr_codes;
+delete from public.species;
 -- The other policy tests lean on "others see nothing". These are the positive halves: the people who should see rows
 -- do, and the plant-photos bucket policies let a user into their own folder and nobody else's.
 select tests.create_supabase_user('aoife');

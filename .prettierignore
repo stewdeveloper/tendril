@@ -10,3 +10,4 @@ apps/mobile/android/
 supabase/.temp/
 supabase/.branches/
 *.md
+packages/db/src/database.types.ts
