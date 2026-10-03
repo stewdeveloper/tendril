@@ -3,5 +3,6 @@
     "@core/": "../../packages/core/src/",
     "@std/assert": "jsr:@std/assert@^1"
   },
-  "compilerOptions": { "strict": true }
+  "compilerOptions": { "strict": true },
+  "lock": false
 }
