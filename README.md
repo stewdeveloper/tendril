@@ -10,6 +10,8 @@ Plant ID, pet safety, care coaching and collecting. iOS and Android (Expo) on a 
 
 Node 22.13 or later and pnpm 12 (`corepack enable`). The local Supabase stack needs Docker; on Windows, turn on Docker Desktop's WSL integration.
 
+ESLint stays on 9.x for now: eslint-plugin-react (via eslint-config-expo) crashes on ESLint 10, so don't `expo install eslint` without pinning `eslint@^9`.
+
 ## Commands
 
 | Command | What it does |
