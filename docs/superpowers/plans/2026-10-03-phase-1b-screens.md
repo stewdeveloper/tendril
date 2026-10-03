@@ -33,6 +33,7 @@
   - the precedence substitutions above
 
   Record each frame's diff % and a one-line verdict in the report.
+- Catalog frames that show a sheet render the screen behind it plus `SheetOverlay` (inline scrim and panel, no Modal, no animation), so the device chrome stays above the scrim and captures don't race the slide-up. Screens in the running app use `Sheet`.
 - Read safe areas with the `useSafeAreaInsets()` hook, never the `SafeAreaView` component. The catalog supplies fixed iPhone 16 insets through context, and `SafeAreaView` may not read them on web.
 - Text never sits on a photo without the scrim. Scientific names are always italic. Never write "safe".
 - Add Expo-side packages only with `npx expo install` inside `apps/mobile`.
