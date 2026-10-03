@@ -1,0 +1,12 @@
+docs/
+design/
+pnpm-lock.yaml
+**/node_modules/
+**/dist/
+**/.expo/
+**/.next/
+apps/mobile/ios/
+apps/mobile/android/
+supabase/.temp/
+supabase/.branches/
+*.md

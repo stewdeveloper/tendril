@@ -1,0 +1,29 @@
+{
+  "name": "tendril",
+  "private": true,
+  "packageManager": "pnpm@12.8.1",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "test": "pnpm -r --if-present test && pnpm test:functions",
+    "typecheck": "pnpm -r --if-present typecheck && pnpm check:functions",
+    "lint": "prettier --check . && pnpm -r --if-present lint",
+    "format": "prettier --write .",
+    "test:functions": "deno test --config supabase/functions/deno.json --allow-env --allow-net --allow-read supabase/functions/tests/",
+    "check:functions": "deno check --config supabase/functions/deno.json supabase/functions/*/index.ts",
+    "verify": "pnpm typecheck && pnpm test && pnpm lint"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.9",
+    "supabase": "2.119.0",
+    "typescript": "~6.0.3"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "deno",
+      "version": "2.9.6",
+      "onFail": "download"
+    }
+  }
+}
