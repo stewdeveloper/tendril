@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react-native';
 import { useFonts } from 'expo-font';
 import { SplashScreen } from 'expo-router';
-import RootLayout from './app/_layout';
+import RootLayout from '../../app/_layout';
 
 // The real SafeAreaProvider renders nothing until native insets arrive.
 jest.mock(
