@@ -1792,7 +1792,8 @@ git commit -m "feat(mobile): design-system icons and layout primitives"
     - `bar`: a caption label above an 8 pt bar (`4a.html`)
     - `card`: the Today tile (`2e.html`)
     - `pill`: on the camera, a dark pill with a mini bar (`2b.html`)
-    - label from `quotaMeterLabel`; a press reveals "Resets <formatResetDate>"
+    - label: `bar` and `pill` use `quotaMeterLabel` ("7 of 10 left this month"); `card` follows frame 2e, with the tile heading "Identifications", a large "7 of 10 left" and the bar underneath
+    - a press on any variant reveals "Resets <formatResetDate>"
   - `StreakCounter({ days, label, state?: 'active' | 'last_day' | 'freeze_used' | 'winter' | 'broken'; size?: 'tile' | 'stat' })`:
     - flame icon and number in `streak`, or `textSecondary` when broken (never red)
     - `stat` size: Fraunces 34 number with a 44 pt flame (`4f.html`)
@@ -1876,10 +1877,15 @@ describe('progress components', () => {
     expect(screen.getByLabelText('Rarity: Rare')).toBeTruthy();
   });
   it('QuotaMeter reads "7 of 10 left this month" and reveals the reset date on press', async () => {
-    await wrap(<QuotaMeter quota={aoife.today.identifications} variant="card" />);
+    await wrap(<QuotaMeter quota={aoife.today.identifications} variant="bar" />);
     expect(screen.getByText('7 of 10 left this month')).toBeTruthy();
     await fireEvent.press(screen.getByText('7 of 10 left this month'));
     expect(screen.getByText('Resets 1 November')).toBeTruthy();
+  });
+  it('QuotaMeter card follows the Today tile (frame 2e)', async () => {
+    await wrap(<QuotaMeter quota={aoife.today.identifications} variant="card" />);
+    expect(screen.getByText('Identifications')).toBeTruthy();
+    expect(screen.getByText('7 of 10 left')).toBeTruthy();
   });
   it('a broken streak turns grey, never red', async () => {
     await wrap(<StreakCounter days={0} label="day care streak" state="broken" size="stat" />);
