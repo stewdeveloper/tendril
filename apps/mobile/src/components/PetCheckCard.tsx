@@ -1,6 +1,7 @@
 import {
   bandFor,
   confidenceLabel,
+  effectiveSeverity,
   likelyMatchNote,
   petCheckLine,
   type Animal,
@@ -12,7 +13,7 @@ import Dog from 'lucide-react-native/icons/dog';
 import PawPrint from 'lucide-react-native/icons/paw-print';
 import Phone from 'lucide-react-native/icons/phone';
 import { Fragment } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppText, useTheme } from '../theme';
 import { Button } from './Button';
 import { Card } from './Card';
@@ -123,6 +124,11 @@ function PetRow({
     sourceName: entry?.sourceName ?? null,
     petName: pet.name,
   });
+  // An unreviewed row has no source to cite, whatever the entry holds.
+  const source =
+    entry?.sourceName && effectiveSeverity(pet.animal, entry.severity) !== 'unknown'
+      ? { name: entry.sourceName, url: entry.sourceUrl }
+      : null;
   return (
     <View style={styles.pet}>
       <View style={styles.petTop}>
@@ -137,54 +143,74 @@ function PetRow({
         </View>
         <VerdictChip animal={pet.animal} severity={entry?.severity ?? 'unknown'} />
       </View>
-      <PetLine
-        line={line}
-        sourceName={entry?.sourceName ?? null}
-        sourceUrl={entry?.sourceUrl ?? null}
-        onSourcePress={onSourcePress}
-      />
+      <PetLine line={line} source={source} onSourcePress={onSourcePress} />
     </View>
   );
 }
 
+interface Source {
+  name: string;
+  url: string | null;
+}
+
 /**
- * The plain line, with "Source: <name>." as an underlined link at its end (2a). The line already
- * ends that way for mild and moderate; for the others (no known toxicity, severe) the source is
- * added after it, so every row carries one. An inline link keeps the line's flow; WCAG 2.5.8
- * exempts targets inside a sentence from the minimum target size.
+ * Core's line, word for word. Where it names the source ("Source: ASPCA." on mild and moderate,
+ * "(ASPCA)" on no known toxicity) that name becomes the link, in place. A line that doesn't name it
+ * (severe) stays untouched, so "Call your vet now." is the last thing read, and the source gets its
+ * own small line below. The in-sentence link keeps the line's flow; WCAG 2.5.8 exempts targets
+ * inside a sentence from the minimum target size. Without a handler or a url the source is plain
+ * text, not a link.
  */
 function PetLine({
   line,
-  sourceName,
-  sourceUrl,
+  source,
   onSourcePress,
 }: {
   line: string;
-  sourceName: string | null;
-  sourceUrl: string | null;
+  source: Source | null;
   onSourcePress?: (url: string) => void;
 }) {
   const { c } = useTheme();
-  if (!sourceName) return <AppText variant="sub">{line}</AppText>;
-  const tail = `Source: ${sourceName}.`;
-  const head = line.endsWith(tail) ? line.slice(0, -tail.length) : `${line} `;
+  if (!source) return <AppText variant="sub">{line}</AppText>;
+  const { url } = source;
+  const open = url && onSourcePress ? () => onSourcePress(url) : null;
+  const at = line.lastIndexOf(source.name);
+  if (at >= 0) {
+    return (
+      <AppText variant="sub">
+        {line.slice(0, at)}
+        {open ? (
+          <Text accessibilityRole="link" onPress={open} style={[styles.link, { color: c.primary }]}>
+            {source.name}
+          </Text>
+        ) : (
+          source.name
+        )}
+        {line.slice(at + source.name.length)}
+      </AppText>
+    );
+  }
   return (
-    <AppText variant="sub">
-      {head}
-      {'Source: '}
-      {sourceUrl ? (
-        <Text
+    <View style={styles.lineAndSource}>
+      <AppText variant="sub">{line}</AppText>
+      {open ? (
+        // A line of its own, so it gets the full 44 pt target without moving anything.
+        <Pressable
           accessibilityRole="link"
-          onPress={() => onSourcePress?.(sourceUrl)}
-          style={[styles.link, { color: c.primary }]}
+          onPress={open}
+          hitSlop={{ top: 13, bottom: 13 }}
+          style={styles.sourceLine}
         >
-          {sourceName}
-        </Text>
+          <AppText variant="caption" color="primary" style={styles.link}>
+            {`Source: ${source.name}`}
+          </AppText>
+        </Pressable>
       ) : (
-        sourceName
+        <AppText variant="caption" color="textSecondary">
+          {`Source: ${source.name}`}
+        </AppText>
       )}
-      {'.'}
-    </AppText>
+    </View>
   );
 }
 
@@ -212,5 +238,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   footerText: { flex: 1 },
+  lineAndSource: { gap: 4 },
+  sourceLine: { alignSelf: 'flex-start' },
   link: { textDecorationLine: 'underline' },
 });

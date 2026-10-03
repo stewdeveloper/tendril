@@ -42,7 +42,8 @@ describe('PetCheckCard details', () => {
     expect(screen.queryByText(/Based on the match/)).toBeNull();
   });
 
-  it('a severe row still carries its source after the vet line', async () => {
+  it('a severe line stays word for word, with the source on its own link line', async () => {
+    const onSourcePress = jest.fn();
     await wrap(
       <PetCheckCard
         pets={[miso]}
@@ -50,10 +51,82 @@ describe('PetCheckCard details', () => {
         matchProbability={0.94}
         speciesName="Easter lily"
         onPetAte={() => {}}
+        onSourcePress={onSourcePress}
       />,
     );
     expect(screen.getByText('Cats: Severe')).toBeTruthy();
-    expect(screen.getByText(/Call your vet now\. Source: ASPCA\./)).toBeTruthy();
+    // "Call your vet now." is the last thing in the line: nothing is appended to it.
+    expect(screen.getByText(/Call your vet now\.$/)).toBeTruthy();
+    expect(screen.queryByText(/Call your vet now\. Source/)).toBeNull();
+    const link = screen.getByRole('link', { name: 'Source: ASPCA' });
+    await fireEvent.press(link);
+    expect(onSourcePress).toHaveBeenCalledWith(expect.stringContaining('easter-lily'));
+  });
+
+  it('no known toxicity links the name core already put in the line, and adds nothing', async () => {
+    const onSourcePress = jest.fn();
+    const bran: Pet = { id: 'p2', animal: 'dog', name: 'Bran' };
+    await wrap(
+      <PetCheckCard
+        pets={[bran]}
+        toxicity={easter}
+        matchProbability={null}
+        speciesName="Easter lily"
+        onPetAte={() => {}}
+        onSourcePress={onSourcePress}
+      />,
+    );
+    expect(
+      screen.getByText(
+        'No known toxicity to dogs (ASPCA). Eating any plant can still cause vomiting or an upset stomach.',
+      ),
+    ).toBeTruthy();
+    // The name appears once in the row, and that one is the link.
+    expect(screen.queryByText(/ASPCA[\s\S]*ASPCA/)).toBeNull();
+    await fireEvent.press(screen.getByRole('link', { name: 'ASPCA' }));
+    expect(onSourcePress).toHaveBeenCalledWith(expect.stringContaining('easter-lily'));
+  });
+
+  it('without a handler the source is plain text, not a link', async () => {
+    await wrap(
+      <PetCheckCard
+        pets={[miso]}
+        toxicity={aoife.speciesToxicity['peace-lily']!}
+        matchProbability={null}
+        speciesName="Peace lily"
+        onPetAte={() => {}}
+      />,
+    );
+    expect(screen.queryByRole('link')).toBeNull();
+    expect(screen.getByText(/Source: ASPCA\.$/)).toBeTruthy();
+  });
+
+  it('an unreviewed row cites no source even when the entry names one', async () => {
+    const unreviewed: ToxicityEntry[] = [
+      {
+        animal: 'cat',
+        severity: 'unknown',
+        summary: null,
+        symptoms: null,
+        sourceName: 'ASPCA',
+        sourceUrl: 'https://example.org/x',
+      },
+    ];
+    await wrap(
+      <PetCheckCard
+        pets={[miso]}
+        toxicity={unreviewed}
+        matchProbability={null}
+        speciesName="Bluebell"
+        onPetAte={() => {}}
+        onSourcePress={() => {}}
+      />,
+    );
+    expect(
+      screen.getByText('Not reviewed yet. Keep it away from Miso until we know more.'),
+    ).toBeTruthy();
+    expect(screen.queryByRole('link')).toBeNull();
+    expect(screen.queryByText(/ASPCA/)).toBeNull();
   });
 
   it('other pets read as unknown, and a pet without a name is "your" pet', async () => {
@@ -116,12 +189,16 @@ describe('quota and streaks', () => {
     expect(screen.getByRole('button', { name: 'Identifications, 7 of 10 left' })).toBeTruthy();
   });
 
-  it('a streak counter keeps the streak colour, and says its state to a screen reader', async () => {
+  it('a streak counter keeps the streak colour; last day and freeze are not announced twice', async () => {
     await wrap(<StreakCounter days={12} label="day care streak" state="last_day" size="tile" />);
     expect(flat(screen.getByText('12'))).toMatchObject({ color: '#A36100' });
-    expect(
-      screen.getByLabelText('12 day care streak. Your 12-day streak needs one check-in today.'),
-    ).toBeTruthy();
+    // The screen draws the "needs one check-in today" line, so the counter doesn't repeat it.
+    expect(screen.getByLabelText('12 day care streak')).toBeTruthy();
+  });
+
+  it('winter mode is spoken, since nothing on screen says it', async () => {
+    await wrap(<StreakCounter days={3} label="week discovery streak" state="winter" />);
+    expect(screen.getByLabelText('3 week discovery streak. Winter mode is on.')).toBeTruthy();
   });
 
   it('StreakCalendar copes with a last row shorter than seven days', async () => {

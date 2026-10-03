@@ -1,4 +1,3 @@
-import { freezeUsed, streakLastDay } from '@tendril/core';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { AppText, useTheme } from '../theme';
 import { Card } from './Card';
@@ -17,26 +16,17 @@ export interface StreakCounterProps {
 }
 
 /**
- * What a screen reader hears beyond the number: the same lines the screens show next to the
- * counter (2e, 4g), so the state is never colour or position alone.
+ * Winter mode has no line on screen, so the spoken label carries it. The last-day and freeze lines
+ * are drawn by the screens (2e, 4g) and would be announced twice if repeated here.
  */
-function stateLine(state: StreakState, days: number): string | null {
-  switch (state) {
-    case 'last_day':
-      return streakLastDay(days);
-    case 'freeze_used':
-      return freezeUsed(days);
-    case 'winter':
-      return 'Winter mode is on.';
-    default:
-      return null;
-  }
+function stateLine(state: StreakState): string | null {
+  return state === 'winter' ? 'Winter mode is on.' : null;
 }
 
 /**
  * Flame and number in the streak colour. A broken streak turns grey, never red: it is not a
- * failure to flag. The screens draw the last-day and freeze lines themselves (2e, 4g), so the
- * state shows here as colour and in the spoken label.
+ * failure to flag. The screens draw the last-day and freeze lines themselves (2e, 4g), so those
+ * states look like `active` here.
  */
 export function StreakCounter({
   days,
@@ -48,7 +38,7 @@ export function StreakCounter({
   const { c } = useTheme();
   const stat = size === 'stat';
   const color = state === 'broken' ? c.textSecondary : c.streak;
-  const line = stateLine(state, days);
+  const line = stateLine(state);
   const content = (
     <>
       <FlameIcon size={stat ? 44 : 28} color={color} />
