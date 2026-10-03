@@ -33,6 +33,7 @@
   - the precedence substitutions above
 
   Record each frame's diff % and a one-line verdict in the report.
+- Read safe areas with the `useSafeAreaInsets()` hook, never the `SafeAreaView` component. The catalog supplies fixed iPhone 16 insets through context, and `SafeAreaView` may not read them on web.
 - Text never sits on a photo without the scrim. Scientific names are always italic. Never write "safe".
 - Add Expo-side packages only with `npx expo install` inside `apps/mobile`.
 
