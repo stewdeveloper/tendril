@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<script src="./image-slot.js"></script>
+<style>body{margin:0;background:#ECEAE3;font-family:Inter,system-ui,sans-serif;color:#1D2420;-webkit-font-smoothing:antialiased}a{color:#2E6B4E}a:hover{color:#1D2420}.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08)}.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 24px}.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1D2420;color:#fff;border-radius:4px;text-decoration:none}.dv-tname{font:600 13px/1.2 Inter,system-ui,sans-serif;color:#1D2420}.dv-opts{display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start}.dv-opt{flex:none;display:flex;flex-direction:column;gap:18px}.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1D2420;border-radius:5px;text-decoration:none}.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 12px/1.3 Inter,system-ui,sans-serif;color:rgba(0,0,0,.6);max-width:393px}.dv-area{font:600 20px/25px Inter;color:#1D2420;margin:8px 0 20px;width:100%}</style>
+</helmet>
+<section class="dv-turn" id="t4">
+<div class="dv-thd"><a class="dv-tid" href="#t4">4</a><span class="dv-tname">Deliverable 4 · Every other screen in Screen specs, each listed state as its own frame · light</span></div>
+<sc-for list="{{ areas }}" as="area" hint-placeholder-count="1">
+<div class="dv-area">{{ area.name }}</div>
+<div class="dv-opts" style="margin-bottom:48px">
+<sc-for list="{{ area.frames }}" as="f" hint-placeholder-count="3">
+<div class="dv-opt" id="{{ f.id }}">
+<div class="dv-olabel"><a class="dv-oid" href="#{{ f.id }}">{{ f.id }}</a>{{ f.label }}</div>
+<div style="width:393px;height:852px;border-radius:56px;overflow:hidden;position:relative;background:#FBFAF6;box-shadow:0 0 0 10px #1D2420,0 24px 48px rgba(29,36,32,.2);margin:10px">
+<sc-if value="{{ f.hero }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;top:0;left:0;right:0;height:236px;opacity:{{ f.heroOp }}"><image-slot id="{{ f.hero }}" shape="rect" placeholder="{{ f.heroPh }}"></image-slot></div>
+<div style="position:absolute;top:0;left:0;right:0;height:112px;background:rgba(18,23,20,.45);pointer-events:none"></div>
+<div style="position:absolute;top:60px;left:16px;z-index:5;width:44px;height:44px;border-radius:50%;background:rgba(18,23,20,.6);color:#FFFFFF;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="m15 18-6-6 6-6"></path></svg></div>
+</sc-if>
+<div style="position:absolute;top:11px;left:50%;margin-left:-62px;width:124px;height:36px;border-radius:20px;background:#000;z-index:9"></div>
+<div style="position:absolute;top:0;left:0;right:0;height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px 0 48px;z-index:8;color:{{ f.sbColor }};pointer-events:none"><div style="font:600 17px/1 Inter">9:41</div><div style="display:flex;gap:6px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" style="fill:currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" style="fill:none;stroke:currentColor;opacity:.45"></rect><rect x="2" y="2" width="20" height="9" rx="2" style="fill:currentColor"></rect></svg></div></div>
+
+<div style="position:absolute;left:0;right:0;top:{{ f.top }}px;bottom:{{ f.bot }}px;background:#FBFAF6;border-radius:{{ f.rad }};overflow:hidden;z-index:4">
+<div style="padding:{{ f.pad }};display:flex;flex-direction:column;gap:18px;height:100%;box-sizing:border-box">
+<sc-if value="{{ f.back }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:8px;height:44px;margin-bottom:-6px;color:#1D2420"><svg width="24" height="24" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="m15 18-6-6 6-6"></path></svg><span style="font:400 17px/1 Inter;color:#2E6B4E">{{ f.back }}</span></div></sc-if>
+<sc-if value="{{ f.header }}" hint-placeholder-val="{{ false }}"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><div style="font:600 28px/34px Fraunces;color:#1D2420">{{ f.header }}</div><div style="width:44px;height:44px;border-radius:50%;background:#E6F0EA;color:#2E6B4E;font:600 17px/44px Inter;text-align:center;flex:none">A</div></div></sc-if>
+<sc-for list="{{ f.blocks }}" as="b" hint-placeholder-count="3">
+<sc-if value="{{ b.is_title }}"><div style="font:600 28px/34px Fraunces;color:#1D2420;text-wrap:pretty;margin-bottom:-10px">{{ b.text }}</div></sc-if>
+<sc-if value="{{ b.is_big }}"><div style="font:600 34px/41px Fraunces;color:#1D2420;text-wrap:pretty;margin-bottom:-10px">{{ b.text }}</div></sc-if>
+<sc-if value="{{ b.is_sci }}"><div style="font:italic 400 15px/20px Inter;color:#56605A">{{ b.text }}</div></sc-if>
+<sc-if value="{{ b.is_body }}"><div style="font:400 17px/24px Inter;color:#1D2420;text-wrap:pretty">{{ b.text }}</div></sc-if>
+<sc-if value="{{ b.is_sub }}"><div style="font:400 15px/21px Inter;color:#56605A;text-wrap:pretty">{{ b.text }}</div></sc-if>
+<sc-if value="{{ b.is_h }}"><div style="font:600 20px/25px Inter;color:#1D2420;margin-bottom:-6px">{{ b.text }}</div></sc-if>
+<sc-if value="{{ b.is_spacer }}"><div style="flex:1"></div></sc-if>
+<sc-if value="{{ b.is_photo }}"><div style="height:{{ b.h }}px;border-radius:16px;overflow:hidden;flex:none;position:relative"><image-slot id="{{ b.id }}" shape="rect" placeholder="{{ b.ph }}"></image-slot></div></sc-if>
+<sc-if value="{{ b.is_conf }}"><div style="align-self:flex-start;display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:999px;background:{{ b.bg }};box-shadow:inset 0 0 0 1.5px {{ b.ring }};color:{{ b.fg }};font:500 13px/1 Inter;margin-bottom:-8px">{{ b.text }}</div></sc-if>
+<sc-if value="{{ b.is_note }}"><div style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:{{ b.bg }};color:{{ b.fg }};font:400 15px/21px Inter;text-wrap:pretty"><svg width="20" height="20" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none;margin-top:1px"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg><span>{{ b.text }}</span></div></sc-if>
+<sc-if value="{{ b.is_btn }}"><div style="height:52px;flex:none;border-radius:14px;background:{{ b.bg }};box-shadow:inset 0 0 0 1.5px {{ b.ring }};opacity:{{ b.op }};color:{{ b.fg }};font:600 17px/1 Inter;display:flex;align-items:center;justify-content:center;margin-top:-8px">{{ b.text }}</div></sc-if>
+<sc-if value="{{ b.is_chips }}"><div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ b.items }}" as="c"><div style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px 0 8px;border-radius:999px;background:{{ c.bg }};color:#FFFFFF;font:500 13px/1 Inter"><svg width="18" height="18" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><sc-if value="{{ c.q }}"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></sc-if><sc-if value="{{ c.c }}"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></sc-if><sc-if value="{{ c.t }}"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></sc-if><sc-if value="{{ c.d }}"><path d="M2.7 10.3a2.41 2.41 0 0 0 0 3.41l7.59 7.59a2.41 2.41 0 0 0 3.41 0l7.59-7.59a2.41 2.41 0 0 0 0-3.41L13.7 2.71a2.41 2.41 0 0 0-3.41 0z"></path><path d="M12 8v4"></path><path d="M12 16h.01"></path></sc-if><sc-if value="{{ c.o }}"><path d="M12 16h.01"></path><path d="M12 8v4"></path><path d="M15.31 2a2 2 0 0 1 1.42.59l4.68 4.68A2 2 0 0 1 22 8.69v6.62a2 2 0 0 1-.59 1.42l-4.68 4.68a2 2 0 0 1-1.42.59H8.69a2 2 0 0 1-1.42-.59l-4.68-4.68A2 2 0 0 1 2 15.31V8.69a2 2 0 0 1 .59-1.42l4.68-4.68A2 2 0 0 1 8.69 2z"></path></sc-if></svg>{{ c.label }}</div></sc-for></div></sc-if>
+<sc-if value="{{ b.is_badge }}"><div style="align-self:flex-start;display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px 0 8px;border-radius:999px;background:{{ b.bg }};color:#FFFFFF;font:500 13px/1 Inter;margin-bottom:-6px"><span style="display:flex;gap:1px"><sc-for list="{{ b.leaves }}" as="l"><svg width="14" height="14" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path></svg></sc-for><sc-if value="{{ b.flower }}"><svg width="14" height="14" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round"><circle cx="12" cy="12" r="3"></circle><path d="M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5"></path></svg></sc-if></span>{{ b.label }}</div></sc-if>
+<sc-if value="{{ b.is_rows }}"><div style="background:#FFFFFF;border-radius:16px;box-shadow:0 0 0 1px rgba(127,137,131,.28);overflow:hidden;flex:none"><sc-for list="{{ b.items }}" as="r"><div style="display:flex;align-items:center;gap:12px;padding:12px 16px;min-height:28px;background:{{ r.bg }};border-bottom:1px solid rgba(127,137,131,.18)"><sc-if value="{{ r.lead }}"><div style="width:28px;font:600 17px/22px Inter;color:#56605A;flex:none">{{ r.lead }}</div></sc-if><div style="flex:1;min-width:0"><div style="font:400 17px/22px Inter;color:#1D2420">{{ r.a }}</div><sc-if value="{{ r.hasB }}"><div style="font:{{ r.bFont }};color:#56605A">{{ r.b }}</div></sc-if></div><div style="font:500 13px/18px Inter;color:{{ r.rc }};flex:none;text-align:right">{{ r.r }}</div></div></sc-for></div></sc-if>
+<sc-if value="{{ b.is_opts }}"><div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ b.items }}" as="o"><div style="height:44px;padding:0 16px;border-radius:999px;background:{{ o.bg }};box-shadow:inset 0 0 0 1.5px {{ o.ring }};color:{{ o.fg }};font:500 13px/44px Inter">{{ o.label }}</div></sc-for></div></sc-if>
+<sc-if value="{{ b.is_seg }}"><div style="display:flex;padding:3px;border-radius:999px;box-shadow:inset 0 0 0 1px #7F8983"><sc-for list="{{ b.items }}" as="o"><div style="flex:1;height:38px;border-radius:999px;background:{{ o.bg }};color:{{ o.fg }};font:600 13px/38px Inter;text-align:center">{{ o.label }}</div></sc-for></div></sc-if>
+<sc-if value="{{ b.is_input }}"><div style="display:flex;flex-direction:column;gap:6px"><div style="font:500 13px/18px Inter;color:#56605A">{{ b.label }}</div><div style="height:52px;border-radius:12px;background:#FFFFFF;box-shadow:inset 0 0 0 {{ b.rw }}px {{ b.ring }};padding:0 16px;display:flex;align-items:center;font:400 17px/1 Inter;color:#1D2420">{{ b.val }}</div></div></sc-if>
+<sc-if value="{{ b.is_meter }}"><div style="display:flex;flex-direction:column;gap:6px"><div style="font:500 13px/18px Inter;color:#56605A">{{ b.label }}</div><div style="height:8px;border-radius:4px;background:#E6F0EA;overflow:hidden"><div style="width:{{ b.w }};height:100%;background:#2E6B4E"></div></div></div></sc-if>
+<sc-if value="{{ b.is_stat }}"><div style="display:flex;align-items:center;gap:12px"><svg width="44" height="44" viewBox="0 0 24 24" style="fill:none;stroke:{{ b.color }};stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg><div><div style="font:600 34px/41px Fraunces;color:{{ b.color }}">{{ b.num }}</div><div style="font:500 13px/18px Inter;color:#56605A">{{ b.label }}</div></div></div></sc-if>
+<sc-if value="{{ b.is_cal }}"><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;padding:14px;background:#FFFFFF;border-radius:16px;box-shadow:0 0 0 1px rgba(127,137,131,.28)"><sc-for list="{{ b.days }}" as="d"><div style="aspect-ratio:1;border-radius:50%;background:{{ d.bg }};box-shadow:inset 0 0 0 2px {{ d.ring }};display:flex;align-items:center;justify-content:center;color:#FFFFFF"><sc-if value="{{ d.frz }}"><svg width="16" height="16" viewBox="0 0 24 24" style="fill:none;stroke:#2E6B4E;stroke-width:2.4;stroke-linecap:round"><path d="M2 12h20"></path><path d="M12 2v20"></path><path d="m20 16-4-4 4-4"></path><path d="m4 8 4 4-4 4"></path><path d="m16 4-4 4-4-4"></path><path d="m8 20 4-4 4 4"></path></svg></sc-if></div></sc-for></div></sc-if>
+<sc-if value="{{ b.is_empty }}"><div style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:48px 16px 8px;text-align:center"><svg width="132" height="110" viewBox="0 0 132 110" style="fill:none;stroke:#2E6B4E;stroke-width:3;stroke-linecap:round;opacity:.35"><path d="M12 104c14-34 36-46 58-46s30-16 24-32-28-14-28 4 16 20 30 10"></path><path d="M64 58c-4-16 4-28 18-34"></path><path d="M38 80c-8-4-12-12-10-20"></path></svg><div style="font:400 17px/24px Inter;color:#1D2420;text-wrap:pretty;max-width:280px">{{ b.text }}</div></div></sc-if>
+<sc-if value="{{ b.is_grid }}"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"><sc-for list="{{ b.items }}" as="g"><div style="border-radius:14px;overflow:hidden;background:{{ g.bg }};box-shadow:inset 0 0 0 1.5px {{ g.ring }}"><div style="height:84px;display:flex;align-items:center;justify-content:center;color:#56605A;font:600 28px/1 Fraunces;opacity:{{ g.op }}">{{ g.mark }}</div><div style="padding:6px 8px 8px;font:500 13px/18px Inter;color:#1D2420">{{ g.name }}</div></div></sc-for></div></sc-if>
+</sc-for>
+</div>
+</div>
+
+<sc-if value="{{ f.sheet }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;background:rgba(18,23,20,.45);z-index:6"></div>
+<div style="position:absolute;left:0;right:0;bottom:0;top:{{ f.sheetTop }}px;background:#FFFFFF;border-radius:16px 16px 0 0;z-index:7;padding:8px 16px 42px;display:flex;flex-direction:column;gap:18px;box-sizing:border-box">
+<div style="width:36px;height:5px;border-radius:3px;background:#7F8983;align-self:center;opacity:.6"></div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:-8px"><div style="font:600 20px/25px Inter;color:#1D2420">{{ f.sheetTitle }}</div><div style="width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#56605A;margin-right:-10px"><svg width="22" height="22" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></div></div>
+<sc-for list="{{ f.sblocks }}" as="b">
+<sc-if value="{{ b.is_title }}"><div style="font:600 28px/34px Fraunces;color:#1D2420;text-wrap:pretty">{{ b.text }}</div></sc-if>
+<sc-if value="{{ b.is_body }}"><div style="font:400 17px/24px Inter;color:#1D2420;text-wrap:pretty">{{ b.text }}</div></sc-if>
+<sc-if value="{{ b.is_sub }}"><div style="font:400 15px/21px Inter;color:#56605A;text-wrap:pretty">{{ b.text }}</div></sc-if>
+<sc-if value="{{ b.is_h }}"><div style="font:500 13px/18px Inter;color:#56605A;margin-bottom:-8px">{{ b.text }}</div></sc-if>
+<sc-if value="{{ b.is_spacer }}"><div style="flex:1"></div></sc-if>
+<sc-if value="{{ b.is_note }}"><div style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:{{ b.bg }};color:{{ b.fg }};font:400 15px/21px Inter;text-wrap:pretty"><svg width="20" height="20" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none;margin-top:1px"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg><span>{{ b.text }}</span></div></sc-if>
+<sc-if value="{{ b.is_opts }}"><div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ b.items }}" as="o"><div style="height:44px;padding:0 16px;border-radius:999px;background:{{ o.bg }};box-shadow:inset 0 0 0 1.5px {{ o.ring }};color:{{ o.fg }};font:500 13px/44px Inter">{{ o.label }}</div></sc-for></div></sc-if>
+<sc-if value="{{ b.is_pair }}"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div style="height:64px;border-radius:16px;background:#2E6B4E;color:#FFFFFF;font:600 17px/64px Inter;text-align:center">{{ b.a }}</div><div style="height:64px;border-radius:16px;box-shadow:inset 0 0 0 1.5px #2E6B4E;color:#2E6B4E;font:600 17px/64px Inter;text-align:center">{{ b.b }}</div></div></sc-if>
+<sc-if value="{{ b.is_btn }}"><div style="height:52px;flex:none;border-radius:14px;background:{{ b.bg }};box-shadow:inset 0 0 0 1.5px {{ b.ring }};opacity:{{ b.op }};color:{{ b.fg }};font:600 17px/1 Inter;display:flex;align-items:center;justify-content:center;margin-top:-8px">{{ b.text }}</div></sc-if>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ f.snack }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:16px;right:16px;bottom:{{ f.snackBot }}px;z-index:8;padding:14px 16px;border-radius:14px;background:#1D2420;color:#FFFFFF;font:400 15px/21px Inter;display:flex;gap:12px;align-items:center;box-shadow:0 8px 24px rgba(29,36,32,.25)"><span style="flex:1">{{ f.snack }}</span><sc-if value="{{ f.undo }}"><span style="font:600 15px/1 Inter;color:#FFFFFF;text-decoration:underline">Undo</span></sc-if></div></sc-if>
+
+<sc-if value="{{ f.tab }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:0;right:0;bottom:0;height:90px;background:#FFFFFF;box-shadow:0 -1px 0 rgba(127,137,131,.3);display:grid;grid-template-columns:repeat(5,1fr);padding-top:6px;z-index:5">
+<sc-for list="{{ f.tabs }}" as="tb">
+<div style="display:flex;flex-direction:column;align-items:center;gap:2px;color:{{ tb.color }};margin-top:{{ tb.mt }}px">
+<sc-if value="{{ tb.scan }}"><div style="width:60px;height:60px;border-radius:50%;background:#2E6B4E;color:#FFFFFF;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 5px #FFFFFF,0 4px 12px rgba(29,36,32,.18)"><svg width="26" height="26" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg></div></sc-if>
+<sc-if value="{{ tb.icon }}"><div style="height:30px;display:flex;align-items:center"><svg width="24" height="24" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><sc-if value="{{ tb.today }}"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 10h18"></path></sc-if><sc-if value="{{ tb.plants }}"><path d="M7 20h10"></path><path d="M10 20c5.5-2.5.8-6.4 3-10"></path><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"></path><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"></path></sc-if><sc-if value="{{ tb.coll }}"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect></sc-if><sc-if value="{{ tb.leagues }}"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></sc-if></svg></div></sc-if>
+<div style="font:{{ tb.font }};margin-top:{{ tb.lm }}px">{{ tb.label }}</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<div style="position:absolute;bottom:8px;left:50%;margin-left:-70px;width:140px;height:5px;border-radius:3px;background:#1D2420;z-index:9"></div>
+</div>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    if (!this._areas) this._areas = build();
+    return { areas: this._areas };
+  }
+}
+function build() {
+  const B = t => o => ({ t, ['is_' + t]: true, ...o });
+  const title = x => B('title')({ text: x }), big = x => B('big')({ text: x }), body = x => B('body')({ text: x }), sub = x => B('sub')({ text: x }), sci = x => B('sci')({ text: x }), h = x => B('h')({ text: x });
+  const sp = B('spacer')({});
+  const note = (x, dark) => B('note')({ text: x, bg: dark ? '#1D2420' : '#E6F0EA', fg: dark ? '#FFFFFF' : '#1D2420' });
+  const BV = { p: ['#2E6B4E', '#FFFFFF', 'transparent', 1], s: ['transparent', '#2E6B4E', '#2E6B4E', 1], x: ['transparent', '#2E6B4E', 'transparent', 1], d: ['#9B1C1C', '#FFFFFF', 'transparent', 1], off: ['#2E6B4E', '#FFFFFF', 'transparent', .4] };
+  const btn = (x, v = 'p') => { const [bg, fg, ring, op] = BV[v]; return B('btn')({ text: x, bg, fg, ring, op }); };
+  const VER = { unknown: ['#5F6B66', 'q', 'Unknown'], none: ['#2B6A45', 'c', 'No known toxicity'], mild: ['#8A5A00', 't', 'Mild'], moderate: ['#B3401F', 'd', 'Moderate'], severe: ['#9B1C1C', 'o', 'Severe'] };
+  const chip = (a, k) => ({ label: a + ': ' + VER[k][2], bg: VER[k][0], [VER[k][1]]: true });
+  const chips = (...c) => B('chips')({ items: c });
+  const RAR = { common: ['#5E6E66', 1, 'Common'], uncommon: ['#2F7D6D', 2, 'Uncommon'], rare: ['#3F5BA9', 3, 'Rare'], legendary: ['#8C6A12', 0, 'Legendary'] };
+  const badge = k => B('badge')({ label: RAR[k][2], bg: RAR[k][0], leaves: Array.from({ length: RAR[k][1] }, (_, i) => ({ i })), flower: k === 'legendary' });
+  const rows = (...it) => B('rows')({ items: it.map(([a, b, r, o = {}]) => ({ a, b: b || '', r: r || '', hasB: !!b, bFont: o.it ? 'italic 400 15px/20px Inter' : '400 15px/20px Inter', bg: o.you ? '#E6F0EA' : 'transparent', rc: o.rc || '#56605A', lead: o.lead || '' })) });
+  const opts = (...it) => B('opts')({ items: it.map(l => { const s = l[0] === '*'; return { label: s ? l.slice(1) : l, bg: s ? '#E6F0EA' : 'transparent', ring: s ? '#2E6B4E' : '#7F8983', fg: s ? '#2E6B4E' : '#1D2420' }; }) });
+  const seg = (...it) => B('seg')({ items: it.map(l => { const s = l[0] === '*'; return { label: s ? l.slice(1) : l, bg: s ? '#2E6B4E' : 'transparent', fg: s ? '#FFFFFF' : '#1D2420' }; }) });
+  const photo = (id, hh = 180, ph = ' ') => B('photo')({ id, h: hh, ph });
+  const meter = (label, pct) => B('meter')({ label, w: pct + '%' });
+  const empty = x => B('empty')({ text: x });
+  const input = (label, val, focus) => B('input')({ label, val, ring: focus ? '#2E6B4E' : '#7F8983', rw: focus ? 2 : 1.5 });
+  const stat = (num, label, grey) => B('stat')({ num, label, color: grey ? '#56605A' : '#A36100' });
+  const cal = (n, frz, broken) => B('cal')({ days: Array.from({ length: 28 }, (_, i) => { const on = broken ? i < 16 : i < n; const f = i === frz; return { bg: f ? '#E6F0EA' : on ? (broken ? '#7F8983' : '#A36100') : '#FFFFFF', ring: f ? '#2E6B4E' : on ? 'transparent' : '#7F8983', frz: f }; }) });
+  const conf = (x, sure) => B('conf')({ text: x, bg: sure ? '#E6F0EA' : 'transparent', fg: sure ? '#2E6B4E' : '#56605A', ring: sure ? 'transparent' : '#7F8983' });
+  const pair = (a, b) => B('pair')({ a, b });
+  const grid = (...it) => B('grid')({ items: it.map(([name, mark, missing]) => ({ name, mark, bg: missing ? '#FBFAF6' : '#E6F0EA', ring: missing ? '#7F8983' : 'transparent', op: missing ? 1 : .6 })) });
+  const TABS = [['today', 'Today'], ['plants', 'My Plants'], ['scan', 'Scan'], ['coll', 'Collection'], ['leagues', 'Leagues']];
+  const F = (id, label, o = {}) => {
+    const hasTab = o.tab !== undefined;
+    const top = o.hero ? 212 : 59;
+    return {
+      id, label, hero: o.hero || false, heroPh: o.heroPh || 'Photo', heroOp: o.heroOp || 1,
+      sbColor: o.hero ? '#FFFFFF' : '#1D2420', top, bot: hasTab ? 90 : 0,
+      rad: o.hero ? '16px 16px 0 0' : '0', pad: o.hero ? '20px 16px 42px' : (hasTab ? '8px 16px 24px' : '0 16px 42px'),
+      back: o.back || false, header: o.header || false, blocks: o.blocks || [],
+      sheet: !!o.sheet, sheetTop: o.sheetTop || 420, sheetTitle: o.sheetTitle || '', sblocks: o.sheet || [],
+      snack: o.snack || false, undo: !!o.undo, snackBot: hasTab ? 106 : 48,
+      tab: hasTab, tabs: TABS.map(([k, l], i) => ({ [k]: true, scan: k === 'scan', icon: k !== 'scan', label: l, color: i === o.tab || k === 'scan' ? '#2E6B4E' : '#56605A', font: i === o.tab ? '600 13px/16px Inter' : '500 13px/16px Inter', mt: k === 'scan' ? -28 : 0, lm: k === 'scan' ? 2 : 0 }))
+    };
+  };
+  const todayBg = [stat('12', 'day care streak'), h('Due today'), rows(["Time to check Monty's soil.", 'Living room · due today'], ["Check Spidey's soil", 'Kitchen · tomorrow'])];
+  return [
+    { name: 'Today', frames: [
+      F('4a', 'Today · no plants yet', { tab: 0, header: 'Today', blocks: [meter('7 of 10 left this month', 70), empty("Add your first plant and we'll tell you when to check its soil."), btn('Scan a plant'), btn('Scan your plant label', 's')] }),
+      F('4b', 'Today · all done today', { tab: 0, header: 'Today', blocks: [stat('12', 'day care streak'), h('Today'), rows(["Checked Monty's soil", 'Living room · done', ''], ['Watered Lily', 'Bedroom · done']), note('All done for today. Next check: Spidey, tomorrow.'), rows(['League', '340 points · 3 days left', '4th of 20'], ['Identifications', 'Resets 1 November', '7 of 10 left'])] }),
+      F('4c', 'Check-in sheet · unanswered', { tab: 0, header: 'Today', blocks: todayBg, sheetTitle: 'Check-in', sheetTop: 330, sheet: [title("Is the top of Monty's soil dry?"), sub('Push a finger in up to the first knuckle.'), h('How do the leaves look? (optional)'), opts('Healthy', 'Yellowing', 'Drooping', 'Brown tips', 'Spots'), btn('Add a photo', 's'), sp, pair('Yes, dry', 'No, still damp')] }),
+      F('4d', 'Check-in sheet · answered No', { tab: 0, header: 'Today', blocks: todayBg, sheetTitle: 'Check-in', sheetTop: 470, sheet: [title("Good. We'll check again on Friday."), sub('Your 12-day streak continues.'), sp, btn('Done')] }),
+      F('4e', 'Check-in sheet · offline, saved for later', { tab: 0, header: 'Today', blocks: todayBg, sheetTitle: 'Check-in', sheetTop: 470, sheet: [title("Good. We'll check again on Friday."), note("You're offline. Saved, and it will sync when you're back.", true), sp, btn('Done')] }),
+      F('4f', 'Streaks', { back: 'Today', blocks: [title('Streaks'), stat('12', 'day care streak'), cal(12, -1), rows(['Discovery streak', 'A new species each week', '3 weeks', { rc: '#A36100' }], ['Freezes', 'Spent on a missed day', '1 held'], ['Winter mode', 'Protects discovery when little grows', 'Off']), sp, btn('Invite a friend to earn a freeze', 's')] }),
+      F('4g', 'Streaks · freeze used', { back: 'Today', blocks: [title('Streaks'), stat('12', 'day care streak'), cal(13, 11), note('A freeze kept your 12-day streak going.'), rows(['Freezes', 'Invite a friend to earn another', '0 held'])] }),
+      F('4h', 'Streaks · broken, without blame', { back: 'Today', blocks: [title('Streaks'), stat('0', 'day care streak', true), cal(0, -1, true), body('Your last streak ran 16 days. Any check-in starts a new one.'), sp, btn('Check in on Monty')] })
+    ] },
+    { name: 'My Plants', frames: [
+      F('4i', 'My Plants · by room, household switcher', { tab: 1, header: 'My Plants', blocks: [seg('*Our flat', 'Mam’s house'), h('Living room'), rows(['Monty', 'Swiss cheese plant', 'Check today', { rc: '#2E6B4E' }]), h('Kitchen'), rows(['Spidey', 'Spider plant', 'Tomorrow']), h('Bedroom'), rows(['Lily', 'Peace lily', 'Monday']), sp, btn('Add a plant')] }),
+      F('4j', 'My Plants · empty', { tab: 1, header: 'My Plants', blocks: [empty('No plants yet. Scan one, or scan the label it came with.'), btn('Scan a plant'), btn('Scan a plant label', 's')] }),
+      F('4k', 'Plant detail · given away, kept in history', { hero: 'pd-lily', heroPh: 'Your photo: Lily', heroOp: .55, blocks: [title('Lily'), sci('Peace lily · Spathiphyllum'), note('Given away on 12 September. Kept in your history.'), h('History'), rows(['Given away', '', '12 Sep'], ['Watered', '', '6 Sep'], ['Added from a scan', '', '3 Jun'])] }),
+      F('4l', 'Plant detail · dead, kept in history', { hero: 'pd-dead', heroPh: 'Your photo', heroOp: .55, blocks: [title('Fern'), sci('Boston fern · Nephrolepis exaltata'), note('Marked as died on 20 August: too dry. We use this to give better advice.'), h('History'), rows(['Died · too dry', '', '20 Aug'], ['Soil dry', '', '14 Aug'])] }),
+      F('4m', 'Add plant setup', { back: 'Cancel', blocks: [title('Set up Lily'), input('Nickname', 'Lily'), h('Light in the room'), opts('Bright', '*Medium', 'Low', 'Not sure'), h('Pot'), opts('*Plastic', 'Terracotta', 'Ceramic', 'Not sure'), h('Drains at the bottom?'), opts('*Yes', 'No', 'Not sure'), sp, btn('Save')] }),
+      F('4n', 'Add plant setup · "Not sure" answers', { back: 'Cancel', blocks: [title('Set up Lily'), h('Light in the room'), opts('Bright', 'Medium', 'Low', '*Not sure'), h('Pot'), opts('Plastic', 'Terracotta', 'Ceramic', '*Not sure'), h('Drains at the bottom?'), opts('Yes', 'No', '*Not sure'), note("Not sure is fine. We'll start with the species' basic schedule and you can change it later."), sp, btn('Save')] }),
+      F('4o', 'Label adoption', { hero: 'lbl', heroPh: 'Grower photo: peace lily', blocks: [title('Peace lily'), sci('Spathiphyllum'), sub('From the label · grower name here'), chips(chip('Cats', 'moderate'), chip('Dogs', 'moderate')), sub('Moderate for cats. Peace lily can irritate the mouth and cause drooling and vomiting. Source: ASPCA.'), rows(['Bright, indirect light'], ['Check the soil every 5 to 7 days']), sp, btn('Add to my plants'), sub('No identification used.')] }),
+      F('4p', 'Label adoption · unknown or retired code', { back: 'Back', blocks: [empty("We don't know this label. The code may be retired."), body("You can still scan the plant itself."), sp, btn('Scan the plant')] }),
+      F('4q', 'Diagnosis', { hero: 'dx', heroPh: 'Your photo: yellow leaves', blocks: [conf('Likely, 72%', true), title('Overwatering'), sub('Yellow lower leaves and soft stems often mean the roots are staying wet.'), h('Change to your plan'), rows(['Pause watering', 'Until two dry checks in a row']), sp, btn('Apply to care plan')] }),
+      F('4r', 'Diagnosis · used up', { back: 'Monty', blocks: [title("You've used this month's diagnosis"), body('More arrive on 1 November, or get 10 a month with Premium.'), sp, btn('Try Premium free for 7 days'), btn('Not now', 'x')] }),
+      F('4s', 'Diagnosis · not sure', { hero: 'dx2', heroPh: 'Your photo', blocks: [conf('Not sure, 34%', false), title('Not sure yet'), body('Try a close photo of one affected leaf, in daylight.'), note("This didn't use your diagnosis."), sp, btn('Take a close photo')] })
+    ] },
+    { name: 'Scan', frames: [
+      F('4t', 'Camera · denied', { back: 'Close', blocks: [empty('The camera is off for Tendril.'), body('Turn it on in Settings to scan plants. Gallery photos still work.'), note("Gallery photos get identified but don't earn points."), sp, btn('Open Settings'), btn('Choose from gallery', 's')] }),
+      F('4u', 'Camera · gallery only', { back: 'Close', blocks: [title('Choose photos'), sub('Up to 5 photos of the same plant.'), photo('gal', 300, 'Photo library'), note("Gallery photos get identified but don't earn points."), sp, btn('Identify', 'off')] }),
+      F('4v', 'Result · likely, compare before adding', { hero: 'lk', heroPh: 'Your photo', blocks: [conf('Likely, 71%', true), body('Likely a peace lily, 71%. Compare these two before you add it.'), rows(['Peace lily', 'Spathiphyllum', 'Likely, 71%', { it: true }], ['Flamingo flower', 'Anthurium andraeanum', 'Not sure, 22%', { it: true }]), chips(chip('Cats', 'moderate'), chip('Dogs', 'moderate')), note('This depends on the match. Confirm the plant to be sure.'), btn('This is a peace lily')] }),
+      F('4w', 'Result · not a plant', { hero: 'nap', heroPh: 'Your photo', blocks: [title('No plant found'), body("We couldn't find a plant in this photo. Try again with the plant filling the frame."), note("This didn't use an identification."), sp, btn('Try again')] }),
+      F('4x', 'Result · offline', { hero: 'off', heroPh: 'Your photo', blocks: [title("You're offline"), body("Your photos are saved. We'll identify them when you're back online."), sp, btn('OK')] }),
+      F('4y', 'Result · error', { hero: 'err', heroPh: 'Your photo', blocks: [title('Something went wrong'), body("We couldn't identify this one. It didn't use an identification."), sp, btn('Try again'), btn('Close', 'x')] }),
+      F('4z', 'Log a find · sheet', { hero: 'lf', heroPh: 'Your photo', blocks: [title('Foxglove')], sheetTitle: 'Log a find', sheetTop: 360, sheet: [h('Where was it?'), opts('Shop', 'Garden or park', '*Wild'), note('Points come from in-app camera finds. No picking, no trespassing, and others only ever see an area.'), sp, btn('Save find')] }),
+      F('4aa', 'Log a find · location off', { hero: 'lf2', heroPh: 'Your photo', blocks: [title('Foxglove')], sheetTitle: 'Log a find', sheetTop: 380, sheet: [h('Where was it?'), opts('Shop', 'Garden or park', '*Wild'), note('Location is off. This find goes in your Plantdex without points.'), sp, btn('Save find'), btn('Turn on location', 'x')] }),
+      F('4ab', 'New species', { blocks: [sp, photo('ns', 260, 'Your photo: foxglove'), sub('New to your Plantdex'), big('Foxglove'), sci('Digitalis purpurea'), badge('uncommon'), rows(['Points', '', '+40', { rc: '#2E6B4E' }], ['Plantdex', '', '38 species'], ['Irish hedgerow', '', '5 of 8']), sp, btn('Continue')] }),
+      F('4ac', 'New species · Reduce Motion (static card)', { blocks: [sp, photo('ns2', 260, 'Your photo: foxglove'), big('Foxglove'), sci('Digitalis purpurea'), badge('uncommon'), sub('Reduce Motion is on, so this card appears with a fade only.'), sp, btn('Continue')] }),
+      F('4ad', 'New species · points pending review', { blocks: [sp, photo('ns3', 220, 'Your photo: bluebell'), big('Bluebell'), sci('Hyacinthoides non-scripta'), badge('rare'), note('Points pending review. We check unusual finds before they count.'), sp, btn('Continue')] }),
+      F('4ae', 'New species · no points (gallery)', { blocks: [sp, photo('ns4', 220, 'Gallery photo: primrose'), big('Primrose'), sci('Primula vulgaris'), badge('common'), note("Gallery photos get identified but don't earn points."), sp, btn('Continue')] }),
+      F('4af', 'Limit reached · sheet', { tab: 2, header: 'Scan', blocks: [], sheetTitle: 'Limit reached', sheetTop: 400, sheet: [body("You've used your 10 free identifications this month. More arrive on 1 November, or get 60 a month with Premium."), sp, btn('Try Premium'), btn('Not now', 'x')] }),
+      F('4ag', 'Limit reached · Premium at its cap', { tab: 2, header: 'Scan', blocks: [], sheetTitle: 'Limit reached', sheetTop: 480, sheet: [body("You've used your 60 identifications this month. More arrive on 1 November."), sp, btn('OK')] })
+    ] },
+    { name: 'Collection', frames: [
+      F('4ah', 'Plantdex · empty', { tab: 3, header: 'Collection', blocks: [seg('*Plantdex', 'Sets', 'Map', 'Badges'), empty('Your Plantdex fills up as you scan. Start with a plant at home.'), btn('Scan a plant')] }),
+      F('4ai', 'Species card', { hero: 'sc', heroPh: 'Your photo: bluebell', blocks: [title('Bluebell'), sci('Hyacinthoides non-scripta'), badge('rare'), rows(['Your finds', '', '2'], ['Irish hedgerow', '', '4 of 8']), chips(chip('Cats', 'unknown'), chip('Dogs', 'unknown')), sub('Not reviewed yet. Keep it away from Miso until we know more.'), sp, btn('See finds on the map', 's')] }),
+      F('4aj', 'Species card · sensitive species', { hero: 'sc2', heroPh: 'Your photo: orchid', blocks: [title('Early purple orchid'), sci('Orchis mascula'), rows(['Your finds', '', '1']), note("We keep this species' location private to protect it."), chips(chip('Cats', 'unknown'), chip('Dogs', 'unknown')), sub('Not reviewed yet. Keep it away from Miso until we know more.')] }),
+      F('4ak', 'Sets', { tab: 3, header: 'Collection', blocks: [seg('Plantdex', '*Sets', 'Map', 'Badges'), rows(['Irish hedgerow', 'Foxglove, gorse, primrose, hawthorn…', '4 of 8'], ['Easy-care houseplants', 'Spider plant, peace lily, Swiss cheese plant', '3 of 6']), h('Irish hedgerow'), grid(['Foxglove', 'F'], ['Gorse', 'G'], ['Primrose', 'P'], ['Hawthorn', 'H'], ['Not found yet', '?', 1], ['Not found yet', '?', 1])] }),
+      F('4al', 'Sets · set completed', { back: 'Sets', blocks: [sp, empty(''), big('Easy-care houseplants'), body('Set complete: 6 of 6.'), badge('legendary'), sp, btn('Share'), btn('Continue', 'x')] }),
+      F('4am', 'Finds map · exact pins only you see', { tab: 3, header: 'Collection', blocks: [seg('Plantdex', 'Sets', '*Map', 'Badges'), photo('map', 340, 'Map with your exact pins'), sub('Only you see exact pins. Anything shared shows an area at most.'), rows(['Foxglove', 'Wild · 28 Sep', ''], ['Gorse', 'Wild · 21 Sep', ''])] }),
+      F('4an', 'Finds map · location never granted, list only', { tab: 3, header: 'Collection', blocks: [seg('Plantdex', 'Sets', '*Map', 'Badges'), note('Location is off, so your finds show as a list.'), rows(['Foxglove', 'Wild · 28 Sep', ''], ['Gorse', 'Wild · 21 Sep', ''], ['Primrose', 'Garden or park · 2 Apr', '']), btn('Turn on location', 's')] }),
+      F('4ao', 'Badges', { tab: 3, header: 'Collection', blocks: [seg('Plantdex', 'Sets', 'Map', '*Badges'), rows(['First find', 'Log your first wild find', 'Earned', { rc: '#2E6B4E' }], ['Hedgerow half', 'Find 4 of the Irish hedgerow set', 'Earned', { rc: '#2E6B4E' }], ['Month of care', 'Hold a 30-day care streak', '12 of 30'], ['Bluebell wood', 'Find bluebell in 3 places', '1 of 3']), btn('Share a badge', 's')] }),
+      F('4ap', 'Badges · none earned yet', { tab: 3, header: 'Collection', blocks: [seg('Plantdex', 'Sets', 'Map', '*Badges'), empty('No badges yet. Log your first find to earn one.'), rows(['First find', 'Log your first wild find', 'Locked'])] })
+    ] },
+    { name: 'Leagues', frames: [
+      F('4aq', 'League · this week', { tab: 4, header: 'Leagues', blocks: [seg('*League', 'Friends'), sub('3 days left · resets Monday'), rows(['@hedgehopper', '', '520', { lead: '1' }], ['@fernandfox', '', '410', { lead: '2' }], ['@mossbank', '', '355', { lead: '3' }], ['You · @aoifegrows', '', '340', { lead: '4', you: 1, rc: '#2E6B4E' }], ['@greenwick', '', '290', { lead: '5' }], ['@lichenlou', '', '275', { lead: '6' }])] }),
+      F('4ar', 'League · before your first points', { tab: 4, header: 'Leagues', blocks: [seg('*League', 'Friends'), empty('Log a find to join this week’s board with 20 people near you.'), btn('Scan a plant')] }),
+      F('4as', 'Friends', { tab: 4, header: 'Leagues', blocks: [seg('League', '*Friends'), rows(['@fernandfox', '', '410', { lead: '1' }], ['You · @aoifegrows', '', '340', { lead: '2', you: 1, rc: '#2E6B4E' }], ['@siobhanplants', '', '120', { lead: '3' }]), btn('Add friends', 's')] }),
+      F('4at', 'Friends · no friends yet', { tab: 4, header: 'Leagues', blocks: [seg('League', '*Friends'), empty('No friends here yet. Invite someone to compare finds each week.'), btn('Add friends')] }),
+      F('4au', 'Add friends', { back: 'Friends', blocks: [title('Add friends'), input('Handle', '@siobhanplants', true), rows(['@siobhanplants', '37 species', 'Add', { rc: '#2E6B4E' }]), sp, btn('Send invite link', 's')] }),
+      F('4av', 'Add friends · handle not found', { back: 'Friends', blocks: [title('Add friends'), input('Handle', '@aoifegrow', true), note('No one has that handle. Check the spelling, or send an invite link.'), sp, btn('Send invite link')] }),
+      F('4aw', 'Week results', { blocks: [sp, sub('Week results'), big('4th of 20'), rows(['Points', '', '340'], ['Best find', 'Foxglove', 'Uncommon']), sp, btn('Continue')] }),
+      F('4ax', 'Week results · no points this week', { blocks: [sp, sub('Week results'), big('A quiet week'), body('No points this week. A new board starts Monday.'), sp, btn('Continue')] })
+    ] },
+    { name: 'Profile', frames: [
+      F('4ay', 'Profile · your view', { back: 'Today', blocks: [title('@aoifegrows'), rows(['Plantdex', '', '37 species'], ['Care streak', '', '12 days', { rc: '#A36100' }], ['Discovery streak', '', '3 weeks', { rc: '#A36100' }], ['Badges', '', '2']), btn('Edit profile', 's'), btn('Settings', 'x')] }),
+      F('4az', 'Profile · public view', { back: 'Profile', blocks: [title('@aoifegrows'), note('This is what others see. No locations, pets or plants at home.'), rows(['Plantdex', '', '37 species'], ['Badges', 'First find, Hedgerow half', '2'])] }),
+      F('4ba', 'Settings', { back: 'Profile', blocks: [title('Settings'), rows(['Household and pets', 'Miso, Bran'], ['Home area', 'Set'], ['Notifications', 'Care reminders on'], ['Premium', 'Free'], ['Account'], ['Terms of Use'], ['Privacy Policy'])] }),
+      F('4bb', 'Settings · preview active', { back: 'Profile', blocks: [title('Settings'), note('Premium preview: 5 days left. It ends on its own, and nothing is charged.'), rows(['Household and pets', 'Miso, Bran'], ['Home area', 'Set'], ['Premium', 'Preview, ends 8 Oct'], ['Account'])] }),
+      F('4bc', 'Household and pets', { back: 'Settings', blocks: [title('Household and pets'), h('Members'), rows(['Aoife', 'You']), h('Pets'), rows(['Miso', 'Cat'], ['Bran', 'Dog']), h('Vet'), rows(['Your vet', 'Add name and phone']), btn('Invite a member')] }),
+      F('4bd', 'Household · Free, sharing locked', { back: 'Settings', blocks: [title('Household and pets'), h('Members'), rows(['Aoife', 'You']), note('Household sharing and holiday hand-over come with Premium.'), body('Try Premium free for 7 days. No payment details, nothing to cancel.'), btn('Start the preview'), h('Pets'), rows(['Miso', 'Cat'], ['Bran', 'Dog'])] }),
+      F('4be', 'Paywall · preview days left', { back: 'Close', blocks: [title('Tendril Premium'), note('Your Premium preview ends tomorrow. You’ll go back to Free, and nothing is charged.'), rows(['Yearly', '$2.08 a month, billed yearly', '$24.99 a year'], ['Monthly', 'Billed monthly', '$4.99 a month']), sp, btn('Subscribe for $24.99 a year'), sub('Restore purchases · Terms of Use · Privacy Policy')] }),
+      F('4bf', 'Paywall · purchase pending', { back: 'Close', blocks: [title('Tendril Premium'), note('Your purchase is waiting for approval from the App Store. We’ll unlock Premium as soon as it goes through.'), sp, btn('Waiting for the App Store', 'off')] }),
+      F('4bg', 'Paywall · purchase failed', { back: 'Close', blocks: [title('Tendril Premium'), note("The purchase didn't go through, and you weren't charged."), rows(['Yearly', '$2.08 a month, billed yearly', '$24.99 a year']), sp, btn('Try again'), btn('Restore purchases', 'x')] }),
+      F('4bh', 'Pet emergency · US, vet first, calls in the bottom half', { back: 'Lily', blocks: [title('If Miso ate peace lily'), chips(chip('Cats', 'moderate')), body('Peace lily can irritate the mouth and cause drooling, vomiting and trouble swallowing.'), sub('Source: ASPCA. Based on a very likely match, 94%.'), sp, btn('Call your vet'), btn('Call ASPCA Poison Control (888) 426-4435', 's'), sub('Open 24 hours. A fee may apply.')] }),
+      F('4bi', 'Pet emergency · no vet saved, country without a line', { back: 'Lily', blocks: [title('If Miso ate peace lily'), chips(chip('Cats', 'moderate')), body('Peace lily can irritate the mouth and cause drooling, vomiting and trouble swallowing.'), sub('Source: ASPCA.'), note("You haven't saved a vet yet. Call your nearest vet now."), sp, btn('Find a vet nearby'), btn('Save your vet', 'x')] }),
+      F('4bj', 'Delete account', { back: 'Account', blocks: [title('Delete account'), body('This deletes your plants, finds, photos and points for good.'), rows(['Plants', '3'], ['Finds and locations', '37 species'], ['Photos'], ['Points']), sp, btn('Delete account', 'd')] }),
+      F('4bk', 'Delete account · active subscription', { back: 'Account', blocks: [title('Delete account'), body("This deletes your plants, finds, photos and points for good. It doesn't cancel your subscription, so do that first."), note('Billing continues through the App Store until you cancel it there.'), btn('Manage subscription', 's'), sp, btn('Delete account', 'd')] })
+    ] }
+  ];
+}
+</script>
+</body>
+</html>
