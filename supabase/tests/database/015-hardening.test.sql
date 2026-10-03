@@ -1,5 +1,5 @@
 begin;
-select plan(23);
+select plan(24);
 
 select tests.create_supabase_user('aoife');
 
@@ -85,11 +85,13 @@ select is(
   0, 'a new function is not executable by clients');
 
 -- Function EXECUTE audit: which of our functions can the client roles call? Functions are ours when no extension owns
--- them (extension functions are not ours to grant or revoke). A view so the probe below can be added after it is
+-- them (extension functions are not ours to grant or revoke). Views, so the probes below can be added after they are
 -- defined. security definer functions run with the owner's rights, so each client-callable one is a deliberate door:
 -- anon gets the public label lookup only; authenticated additionally gets the two helpers its RLS policies call.
+-- The allow-list names exact signatures (resolved to oids, so it does not depend on search_path), so an overload of an
+-- allowed name is still flagged. fn is the readable form, for failure output only.
 create temp view held_fn_exec as
-select r.role_name, n.nspname::text as schema_name, p.proname::text as proname
+select r.role_name, p.oid as fn_oid, p.oid::regprocedure::text as fn
 from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace
 cross join (values ('anon'), ('authenticated')) as r(role_name)
@@ -99,20 +101,32 @@ where n.nspname in ('public', 'private')
   )
   and has_function_privilege(r.role_name, p.oid, 'execute');
 
+create temp view fn_exec_offenders as
+select * from held_fn_exec
+where (role_name = 'anon' and fn_oid <> 'public.public_label(text)'::regprocedure::oid)
+   or (role_name = 'authenticated' and fn_oid not in (
+     'public.public_label(text)'::regprocedure::oid,
+     'private.is_admin()'::regprocedure::oid,
+     'private.my_household_ids()'::regprocedure::oid));
+
 select isnt_empty(
-  $$select 1 from held_fn_exec where role_name = 'anon' and schema_name = 'public' and proname = 'public_label'$$,
+  $$select 1 from held_fn_exec where role_name = 'anon' and fn_oid = 'public.public_label(text)'::regprocedure::oid$$,
   'the function audit can see the grants it is meant to police');
 select is_empty(
-  $$select * from held_fn_exec where role_name = 'anon' and not (schema_name = 'public' and proname = 'public_label')$$,
-  'anon may execute only public.public_label');
+  $$select * from fn_exec_offenders where role_name = 'anon'$$,
+  'anon may execute only public.public_label(text)');
 select is_empty(
-  $$select * from held_fn_exec where role_name = 'authenticated'
-    and (schema_name, proname) not in (('public', 'public_label'), ('private', 'is_admin'), ('private', 'my_household_ids'))$$,
-  'authenticated may execute only public_label, is_admin and my_household_ids');
+  $$select * from fn_exec_offenders where role_name = 'authenticated'$$,
+  'authenticated may execute only public_label(text), is_admin() and my_household_ids()');
 grant execute on function public.zz_fn() to anon;
 select isnt_empty(
-  $$select 1 from held_fn_exec where role_name = 'anon' and proname = 'zz_fn'$$,
-  'the function audit sees a grant it should flag');
+  $$select 1 from fn_exec_offenders where role_name = 'anon' and fn_oid = 'public.zz_fn()'::regprocedure::oid$$,
+  'the function audit flags a grant it should flag');
+create function public.public_label(integer) returns text language sql as $$ select 'x'::text $$;
+grant execute on function public.public_label(integer) to authenticated;
+select isnt_empty(
+  $$select 1 from fn_exec_offenders where role_name = 'authenticated' and fn_oid = 'public.public_label(integer)'::regprocedure::oid$$,
+  'the function audit flags an overload of an allowed name');
 
 -- A blank taxon would over-flag rather than never match: flag_sensitive compares against coalesce(family, ''), so a
 -- blank family-rank row would mark every species that has no family as sensitive.

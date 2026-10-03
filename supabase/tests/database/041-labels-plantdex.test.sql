@@ -34,10 +34,16 @@ select ok(
   'the partner contact address appears nowhere in the label');
 select is(public.public_label('  pl-0001 ') ->> 'code', 'PL-0001', 'a lowercase, padded code resolves');
 select is(public.public_label('  pl-0001 '), public.public_label('PL-0001'), 'a lowercase, padded code gives the same label');
+-- Without these the primary-key index scan returns cat before dog by itself, which would hide a missing ORDER BY; a
+-- sequential scan returns insertion order (dog, cat).
+set local enable_indexscan = off;
+set local enable_bitmapscan = off;
 select is(
   jsonb_path_query_array(public.public_label('PL-0001'), '$.toxicity[*].animal'),
   '["cat", "dog"]'::jsonb,
   'toxicity entries are ordered by animal');
+reset enable_indexscan;
+reset enable_bitmapscan;
 select is(
   jsonb_path_query_array(public.public_label('PL-0001'), '$.toxicity[*].reviewStatus'),
   '["seed_pending_vet", "reviewed"]'::jsonb,

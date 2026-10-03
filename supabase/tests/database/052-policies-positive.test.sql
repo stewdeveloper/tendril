@@ -1,5 +1,5 @@
 begin;
-select plan(10);
+select plan(14);
 -- The other policy tests lean on "others see nothing". These are the positive halves: the people who should see rows
 -- do, and the plant-photos bucket policies let a user into their own folder and nobody else's.
 select tests.create_supabase_user('aoife');
@@ -59,6 +59,25 @@ select isnt_empty(
 select is_empty(
   $$select 1 from storage.objects where bucket_id = 'plant-photos' and name = tests.get_supabase_uid('outsider')::text || '/theirs.jpg'$$,
   'a user cannot see another user''s object');
+
+-- storage.protect_delete refuses direct deletes unless this is set (the Storage API sets it); it is a guard against
+-- orphaned files, separate from the row level security under test here.
+set local storage.allow_delete_query = 'true';
+select lives_ok(
+  $$delete from storage.objects where bucket_id = 'plant-photos' and name = (select auth.uid())::text || '/x.jpg'$$,
+  'a user can delete their own object');
+select is_empty(
+  $$select 1 from storage.objects where bucket_id = 'plant-photos' and name = (select auth.uid())::text || '/x.jpg'$$,
+  'the deleted object is gone');
+-- RLS filters rather than rejects: the delete runs and touches nothing.
+select lives_ok(
+  $$delete from storage.objects where bucket_id = 'plant-photos' and name = tests.get_supabase_uid('outsider')::text || '/theirs.jpg'$$,
+  'deleting another user''s object is filtered out, not an error');
+select tests.clear_authentication();
+reset role;
+select isnt_empty(
+  $$select 1 from storage.objects where bucket_id = 'plant-photos' and name = tests.get_supabase_uid('outsider')::text || '/theirs.jpg'$$,
+  'another user''s object survives the attempted delete');
 
 select tests.authenticate_as('partner');
 select results_eq(
