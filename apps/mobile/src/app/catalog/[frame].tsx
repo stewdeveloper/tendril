@@ -1,3 +1,4 @@
+import { colors } from '@tendril/core';
 import { Redirect, useLocalSearchParams } from 'expo-router';
 import { ScrollView, View } from 'react-native';
 import { CatalogFrame } from '../../catalog/CatalogFrame';
@@ -11,7 +12,7 @@ export function CatalogScreen({ frameId }: { frameId: string }) {
   if (!entry) {
     return (
       <ThemeProvider scheme="light">
-        <View style={{ flex: 1, padding: 24, gap: 8, backgroundColor: '#FBFAF6' }}>
+        <View style={{ flex: 1, padding: 24, gap: 8, backgroundColor: colors.light.background }}>
           <AppText variant="heading">{`No frame ${frameId}`}</AppText>
           <AppText variant="sub" color="textSecondary">
             {`Registered: ${
@@ -28,6 +29,7 @@ export function CatalogScreen({ frameId }: { frameId: string }) {
     <ScrollView
       horizontal
       contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+      // Dev-tool stage colour, outside the app UI and not a design token.
       style={{ backgroundColor: '#E8E6DF' }}
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 10 }}>

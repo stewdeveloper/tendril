@@ -7,7 +7,7 @@ export interface AppTextProps extends Omit<TextProps, 'style'> {
   variant: TypeVariant;
   /** A theme colour name, or a literal colour for on-photo and on-chip text. */
   color?: keyof ColorTokens | (string & {});
-  /** Body copy blocks use a 24 pt line height (design frames' "body" blocks). */
+  /** Body copy blocks use a 24 pt line height (design frames' "body" blocks). Body variant only. */
   lines?: 'body-24';
   style?: StyleProp<TextStyle>;
 }
@@ -23,7 +23,7 @@ export function AppText({ variant, color = 'textPrimary', lines, style, ...rest 
         {
           fontFamily: fontFamilyFor(t),
           fontSize: t.size,
-          lineHeight: lines === 'body-24' ? 24 : t.lineHeight,
+          lineHeight: lines === 'body-24' && variant === 'body' ? 24 : t.lineHeight,
           color: resolved,
         },
         style,

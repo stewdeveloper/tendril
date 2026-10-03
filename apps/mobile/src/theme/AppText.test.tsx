@@ -51,4 +51,18 @@ describe('AppText', () => {
     expect(el.props.numberOfLines).toBeUndefined();
     expect(el.props.allowFontScaling).not.toBe(false);
   });
+  it('applies the 24 line height to body copy only', async () => {
+    await render(
+      <ThemeProvider scheme="light">
+        <AppText variant="body" lines="body-24">
+          Body block
+        </AppText>
+        <AppText variant="caption" lines="body-24">
+          Caption block
+        </AppText>
+      </ThemeProvider>,
+    );
+    expect(flat(screen.getByText('Body block'))).toMatchObject({ lineHeight: 24 });
+    expect(flat(screen.getByText('Caption block'))).toMatchObject({ lineHeight: 18 });
+  });
 });

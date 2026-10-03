@@ -7,11 +7,13 @@ import { fontMap, ThemeProvider } from '../theme';
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [loaded] = useFonts(fontMap);
+  const [loaded, error] = useFonts(fontMap);
+  // A font failure must not hang the app on the splash: fall back to system fonts.
+  const ready = loaded || error != null;
   useEffect(() => {
-    if (loaded) SplashScreen.hideAsync();
-  }, [loaded]);
-  if (!loaded) return null;
+    if (ready) SplashScreen.hideAsync();
+  }, [ready]);
+  if (!ready) return null;
   return (
     <SafeAreaProvider>
       <ThemeProvider>

@@ -12,11 +12,14 @@ describe('catalog registry', () => {
   it('renders an unknown id as a helpful message, not a crash', async () => {
     await render(<CatalogScreen frameId="nope" />);
     expect(screen.getByText(/No frame nope/)).toBeTruthy();
+    expect(screen.getByText(/Registered: .*zz-test/)).toBeTruthy();
   });
   it('renders a registered frame inside device chrome', async () => {
     registerFrame({ id: 'zz-two', title: 'Two', render: () => <Text>inside</Text> });
     await render(<CatalogScreen frameId="zz-two" />);
     expect(screen.getByText('inside')).toBeTruthy();
     expect(screen.getByText('9:41', { hidden: true })).toBeTruthy();
+    // The chrome is decorative: screen readers must not reach it.
+    expect(screen.queryByText('9:41')).toBeNull();
   });
 });

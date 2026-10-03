@@ -1,4 +1,4 @@
-import type { Scheme } from '@tendril/core';
+import { colors, type Scheme } from '@tendril/core';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 
@@ -14,15 +14,16 @@ export interface DeviceChromeProps {
  * and is hidden from screen readers.
  */
 export function DeviceChrome({ scheme, statusBar }: DeviceChromeProps) {
-  const ink = statusBar === 'light' ? '#FFFFFF' : '#1D2420';
-  const indicator = scheme === 'dark' ? '#E8EEEA' : '#1D2420';
+  const ink = statusBar === 'light' ? colors.light.surface : colors.light.textPrimary;
+  const indicator = scheme === 'dark' ? colors.dark.textPrimary : colors.light.textPrimary;
   return (
     <View
       testID="device-chrome"
-      pointerEvents="none"
+      // aria-hidden is what react-native-web honours; the other two are the native equivalents.
+      aria-hidden
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={StyleSheet.absoluteFill}
+      style={styles.root}
     >
       <View style={styles.island} />
       <View style={styles.statusBar}>
@@ -57,6 +58,17 @@ export function DeviceChrome({ scheme, statusBar }: DeviceChromeProps) {
 }
 
 const styles = StyleSheet.create({
+  // pointerEvents lives in style because react-native-web warns about the prop. zIndex keeps frame
+  // sheets from painting over the chrome.
+  root: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    pointerEvents: 'none',
+    zIndex: 10,
+  },
   island: {
     position: 'absolute',
     top: 11,
@@ -65,6 +77,7 @@ const styles = StyleSheet.create({
     width: 124,
     height: 36,
     borderRadius: 20,
+    // The physical cutout, not a theme colour.
     backgroundColor: '#000000',
     zIndex: 6,
   },
