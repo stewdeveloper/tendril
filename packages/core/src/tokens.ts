@@ -63,8 +63,20 @@ export const colors: Record<Scheme, ColorTokens> = {
 };
 
 export const verdictColors: Record<Scheme, Record<Severity, string>> = {
-  light: { unknown: '#5F6B66', none: '#2B6A45', mild: '#8A5A00', moderate: '#B3401F', severe: '#9B1C1C' },
-  dark: { unknown: '#B9C3BE', none: '#86CFA1', mild: '#E6B85C', moderate: '#F0A07F', severe: '#F2A3A3' },
+  light: {
+    unknown: '#5F6B66',
+    none: '#2B6A45',
+    mild: '#8A5A00',
+    moderate: '#B3401F',
+    severe: '#9B1C1C',
+  },
+  dark: {
+    unknown: '#B9C3BE',
+    none: '#86CFA1',
+    mild: '#E6B85C',
+    moderate: '#F0A07F',
+    severe: '#F2A3A3',
+  },
 };
 
 export const rarityColors: Record<Scheme, Record<RarityTier, string>> = {
@@ -72,7 +84,8 @@ export const rarityColors: Record<Scheme, Record<RarityTier, string>> = {
   dark: { common: '#B4C0B9', uncommon: '#7FCDB9', rare: '#A9B8F0', legendary: '#E3C26A' },
 };
 
-export type TypeVariant = 'moment' | 'title' | 'heading' | 'body' | 'bodyStrong' | 'sub' | 'sci' | 'caption';
+export type TypeVariant =
+  'moment' | 'title' | 'heading' | 'body' | 'bodyStrong' | 'sub' | 'sci' | 'caption';
 
 export interface TypeStyle {
   family: 'Fraunces' | 'Inter';

@@ -45,8 +45,16 @@ describe('petCheckLine', () => {
   const lily = 'Peace lily can irritate the mouth and cause drooling and vomiting.';
   it('moderate and mild: severity, summary, source', () => {
     expect(
-      petCheckLine({ animal: 'cat', severity: 'moderate', summary: lily, sourceName: 'ASPCA', petName: 'Miso' }),
-    ).toBe('Moderate for cats. Peace lily can irritate the mouth and cause drooling and vomiting. Source: ASPCA.');
+      petCheckLine({
+        animal: 'cat',
+        severity: 'moderate',
+        summary: lily,
+        sourceName: 'ASPCA',
+        petName: 'Miso',
+      }),
+    ).toBe(
+      'Moderate for cats. Peace lily can irritate the mouth and cause drooling and vomiting. Source: ASPCA.',
+    );
   });
   it('severe tells you to call the vet', () => {
     expect(
@@ -61,31 +69,97 @@ describe('petCheckLine', () => {
   });
   it('no known toxicity names the source and the general caveat', () => {
     expect(
-      petCheckLine({ animal: 'cat', severity: 'none', summary: null, sourceName: 'ASPCA', petName: 'Miso' }),
-    ).toBe('No known toxicity to cats (ASPCA). Eating any plant can still cause vomiting or an upset stomach.');
+      petCheckLine({
+        animal: 'cat',
+        severity: 'none',
+        summary: null,
+        sourceName: 'ASPCA',
+        petName: 'Miso',
+      }),
+    ).toBe(
+      'No known toxicity to cats (ASPCA). Eating any plant can still cause vomiting or an upset stomach.',
+    );
   });
   it('unknown uses the pet name, falling back to the animal, never null', () => {
     expect(
-      petCheckLine({ animal: 'cat', severity: 'unknown', summary: null, sourceName: null, petName: 'Miso' }),
+      petCheckLine({
+        animal: 'cat',
+        severity: 'unknown',
+        summary: null,
+        sourceName: null,
+        petName: 'Miso',
+      }),
     ).toBe('Not reviewed yet. Keep it away from Miso until we know more.');
     expect(
-      petCheckLine({ animal: 'dog', severity: 'unknown', summary: null, sourceName: null, petName: null }),
+      petCheckLine({
+        animal: 'dog',
+        severity: 'unknown',
+        summary: null,
+        sourceName: null,
+        petName: null,
+      }),
     ).toBe('Not reviewed yet. Keep it away from your dog until we know more.');
     expect(
-      petCheckLine({ animal: 'other', severity: 'none', summary: null, sourceName: 'ASPCA', petName: null }),
+      petCheckLine({
+        animal: 'other',
+        severity: 'none',
+        summary: null,
+        sourceName: 'ASPCA',
+        petName: null,
+      }),
     ).toBe('Not reviewed yet. Keep it away from your pet until we know more.');
   });
   it('falls back gracefully when a reviewed verdict has no summary or source', () => {
-    const line = petCheckLine({ animal: 'dog', severity: 'mild', summary: null, sourceName: null, petName: 'Bran' });
+    const line = petCheckLine({
+      animal: 'dog',
+      severity: 'mild',
+      summary: null,
+      sourceName: null,
+      petName: 'Bran',
+    });
     expect(line).toBe('Mild for dogs.');
     expect(line).not.toMatch(/null|undefined/);
+  });
+  it('trims blank pet names and falls back to animal', () => {
+    expect(
+      petCheckLine({
+        animal: 'dog',
+        severity: 'unknown',
+        summary: null,
+        sourceName: null,
+        petName: '  ',
+      }),
+    ).toBe('Not reviewed yet. Keep it away from your dog until we know more.');
+  });
+  it('no verdictChipLabel or petCheckLine output contains the word "safe"', () => {
+    const animals = ['cat', 'dog', 'other'] as const;
+    const severities = ['unknown', 'none', 'mild', 'moderate', 'severe'] as const;
+    const summary = 'Peace lily can irritate the mouth and cause drooling and vomiting.';
+    for (const animal of animals) {
+      for (const severity of severities) {
+        const chipLabel = verdictChipLabel(animal, severity);
+        expect(chipLabel.toLowerCase()).not.toContain('safe');
+        const line = petCheckLine({
+          animal,
+          severity,
+          summary,
+          sourceName: 'ASPCA',
+          petName: 'Miso',
+        });
+        expect(line.toLowerCase()).not.toContain('safe');
+      }
+    }
   });
 });
 
 describe('likelyMatchNote', () => {
   it('only appears when the match is not very likely', () => {
     expect(likelyMatchNote('very_likely')).toBeNull();
-    expect(likelyMatchNote('likely')).toBe('This depends on the match. Confirm the plant to be sure.');
-    expect(likelyMatchNote('not_sure')).toBe('This depends on the match. Confirm the plant to be sure.');
+    expect(likelyMatchNote('likely')).toBe(
+      'This depends on the match. Confirm the plant to be sure.',
+    );
+    expect(likelyMatchNote('not_sure')).toBe(
+      'This depends on the match. Confirm the plant to be sure.',
+    );
   });
 });

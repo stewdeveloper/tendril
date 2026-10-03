@@ -61,7 +61,8 @@ export function petCheckLine(input: PetCheckInput): string {
   const severity = effectiveSeverity(input.animal, input.severity);
   const plural = PLURAL[input.animal].toLowerCase();
   if (severity === 'unknown') {
-    const who = input.petName ?? `your ${SINGULAR[input.animal]}`;
+    const trimmed = input.petName?.trim();
+    const who = trimmed || `your ${SINGULAR[input.animal]}`;
     return `Not reviewed yet. Keep it away from ${who} until we know more.`;
   }
   if (severity === 'none') {
