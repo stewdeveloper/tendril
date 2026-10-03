@@ -109,7 +109,7 @@ tendril/
 - pnpm 12 and Node 22.13 or later.
 - vitest for core, web and tools.
 - jest-expo with @testing-library/react-native for mobile.
-- Deno 2 (installed into `~/.deno` without sudo) for function tests.
+- Deno 2.9.6 for function tests, pinned as a root dev dependency through npm's `deno` package (no sudo, no `unzip`). Function code stays within Deno 2.1, which is what the edge runtime supports.
 - pgTAP for the database.
 - ESLint and Prettier on defaults.
 - Every package has `test`, `typecheck` and `lint` scripts; the root scripts run them all.
