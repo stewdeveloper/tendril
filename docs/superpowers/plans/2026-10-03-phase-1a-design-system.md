@@ -80,6 +80,7 @@
 - pnpm 12 fails installs of new dependencies that have install scripts (`ERR_PNPM_IGNORED_BUILDS`), and `pnpm approve-builds` is interactive. Add an explicit entry under `allowBuilds:` in `pnpm-workspace.yaml` instead (`true` when the build is needed, `false` when it isn't).
 - `@tendril/core` production code may not use Node or DOM APIs. Its `tsconfig.json` has `types: []` and tests use `tsconfig.test.json`. The import guard requires every specifier in non-test files to be relative and end in `.ts`.
 - `experiments.typedRoutes` is off until a step generates `.expo/types` before typecheck, so route strings are plain `string`.
+- **Never put test files under `apps/mobile/src/app/`.** expo-router bundles every `.ts` and `.tsx` file there as a route, tests included. Route-level tests go in `apps/mobile/src/__tests__/routes/`.
   - `@tendril/core` has zero runtime dependencies, and every relative import ends in `.ts`.
   - Screens and components take props only. Data comes in through containers in `src/app`.
 

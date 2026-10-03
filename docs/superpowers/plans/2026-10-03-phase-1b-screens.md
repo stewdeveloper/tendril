@@ -16,7 +16,7 @@
 
 ## Global Constraints
 
-- Every Global Constraint of Phase 1A applies: tokens, type, shape, motion, copy and accessibility, `npx expo install`, async RNTL `render` and `fireEvent` (always awaited), and ESLint pinned to 9.x.
+- Every Global Constraint of Phase 1A applies: tokens, type, shape, motion, copy and accessibility, `npx expo install`, async RNTL `render` and `fireEvent` (always awaited), ESLint pinned to 9.x, and no test files under `src/app/` (route tests go in `src/__tests__/routes/`).
 - **Where pixel values come from:** `design/frames/<id>.html` is the source for spacing, sizes, radii, fonts and colours. Use the Phase 1A components wherever they fit, and don't restyle them per screen.
 - **Precedence (spec §6.3):**
   - Where a 4-series frame and a hero or onboarding frame show the same screen, the hero frame sets the layout and the 4-series frame sets the state's content.
@@ -33,6 +33,8 @@
   - the precedence substitutions above
 
   Record each frame's diff % and a one-line verdict in the report.
+- Catalog frames that show a sheet render the screen behind it plus `SheetOverlay` (inline scrim and panel, no Modal, no animation), so the device chrome stays above the scrim and captures don't race the slide-up. Screens in the running app use `Sheet`.
+- Read safe areas with the `useSafeAreaInsets()` hook, never the `SafeAreaView` component. The catalog supplies fixed iPhone 16 insets through context, and `SafeAreaView` may not read them on web.
 - Text never sits on a photo without the scrim. Scientific names are always italic. Never write "safe".
 - Add Expo-side packages only with `npx expo install` inside `apps/mobile`.
 

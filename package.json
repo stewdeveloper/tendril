@@ -16,7 +16,10 @@
     "db:start": "supabase start -x studio,postgres-meta,logflare,vector,imgproxy,supavisor",
     "db:reset": "supabase db reset",
     "db:test": "supabase test db",
-    "db:types": "supabase gen types --local > packages/db/src/database.types.ts"
+    "db:types": "supabase gen types --local > packages/db/src/database.types.ts",
+    "visual:design": "tsx tools/visual/src/shoot-design.ts",
+    "visual:app": "tsx tools/visual/src/shoot-app.ts",
+    "visual:compare": "tsx tools/visual/src/compare.ts"
   },
   "devDependencies": {
     "prettier": "^3.9.9",

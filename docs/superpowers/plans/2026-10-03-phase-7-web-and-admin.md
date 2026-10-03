@@ -264,7 +264,7 @@ git commit -m "feat(web): admin for curation, sensitive taxa, partners and codes
   - `apps/mobile/src/app/+native-intent.tsx`: rewrites `/s/<slug>` to `/collection/species/by-slug/<slug>`; passes other paths through; never throws
   - `apps/mobile/src/app/collection/species/by-slug/[slug].tsx`: resolves to the species ID, then replaces the route
   - `apps/mobile/src/services/installReferrer.ts`
-- Test: `apps/mobile/src/services/installReferrer.test.ts`, `apps/mobile/src/app/nativeIntent.test.ts`
+- Test: `apps/mobile/src/services/installReferrer.test.ts`, `apps/mobile/src/__tests__/routes/nativeIntent.test.ts`
 
 **Interfaces:**
 - Produces:
