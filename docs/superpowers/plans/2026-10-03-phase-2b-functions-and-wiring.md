@@ -700,6 +700,13 @@ git commit -m "feat(functions): me (bootstrap, pets, vet, home area) and identif
     - It inserts the plant, then the first `check` task due `today + baseIntervalDays(...)`, then a `setup` care event.
   - **`labels` routes** (`verify_jwt = false`):
     - `GET /:code` returns `LabelResponse`, using the `public_label` RPC through the admin client (cache header `max-age=60`).
+      - The RPC's JSON is not `LabelInfo`. Its keys are `code`, `growerName`, `cultivar`, `species {id, slug, commonName, scientificName, imageUrl, light, checkIntervalDays, warmth}` and `toxicity[] {animal, severity, summary, symptoms, sourceName, sourceUrl, reviewStatus}`, ordered by animal. Map it with a tested `labelFromRpc` in `labels/handler.ts`:
+        - `species` becomes `SpeciesRef`.
+        - `care` comes from `light`, `checkIntervalDays` and `warmth`.
+        - `careLines` is the light line plus "Check the soil every N to M days", using the same copy the plant detail uses.
+        - `toxicity` passes through, keeping `reviewStatus`.
+      - Add an optional `reviewStatus?: 'seed_pending_vet' | 'reviewed'` to core's `ToxicityEntry`. Rows still at `seed_pending_vet` must never read as vet-reviewed.
+      - `labels_test.ts` also checks that the mapped `GET /PL-0001` body equals the `aoife` fixture label's shape.
     - `POST /:code/events` (`{ event: 'app_open' | 'store_click' | 'adoption'; platform }`) inserts into `qr_scans`; unknown codes get 404.
 
 - [ ] **Step 1: Write the failing tests**
