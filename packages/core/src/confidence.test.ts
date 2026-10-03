@@ -18,6 +18,14 @@ describe('toPercent', () => {
     expect(toPercent(-0.1)).toBe(0);
     expect(toPercent(Number.NaN)).toBe(0);
     expect(toPercent(Number.POSITIVE_INFINITY)).toBe(100);
+    expect(toPercent(Number.NEGATIVE_INFINITY)).toBe(0);
+  });
+  it('keeps the exact edges', () => {
+    expect(toPercent(0)).toBe(0);
+    expect(toPercent(1)).toBe(100);
+  });
+  it('reads a non-number at runtime as 0', () => {
+    expect(toPercent(undefined as unknown as number)).toBe(0);
   });
 });
 
@@ -46,9 +54,13 @@ describe('labels', () => {
     expect(confidenceLabel(0.41)).toBe('Not sure, 41%');
     expect(confidenceLabel(0.795)).toBe('Very likely, 80%');
     expect(confidenceLabel(Number.NaN)).toBe('Not sure, 0%');
+    expect(confidenceLabel(undefined as unknown as number)).toBe('Not sure, 0%');
+    expect(confidenceLabel(1.2)).toBe('Very likely, 100%');
   });
   it('spells out percent for screen readers', () => {
     expect(confidenceA11yLabel(0.94)).toBe('Very likely, 94 percent');
+    expect(confidenceA11yLabel(0.71)).toBe('Likely, 71 percent');
+    expect(confidenceA11yLabel(0.41)).toBe('Not sure, 41 percent');
   });
   it('maps bands to words', () => {
     expect(bandWord('very_likely')).toBe('Very likely');

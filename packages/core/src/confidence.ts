@@ -9,10 +9,15 @@ const WORDS: Record<ConfidenceBand, 'Very likely' | 'Likely' | 'Not sure'> = {
   not_sure: 'Not sure',
 };
 
-/** Whole percent from 0 to 100. Bad provider values clamp; NaN counts as 0. */
+/**
+ * Whole percent from 0 to 100. Bad provider values clamp; NaN counts as 0.
+ * Coerces first, so a value that is not a number at runtime (say `undefined`
+ * from JSON) reads as 0 instead of rendering "NaN%".
+ */
 export function toPercent(probability: number): number {
-  if (Number.isNaN(probability)) return 0;
-  const clamped = Math.min(1, Math.max(0, probability));
+  const p = Number(probability);
+  if (Number.isNaN(p)) return 0;
+  const clamped = Math.min(1, Math.max(0, p));
   return Math.round(clamped * 100);
 }
 
