@@ -204,8 +204,8 @@ export const speciesSeeds: SpeciesSeed[] = [
 ];
 
 // Toxicity. Keyed by species slug. Species that are not keyed here get no rows, which the app shows as Unknown:
-// ZZ plant, rubber plant, fiddle leaf fig, bluebell, gorse, blackthorn, dog rose, honeysuckle, flamingo flower and
-// early purple orchid.
+// ZZ plant, rubber plant, fiddle leaf fig, bluebell, gorse, blackthorn, dog rose, honeysuckle and early purple
+// orchid.
 
 const SOURCE_NAME = 'ASPCA';
 const ASPCA_PLANTS =
@@ -280,6 +280,13 @@ export const toxicitySeeds: Record<string, ToxicitySeed[]> = {
     'Mouth irritation, pain and swelling, drooling, vomiting and trouble swallowing.',
   ),
   dieffenbachia: calciumOxalate('dieffenbachia', 'Dieffenbachia'),
+  // ASPCA's page is for Anthurium scherzeranum. Ours is A. andraeanum, in the same genus, so the verdict is carried
+  // over until a vet reviews it.
+  'flamingo-flower': calciumOxalate(
+    'flamingo-flower',
+    'Flamingo flower',
+    'Mouth irritation, pain and swelling, drooling, vomiting and trouble swallowing.',
+  ),
 
   // Mild.
   'snake-plant': rows(
