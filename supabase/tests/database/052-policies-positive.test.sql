@@ -1,0 +1,72 @@
+begin;
+select plan(10);
+-- The other policy tests lean on "others see nothing". These are the positive halves: the people who should see rows
+-- do, and the plant-photos bucket policies let a user into their own folder and nobody else's.
+select tests.create_supabase_user('aoife');
+select tests.create_supabase_user('partner');
+select tests.create_supabase_user('outsider');
+
+insert into public.households (id, name) values ('00000000-0000-0000-0000-0000000000a1', 'Our flat');
+insert into public.household_members (household_id, user_id, role) values
+  ('00000000-0000-0000-0000-0000000000a1', tests.get_supabase_uid('aoife'), 'owner'),
+  ('00000000-0000-0000-0000-0000000000a1', tests.get_supabase_uid('partner'), 'member');
+insert into public.species (id, scientific_name, common_name, slug)
+values ('00000000-0000-0000-0000-00000000c001', 'Monstera deliciosa', 'Swiss cheese plant', 'swiss-cheese-plant');
+insert into public.plants (id, household_id, species_id, nickname, room, source)
+values ('00000000-0000-0000-0000-00000000d001', '00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-00000000c001', 'Monty', 'Living room', 'scan');
+insert into public.care_events (plant_id, household_id, user_id, kind, soil_dry, client_id, occurred_at)
+values ('00000000-0000-0000-0000-00000000d001', '00000000-0000-0000-0000-0000000000a1', tests.get_supabase_uid('aoife'), 'checkin', false, '00000000-0000-0000-0000-00000000e001', now());
+insert into public.diagnoses (plant_id, user_id, condition_name, probability)
+values ('00000000-0000-0000-0000-00000000d001', tests.get_supabase_uid('aoife'), 'Overwatering', 0.8);
+
+-- Two users' photo rows, so "sees its own" cannot pass by seeing everything.
+insert into public.observations (id, user_id, device_time, capture_source) values
+  ('00000000-0000-0000-0000-00000000b001', tests.get_supabase_uid('aoife'), now(), 'camera'),
+  ('00000000-0000-0000-0000-00000000b002', tests.get_supabase_uid('outsider'), now(), 'camera');
+insert into public.observation_photos (observation_id, user_id, storage_path, sha256) values
+  ('00000000-0000-0000-0000-00000000b001', tests.get_supabase_uid('aoife'), tests.get_supabase_uid('aoife')::text || '/b001/1.jpg', 'h1'),
+  ('00000000-0000-0000-0000-00000000b002', tests.get_supabase_uid('outsider'), tests.get_supabase_uid('outsider')::text || '/b002/1.jpg', 'h2');
+
+-- The other user's stored photo, put there as the migration owner (clients may only write their own folder).
+insert into storage.objects (bucket_id, name, owner_id)
+values ('plant-photos', tests.get_supabase_uid('outsider')::text || '/theirs.jpg', tests.get_supabase_uid('outsider')::text);
+select isnt_empty(
+  $$select 1 from storage.objects where bucket_id = 'plant-photos' and name = tests.get_supabase_uid('outsider')::text || '/theirs.jpg'$$,
+  'the other user''s object exists, so the invisibility check below is not vacuous');
+
+-- storage.objects serves every bucket, so its policies are named for the bucket they guard.
+select is(
+  (select count(*)::int from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname like 'plant-photos: own folder %'),
+  3, 'the plant-photos policies carry the bucket prefix');
+select is_empty(
+  $$select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname like 'own folder %'$$,
+  'no unprefixed plant-photos policy is left behind');
+
+select tests.authenticate_as('aoife');
+select results_eq(
+  'select storage_path from public.observation_photos',
+  $$select tests.get_supabase_uid('aoife')::text || '/b001/1.jpg'$$,
+  'owner sees exactly their own photo rows');
+select lives_ok(
+  $$insert into storage.objects (bucket_id, name, owner_id) values ('plant-photos', (select auth.uid())::text || '/x.jpg', (select auth.uid())::text)$$,
+  'a user can upload into their own folder of plant-photos');
+select throws_ok(
+  $$insert into storage.objects (bucket_id, name, owner_id) values ('plant-photos', tests.get_supabase_uid('outsider')::text || '/x.jpg', (select auth.uid())::text)$$,
+  '42501', null, 'a user cannot upload into someone else''s folder');
+select isnt_empty(
+  $$select 1 from storage.objects where bucket_id = 'plant-photos' and name = (select auth.uid())::text || '/x.jpg'$$,
+  'a user can read their own object');
+select is_empty(
+  $$select 1 from storage.objects where bucket_id = 'plant-photos' and name = tests.get_supabase_uid('outsider')::text || '/theirs.jpg'$$,
+  'a user cannot see another user''s object');
+
+select tests.authenticate_as('partner');
+select results_eq(
+  'select condition_name from public.diagnoses',
+  $$values ('Overwatering')$$,
+  'a household member sees diagnoses for a household plant');
+
+select tests.authenticate_as('outsider');
+select is_empty('select * from public.care_events', 'an outsider sees no care events');
+select * from finish();
+rollback;

@@ -1,5 +1,5 @@
 begin;
-select plan(19);
+select plan(23);
 
 select tests.create_supabase_user('aoife');
 
@@ -84,7 +84,38 @@ select is(
    where has_function_privilege(r.role_name, 'public.zz_fn()', 'execute')),
   0, 'a new function is not executable by clients');
 
--- A blank taxon would never match anything and would look like coverage that is not there.
+-- Function EXECUTE audit: which of our functions can the client roles call? Functions are ours when no extension owns
+-- them (extension functions are not ours to grant or revoke). A view so the probe below can be added after it is
+-- defined. security definer functions run with the owner's rights, so each client-callable one is a deliberate door:
+-- anon gets the public label lookup only; authenticated additionally gets the two helpers its RLS policies call.
+create temp view held_fn_exec as
+select r.role_name, n.nspname::text as schema_name, p.proname::text as proname
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+cross join (values ('anon'), ('authenticated')) as r(role_name)
+where n.nspname in ('public', 'private')
+  and not exists (
+    select 1 from pg_depend d where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e'
+  )
+  and has_function_privilege(r.role_name, p.oid, 'execute');
+
+select isnt_empty(
+  $$select 1 from held_fn_exec where role_name = 'anon' and schema_name = 'public' and proname = 'public_label'$$,
+  'the function audit can see the grants it is meant to police');
+select is_empty(
+  $$select * from held_fn_exec where role_name = 'anon' and not (schema_name = 'public' and proname = 'public_label')$$,
+  'anon may execute only public.public_label');
+select is_empty(
+  $$select * from held_fn_exec where role_name = 'authenticated'
+    and (schema_name, proname) not in (('public', 'public_label'), ('private', 'is_admin'), ('private', 'my_household_ids'))$$,
+  'authenticated may execute only public_label, is_admin and my_household_ids');
+grant execute on function public.zz_fn() to anon;
+select isnt_empty(
+  $$select 1 from held_fn_exec where role_name = 'anon' and proname = 'zz_fn'$$,
+  'the function audit sees a grant it should flag');
+
+-- A blank taxon would over-flag rather than never match: flag_sensitive compares against coalesce(family, ''), so a
+-- blank family-rank row would mark every species that has no family as sensitive.
 select throws_ok(
   $$insert into private.sensitive_taxa (rank, taxon, reason, source) values ('genus', '  ', 'Poaching risk', 'test')$$,
   '23514', null, 'a blank sensitive taxon is rejected');
