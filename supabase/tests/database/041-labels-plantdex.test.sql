@@ -14,9 +14,9 @@ insert into public.qr_codes (code, partner_id, species_id, status) values
   ('PL-0001', '00000000-0000-0000-0000-00000000f001', '00000000-0000-0000-0000-00000000c002', 'active'),
   ('PL-OLD1', '00000000-0000-0000-0000-00000000f001', '00000000-0000-0000-0000-00000000c002', 'retired');
 -- Dog is inserted before cat so the label has to sort them rather than echo insertion order.
-insert into public.species_toxicity (species_id, animal, severity, summary, source_name, source_url, review_status) values
-  ('00000000-0000-0000-0000-00000000c002', 'dog', 'moderate', 'Mouth and throat irritation.', 'ASPCA', 'https://example.org/dog', 'reviewed'),
-  ('00000000-0000-0000-0000-00000000c002', 'cat', 'mild', 'Mild oral irritation.', 'ASPCA', 'https://example.org/cat', 'seed_pending_vet');
+insert into public.species_toxicity (species_id, animal, severity, summary, source_name, source_url, review_status, reviewed_by, reviewed_at) values
+  ('00000000-0000-0000-0000-00000000c002', 'dog', 'moderate', 'Mouth and throat irritation.', 'ASPCA', 'https://example.org/dog', 'reviewed', 'Dr Vet', now()),
+  ('00000000-0000-0000-0000-00000000c002', 'cat', 'mild', 'Mild oral irritation.', 'ASPCA', 'https://example.org/cat', 'seed_pending_vet', null, null);
 insert into public.plantdex_entries (user_id, species_id, category, first_found_at)
 values (tests.get_supabase_uid('aoife'), '00000000-0000-0000-0000-00000000c002', 'houseplant', now());
 
