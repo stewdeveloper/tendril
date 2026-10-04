@@ -257,7 +257,8 @@ describe('FixtureApi scans and plants', () => {
       points: 2,
       newToPlantdex: false,
     });
-    expect((await api.getSpeciesCard('peace-lily')).findsCount).toBe(2);
+    // The sample Plantdex already holds one peace lily find.
+    expect((await api.getSpeciesCard('peace-lily')).findsCount).toBe(3);
   });
 
   it('adding a plant from a scan adds it to the houseplants', async () => {
@@ -271,9 +272,12 @@ describe('FixtureApi scans and plants', () => {
     expect(plantId).toEqual(expect.any(String));
     expect(await api.getPlant(plantId!)).toMatchObject({ nickname: 'Peace lily' });
     expect((await api.getPlantdex('houseplant')).entries.map((e) => e.species.id)).toEqual([
+      'spider-plant',
       'peace-lily',
+      'swiss-cheese-plant',
     ]);
-    expect((await api.getOutcome(scan.observationId)).points).toBe(10);
+    // A peace lily is already in the sample Plantdex, so this is a repeat.
+    expect((await api.getOutcome(scan.observationId)).points).toBe(2);
   });
 
   it('closes a plant: status, date, cause, history and its open tasks', async () => {

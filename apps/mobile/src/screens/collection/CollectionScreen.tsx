@@ -27,9 +27,10 @@ import {
 import { FindsMap } from '../../components/FindsMap';
 import { useInsets } from '../../components/useInsets';
 import { AppText, useTheme } from '../../theme';
+import { progressCardSet, setProgressFrom, type PlantdexFilter } from './setProgress';
 
 export type CollectionSegment = 'plantdex' | 'sets' | 'map' | 'badges';
-export type PlantdexFilter = 'all' | 'houseplant' | 'wild';
+export type { PlantdexFilter };
 
 export interface CollectionScreenProps {
   segment: CollectionSegment;
@@ -40,6 +41,8 @@ export interface CollectionScreenProps {
     filter: PlantdexFilter;
   } | null;
   sets: CollectionSet[];
+  /** Every Plantdex entry, whatever the filter: the Sets view counts from these. */
+  allEntries: PlantdexEntry[];
   finds: FindListItem[];
   /** The location permission is on, so the map can show. Off, the finds are a list. */
   locationGranted: boolean;
@@ -88,29 +91,23 @@ export function plantdexTiles(
   const placed = new Set<string>();
   const tiles: PlantdexGridTile[] = [];
   for (const set of sets) {
-    const setTiles: PlantdexGridTile[] = [];
-    set.tiles.forEach((tile, i) => {
-      if (tile.found && tile.species) {
-        const entry = byId.get(tile.species.id);
-        // The set knows the species is found; with no filter that is enough to show it.
-        if (!entry && filter !== 'all') return;
-        placed.add(tile.species.id);
-        setTiles.push({
-          key: `${set.id}-${tile.species.id}`,
-          species: entry?.species ?? tile.species,
-          found: true,
-          photoUrl: entry?.photoUrl ?? null,
-        });
-      } else {
-        setTiles.push({
-          key: `${set.id}-missing-${i}`,
-          species: null,
-          found: false,
-          photoUrl: null,
-          setName: set.name,
-        });
-      }
-    });
+    const setTiles: PlantdexGridTile[] = setProgressFrom(set, byId).tiles.map((t, i) =>
+      t.entry
+        ? {
+            key: `${set.id}-${t.entry.species.id}`,
+            species: t.entry.species,
+            found: true,
+            photoUrl: t.entry.photoUrl,
+          }
+        : {
+            key: `${set.id}-missing-${i}`,
+            species: null,
+            found: false,
+            photoUrl: null,
+            setName: set.name,
+          },
+    );
+    for (const t of setTiles) if (t.species) placed.add(t.species.id);
     // A set the filter emptied of found species leaves its missing tiles out too.
     if (filter === 'all' || setTiles.some((t) => t.found)) tiles.push(...setTiles);
   }
@@ -156,7 +153,7 @@ export function CollectionScreen(props: CollectionScreenProps) {
           onChange={(v) => props.onSegment(v as CollectionSegment)}
         />
         {segment === 'plantdex' ? <PlantdexView {...props} /> : null}
-        {segment === 'sets' ? <SetsView sets={props.sets} /> : null}
+        {segment === 'sets' ? <SetsView sets={props.sets} entries={props.allEntries} /> : null}
         {segment === 'map' ? <MapSegment {...props} /> : null}
         {segment === 'badges' ? <BadgesView {...props} /> : null}
       </ScrollView>
@@ -180,7 +177,8 @@ function PlantdexView({ plantdex, sets, onFilter, onOpenSpecies, onScan }: Colle
   }
   const { counts, filter } = plantdex;
   const tiles = plantdexTiles(plantdex.entries, sets, filter);
-  const progress = sets.find((s) => s.found < s.total) ?? sets[0];
+  const byId = new Map(plantdex.entries.map((e) => [e.species.id, e]));
+  const card = progressCardSet(sets, byId, filter);
   const rows = chunk(tiles, 2);
   return (
     <>
@@ -200,7 +198,8 @@ function PlantdexView({ plantdex, sets, onFilter, onOpenSpecies, onScan }: Colle
           />
         ))}
       </View>
-      {progress ? <SetProgress set={progress} /> : null}
+      {card ? <SetProgress set={card.set} found={card.progress.found} /> : null}
+      {/* A plain ScrollView with chunked rows is bounded by Plantdex size; FlatList is the path if Plantdexes grow large. */}
       <View style={styles.grid}>
         {rows.map((row) => (
           <View key={row[0]!.key} style={styles.gridRow}>
@@ -258,21 +257,21 @@ function FilterPill({
 }
 
 /** "Irish hedgerow 4 of 8" over one segment per species in the set (2f). */
-function SetProgress({ set }: { set: CollectionSet }) {
+function SetProgress({ set, found }: { set: CollectionSet; found: number }) {
   const { c } = useTheme();
   return (
     <Card padding={14} gap={8}>
       <View style={styles.progressTitle}>
         <AppText variant="bodyStrong">{set.name}</AppText>
         <AppText variant="caption" color="textSecondary">
-          {setProgressValue(set.found, set.total)}
+          {setProgressValue(found, set.total)}
         </AppText>
       </View>
       <View style={styles.segments}>
         {Array.from({ length: set.total }, (_, i) => (
           <View
             key={i}
-            style={[styles.segment, { backgroundColor: i < set.found ? c.primary : c.primaryTint }]}
+            style={[styles.segment, { backgroundColor: i < found ? c.primary : c.primaryTint }]}
           />
         ))}
       </View>
@@ -285,13 +284,15 @@ const chunk = <T,>(list: T[], size: number): T[][] =>
     list.slice(i * size, (i + 1) * size),
   );
 
-function SetsView({ sets }: { sets: CollectionSet[] }) {
+function SetsView({ sets, entries }: { sets: CollectionSet[]; entries: PlantdexEntry[] }) {
+  const byId = new Map(entries.map((e) => [e.species.id, e]));
+  const progress = sets.map((s) => setProgressFrom(s, byId));
   const first = sets[0];
-  const rows: Row[] = sets.map((s) => ({
+  const rows: Row[] = sets.map((s, i) => ({
     key: s.id,
     title: s.name,
     subtitle: s.preview,
-    right: setProgressValue(s.found, s.total),
+    right: setProgressValue(progress[i]!.found, s.total),
   }));
   return (
     <>
@@ -302,11 +303,11 @@ function SetsView({ sets }: { sets: CollectionSet[] }) {
             {first.name}
           </AppText>
           <View style={styles.grid}>
-            {chunk(first.tiles, 3).map((row, r) => (
+            {chunk(progress[0]!.tiles, 3).map((row, r) => (
               <View key={r} style={styles.gridRow}>
                 {row.map((t, i) => (
                   <View key={i} style={styles.cell}>
-                    <SetTile species={t.found ? t.species : null} />
+                    <SetTile species={t.species} />
                   </View>
                 ))}
                 {Array.from({ length: 3 - row.length }, (_, i) => (

@@ -42,6 +42,8 @@ export default function CollectionRoute() {
   const [locationGranted, setLocationGranted] = useState(false);
   const [primer, setPrimer] = useState(false);
   const plantdex = usePlantdex(filter);
+  // The Sets view counts from every entry, whatever filter the Plantdex tab has.
+  const allEntries = usePlantdex('all');
   const sets = useSets();
   const finds = useFinds();
   const badges = useBadges();
@@ -114,6 +116,7 @@ export default function CollectionRoute() {
         segment={segment}
         plantdex={plantdex.data ? { ...plantdex.data, filter } : null}
         sets={sets.data ?? []}
+        allEntries={allEntries.data?.entries ?? []}
         finds={finds.data ?? []}
         locationGranted={locationGranted}
         badges={badges.data ?? []}

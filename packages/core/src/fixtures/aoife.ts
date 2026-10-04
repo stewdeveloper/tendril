@@ -548,8 +548,12 @@ const plantdex: PlantdexEntry[] = [
   { species: gorse, category: 'wild', findsCount: 1, photoUrl: null },
   { species: primrose, category: 'wild', findsCount: 1, photoUrl: null },
   { species: hawthorn, category: 'wild', findsCount: 1, photoUrl: null },
+  { species: spiderPlant, category: 'houseplant', findsCount: 1, photoUrl: null },
+  { species: peaceLily, category: 'houseplant', findsCount: 1, photoUrl: null },
+  { species: swissCheesePlant, category: 'houseplant', findsCount: 1, photoUrl: null },
 ];
 
+// The entries above are a sample; these are the stated totals the Plantdex tab shows.
 export const plantdexCounts = { all: 37, houseplants: 21, wild: 16 } as const;
 
 const missing = (count: number): CollectionSet['tiles'] =>

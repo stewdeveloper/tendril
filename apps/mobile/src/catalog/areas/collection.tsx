@@ -30,6 +30,7 @@ const collection = (
     <CollectionScreen
       {...handlers}
       plantdex={plantdex}
+      allEntries={aoife.plantdex}
       sets={aoife.sets}
       finds={aoife.finds}
       locationGranted

@@ -373,7 +373,17 @@ describe('Setup route, from a scan', () => {
   });
 
   it('goes to the new species screen when the species is new to the Plantdex', async () => {
-    await renderRoute(<SetupRoute />);
+    // The sample Plantdex already holds a peace lily, so say it is new.
+    const api = new FixtureApi();
+    jest.spyOn(api, 'getOutcome').mockResolvedValue({
+      pointsStatus: 'awarded',
+      points: 10,
+      noPointsReason: null,
+      newToPlantdex: true,
+      plantdexCount: 38,
+      sets: [],
+    });
+    await renderRoute(<SetupRoute />, api);
     await fireEvent.press(await screen.findByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(routerMock.replace).toHaveBeenCalledWith(

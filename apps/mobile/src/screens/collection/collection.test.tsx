@@ -3,11 +3,13 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { FindsMap } from '../../components/FindsMap';
 import { ThemeProvider } from '../../theme';
 import { CollectionScreen, plantdexTiles, type CollectionScreenProps } from './CollectionScreen';
+import { progressCardSet, setProgressFrom } from './setProgress';
 import { SpeciesCardScreen } from './SpeciesCardScreen';
 
 const noop = () => {};
 const base: Omit<CollectionScreenProps, 'segment'> = {
   plantdex: { entries: aoife.plantdex, counts: plantdexCounts, filter: 'all' },
+  allEntries: aoife.plantdex,
   sets: aoife.sets,
   finds: aoife.finds,
   locationGranted: true,
@@ -41,10 +43,36 @@ describe('plantdexTiles', () => {
     ]);
   });
   it('a filter hides the missing tiles of sets with nothing found under it', () => {
-    const wild = aoife.plantdex;
+    const wild = aoife.plantdex.filter((e) => e.category === 'wild');
     const tiles = plantdexTiles(wild, aoife.sets, 'wild');
     expect(tiles.filter((t) => !t.found)).toHaveLength(4);
     expect(tiles.map((t) => t.species?.id).filter(Boolean)).not.toContain('peace-lily');
+  });
+  it('a set that claims a species found with no Plantdex entry shows it as missing', () => {
+    const entries = aoife.plantdex.filter((e) => e.species.id !== 'gorse');
+    const tiles = plantdexTiles(entries, aoife.sets, 'all');
+    expect(tiles.map((t) => t.species?.id)).not.toContain('gorse');
+    expect(tiles.filter((t) => !t.found && t.setName === 'Irish hedgerow')).toHaveLength(5);
+  });
+});
+
+describe('setProgressFrom', () => {
+  const byId = (ids: string[]) =>
+    new Map(aoife.plantdex.filter((e) => ids.includes(e.species.id)).map((e) => [e.species.id, e]));
+  it('counts only the species with an entry', () => {
+    const p = setProgressFrom(aoife.sets[0]!, byId(['foxglove', 'gorse']));
+    expect(p.found).toBe(2);
+    expect(p.total).toBe(8);
+    expect(p.tiles.filter((t) => t.entry)).toHaveLength(2);
+  });
+  it('picks the first incomplete set that has something found under the filter', () => {
+    const houseplants = new Map(
+      aoife.plantdex.filter((e) => e.category === 'houseplant').map((e) => [e.species.id, e]),
+    );
+    expect(progressCardSet(aoife.sets, houseplants, 'houseplant')?.set.name).toBe(
+      'Easy-care houseplants',
+    );
+    expect(progressCardSet(aoife.sets, new Map(), 'wild')).toBeNull();
   });
 });
 
@@ -56,6 +84,30 @@ describe('CollectionScreen', () => {
     expect(screen.getByText('Wild · 16')).toBeTruthy();
     expect(screen.getAllByLabelText('Not found yet').length).toBeGreaterThan(0);
     expect(screen.getByText('4 of 8')).toBeTruthy();
+  });
+  it('the Houseplants filter never shows a wild set progress card', async () => {
+    const houseplants = aoife.plantdex.filter((e) => e.category === 'houseplant');
+    await wrap(
+      <CollectionScreen
+        segment="plantdex"
+        {...base}
+        plantdex={{ entries: houseplants, counts: plantdexCounts, filter: 'houseplant' }}
+      />,
+    );
+    expect(screen.getByText('3 of 6')).toBeTruthy();
+    expect(screen.queryByText('4 of 8')).toBeNull();
+  });
+  it('a set card counts entries, not the set claim', async () => {
+    const entries = aoife.plantdex.filter((e) => e.species.id !== 'gorse');
+    await wrap(
+      <CollectionScreen
+        segment="plantdex"
+        {...base}
+        plantdex={{ entries, counts: plantdexCounts, filter: 'all' }}
+        allEntries={entries}
+      />,
+    );
+    expect(screen.getByText('3 of 8')).toBeTruthy();
   });
   it('a filter pill reports the filter, a tile reports its species', async () => {
     const onFilter = jest.fn();
