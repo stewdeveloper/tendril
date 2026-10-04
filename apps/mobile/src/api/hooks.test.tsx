@@ -2,16 +2,21 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 import { ApiProvider } from './ApiProvider';
-import { FixtureApi } from './fixture/FixtureApi';
+import { FIXTURE_TODAY, FixtureApi } from './fixture/FixtureApi';
 import {
   useAddPlant,
+  useAppToday,
   useApplyDiagnosis,
   useCheckIn,
+  useClearHomeArea,
   useConfirmScan,
+  useCreateInvite,
   useDeleteAccount,
   useDiagnose,
   useEntitlement,
+  useFetchOutcome,
   useFinds,
+  useFindHandle,
   useFriends,
   useHousehold,
   useHouseholds,
@@ -20,9 +25,12 @@ import {
   usePlantdex,
   usePlants,
   useQuota,
+  useSaveHomeArea,
   useSavePets,
   useSendFriendRequest,
   useSetPlantStatus,
+  useSetReminders,
+  useSettings,
   useStartPreview,
   useToday,
 } from './hooks';
@@ -229,7 +237,7 @@ describe('API hooks', () => {
     await waitFor(() => expect(result.current.friends.data).toBeDefined());
     const rows = result.current.friends.data!.rows.length;
     await act(() => result.current.send.mutateAsync('lichenlou'));
-    expect(result.current.send.isSuccess).toBe(true);
+    await waitFor(() => expect(result.current.send.isSuccess).toBe(true));
     await waitFor(() => expect(result.current.friends.data?.rows).toHaveLength(rows));
   });
 
@@ -242,5 +250,86 @@ describe('API hooks', () => {
     await waitFor(() => expect(result.current.plants.data).toHaveLength(3));
     await act(() => result.current.del.mutateAsync());
     await waitFor(() => expect(result.current.plants.data).toEqual([]));
+  });
+
+  it('settings follow the home area and reminder mutations', async () => {
+    const { wrapper } = setup();
+    const { result } = await renderHook(
+      () => ({
+        settings: useSettings(),
+        save: useSaveHomeArea(),
+        clear: useClearHomeArea(),
+        reminders: useSetReminders(),
+      }),
+      { wrapper },
+    );
+    await waitFor(() =>
+      expect(result.current.settings.data).toEqual({ homeAreaSet: true, remindersOn: true }),
+    );
+    await act(() => result.current.clear.mutateAsync());
+    await waitFor(() => expect(result.current.settings.data?.homeAreaSet).toBe(false));
+    await act(() => result.current.save.mutateAsync({ lat: 53.3, lng: -6.2, radiusM: 500 }));
+    await waitFor(() => expect(result.current.settings.data?.homeAreaSet).toBe(true));
+    await act(() => result.current.reminders.mutateAsync(false));
+    await waitFor(() => expect(result.current.settings.data?.remindersOn).toBe(false));
+  });
+
+  it('useFindHandle returns the account for a handle, or null', async () => {
+    const { wrapper } = setup();
+    const { result } = await renderHook(() => useFindHandle(), { wrapper });
+    let found: unknown;
+    await act(async () => {
+      found = await result.current.mutateAsync('@LichenLou');
+    });
+    expect(found).toEqual({ handle: 'lichenlou', plantdexCount: 22 });
+    await act(async () => {
+      found = await result.current.mutateAsync('nobody');
+    });
+    expect(found).toBeNull();
+  });
+
+  it('useCreateInvite returns an invite link', async () => {
+    const { wrapper } = setup();
+    const { result } = await renderHook(() => useCreateInvite(), { wrapper });
+    let invite: { url: string } | undefined;
+    await act(async () => {
+      invite = await result.current.mutateAsync();
+    });
+    expect(invite?.url).toMatch(/^https:\/\//);
+  });
+
+  it('useFetchOutcome reads the outcome fresh, without a mounted query', async () => {
+    const { wrapper } = setup();
+    const { result } = await renderHook(() => useFetchOutcome(), { wrapper });
+    const outcome = await result.current('obs-foxglove-find');
+    expect(outcome.newToPlantdex).toBe(true);
+    await expect(result.current('nope')).rejects.toThrow(/not_found/);
+  });
+});
+
+describe('useAppToday', () => {
+  const mode = process.env.EXPO_PUBLIC_API_MODE;
+  afterEach(() => {
+    jest.useRealTimers();
+    if (mode === undefined) delete process.env.EXPO_PUBLIC_API_MODE;
+    else process.env.EXPO_PUBLIC_API_MODE = mode;
+  });
+
+  it('is the fixture date in fixture mode, whatever the device clock says', async () => {
+    delete process.env.EXPO_PUBLIC_API_MODE;
+    jest.useFakeTimers({ now: new Date(2031, 4, 1, 12) });
+    const { result } = await renderHook(() => useAppToday());
+    expect(result.current).toBe(FIXTURE_TODAY);
+  });
+
+  it("is the device's local date in supabase mode, not the UTC date", async () => {
+    process.env.EXPO_PUBLIC_API_MODE = 'supabase';
+    // Late evening local time: UTC may already be the next day, the local date must not be.
+    jest.useFakeTimers({ now: new Date(2031, 4, 1, 23, 30) });
+    const { result } = await renderHook(() => useAppToday());
+    expect(result.current).toBe('2031-05-01');
+    jest.setSystemTime(new Date(2031, 0, 9, 0, 5));
+    const next = await renderHook(() => useAppToday());
+    expect(next.result.current).toBe('2031-01-09');
   });
 });

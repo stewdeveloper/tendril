@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -12,12 +13,19 @@ import { readAgeBlock, writeAgeBlock } from './ageBlockStore';
 export type SessionStatus = 'loading' | 'signed_out' | 'onboarding' | 'ready';
 export type SignInMethod = 'apple' | 'google' | 'email';
 
+/** Where a ready session lands after onboarding: the camera for a first scan, otherwise Today. */
+export type Destination = '/camera' | '/today';
+
 export interface Session {
   status: SessionStatus;
   /** True once the person has said they're under 13. Persisted: it survives restarts. */
   ageBlocked: boolean;
   signIn(method: SignInMethod, email?: string): Promise<void>;
-  completeOnboarding(): void;
+  /** Finishes onboarding and remembers where `/` should send the person next (default Today). */
+  completeOnboarding(then?: Destination): void;
+  /** Where `/` sends a ready session. Reading it changes nothing; `clearDestination` resets it. */
+  destination(): Destination;
+  clearDestination(): void;
   blockForAge(): void;
   signOut(): void;
 }
@@ -51,6 +59,10 @@ async function restoreSession(): Promise<{ status: SessionStatus; ageBlocked: bo
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<SessionStatus>('loading');
   const [ageBlocked, setAgeBlocked] = useState(false);
+  // A ref, not state: it is read when `/` renders and cleared afterwards, and neither may re-render.
+  const destinationRef = useRef<Destination>('/today');
+  const statusRef = useRef(status);
+  statusRef.current = status;
 
   useEffect(() => {
     let cancelled = false;
@@ -72,18 +84,45 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     },
     [ageBlocked],
   );
-  const completeOnboarding = useCallback(() => {
-    setStatus((s) => (s === 'onboarding' ? 'ready' : s));
+  const completeOnboarding = useCallback((then: Destination = '/today') => {
+    if (statusRef.current !== 'onboarding') return;
+    destinationRef.current = then;
+    setStatus('ready');
+  }, []);
+  const destination = useCallback(() => destinationRef.current, []);
+  const clearDestination = useCallback(() => {
+    destinationRef.current = '/today';
   }, []);
   const blockForAge = useCallback(() => {
     writeAgeBlock();
     setAgeBlocked(true);
   }, []);
-  const signOut = useCallback(() => setStatus('signed_out'), []);
+  const signOut = useCallback(() => {
+    destinationRef.current = '/today';
+    setStatus('signed_out');
+  }, []);
 
   const value = useMemo<Session>(
-    () => ({ status, ageBlocked, signIn, completeOnboarding, blockForAge, signOut }),
-    [status, ageBlocked, signIn, completeOnboarding, blockForAge, signOut],
+    () => ({
+      status,
+      ageBlocked,
+      signIn,
+      completeOnboarding,
+      destination,
+      clearDestination,
+      blockForAge,
+      signOut,
+    }),
+    [
+      status,
+      ageBlocked,
+      signIn,
+      completeOnboarding,
+      destination,
+      clearDestination,
+      blockForAge,
+      signOut,
+    ],
   );
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

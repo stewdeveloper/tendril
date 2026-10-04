@@ -23,6 +23,7 @@ import type {
   QuotaKind,
   QuotaState,
   ScanResult,
+  Settings,
   SpeciesRef,
   StreakSummary,
   TodaySummary,
@@ -121,4 +122,9 @@ export interface TendrilApi {
     petId: string;
   }): Promise<EmergencyInfo>;
   deleteAccount(): Promise<void>;
+  getSettings(): Promise<Settings>;
+  /** The home area is a point and a radius; finds inside it never appear publicly. */
+  saveHomeArea(input: { lat: number; lng: number; radiusM: number }): Promise<void>;
+  clearHomeArea(): Promise<void>;
+  setReminders(on: boolean): Promise<void>;
 }

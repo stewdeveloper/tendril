@@ -445,3 +445,28 @@ describe('FixtureApi reads', () => {
     expect((await api.getPlants('our-flat'))[0]!.nickname).toBe('Monty');
   });
 });
+
+describe('FixtureApi settings', () => {
+  it('starts with a home area and reminders on, and keeps what is saved', async () => {
+    const api = new FixtureApi();
+    expect(await api.getSettings()).toEqual({ homeAreaSet: true, remindersOn: true });
+    await api.clearHomeArea();
+    await api.setReminders(false);
+    expect(await api.getSettings()).toEqual({ homeAreaSet: false, remindersOn: false });
+    await api.saveHomeArea({ lat: 53.3, lng: -6.2, radiusM: 500 });
+    expect((await api.getSettings()).homeAreaSet).toBe(true);
+  });
+  it('refuses a home area with no radius or a non-finite point', async () => {
+    const api = new FixtureApi();
+    await api.clearHomeArea();
+    await expect(api.saveHomeArea({ lat: 53.3, lng: -6.2, radiusM: 0 })).rejects.toThrow();
+    await expect(api.saveHomeArea({ lat: NaN, lng: -6.2, radiusM: 100 })).rejects.toThrow();
+    expect((await api.getSettings()).homeAreaSet).toBe(false);
+  });
+  it('a new account has set neither, and the league board knows its size', async () => {
+    const api = new FixtureApi({ scenario: 'empty' });
+    expect(await api.getSettings()).toEqual({ homeAreaSet: false, remindersOn: false });
+    expect((await api.getLeague()).size).toBe(0);
+    expect((await new FixtureApi().getLeague()).size).toBe(20);
+  });
+});

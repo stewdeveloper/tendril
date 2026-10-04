@@ -1,6 +1,7 @@
-import type { PlantStatus, QuotaKind } from '@tendril/core';
+import type { IsoDate, PlantStatus, QuotaKind } from '@tendril/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApi } from './ApiProvider';
+import { FIXTURE_TODAY } from './fixture/FixtureApi';
 import type { TendrilApi } from './types';
 
 type Input<K extends keyof TendrilApi> = Parameters<TendrilApi[K]>[0];
@@ -28,6 +29,7 @@ export const queryKeys = {
   profile: ['profile'],
   households: ['households'],
   household: ['household'],
+  settings: ['settings'],
   entitlement: ['entitlement'],
   label: (code: string) => ['label', code],
   emergency: (input: Input<'getEmergency'>) => ['emergency', input],
@@ -107,6 +109,10 @@ export const useHouseholds = () => {
 export const useHousehold = () => {
   const api = useApi();
   return useQuery({ queryKey: queryKeys.household, queryFn: () => api.getHousehold() });
+};
+export const useSettings = () => {
+  const api = useApi();
+  return useQuery({ queryKey: queryKeys.settings, queryFn: () => api.getSettings() });
 };
 export const useEntitlement = () => {
   const api = useApi();
@@ -261,3 +267,69 @@ export const useDeleteAccount = () => {
     onSuccess: () => client.invalidateQueries(),
   });
 };
+
+export const useSaveHomeArea = () => {
+  const api = useApi();
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (input: Input<'saveHomeArea'>) => api.saveHomeArea(input),
+    onSuccess: () => invalidate(['settings']),
+  });
+};
+
+export const useClearHomeArea = () => {
+  const api = useApi();
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: () => api.clearHomeArea(),
+    onSuccess: () => invalidate(['settings']),
+  });
+};
+
+export const useSetReminders = () => {
+  const api = useApi();
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (on: boolean) => api.setReminders(on),
+    onSuccess: () => invalidate(['settings']),
+  });
+};
+
+/** Looks a handle up on demand: `mutateAsync(handle)` resolves to the account, or null. Nothing is cached. */
+export const useFindHandle = () => {
+  const api = useApi();
+  return useMutation({ mutationFn: (handle: string) => api.findHandle(handle) });
+};
+
+/** Makes a friend invite link on demand. */
+export const useCreateInvite = () => {
+  const api = useApi();
+  return useMutation({ mutationFn: () => api.createInvite() });
+};
+
+/**
+ * Reads a scan's outcome once, fresh, for a container that must act on it (the new-species check
+ * after a find is confirmed) rather than render it. Returns `(observationId) => Promise<Outcome>`.
+ */
+export const useFetchOutcome = () => {
+  const api = useApi();
+  const client = useQueryClient();
+  return (observationId: string) =>
+    client.fetchQuery({
+      queryKey: queryKeys.outcome(observationId),
+      queryFn: () => api.getOutcome(observationId),
+    });
+};
+
+/**
+ * The calendar date screens count from. The fixture API lives on the fixture's fixed day so frames
+ * read the same on any date; against the real backend it is the device's local date, because
+ * dates are calendar dates in the person's timezone, never UTC.
+ */
+export function useAppToday(): IsoDate {
+  if (process.env.EXPO_PUBLIC_API_MODE !== 'supabase') return FIXTURE_TODAY;
+  const now = new Date();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${mm}-${dd}`;
+}

@@ -128,3 +128,48 @@ describe('age block on web storage', () => {
     expect(readAgeBlock()).toBe(true);
   });
 });
+
+describe('SessionProvider destination', () => {
+  beforeEach(() => {
+    resetAgeBlockForTests();
+    delete process.env.EXPO_PUBLIC_FIXTURE_SKIP_ONBOARDING;
+  });
+  afterAll(() => resetAgeBlockForTests());
+
+  const onboarding = async () => {
+    const session = await setup();
+    await act(() => session.current.signIn('email', 'aoife@example.com'));
+    return session;
+  };
+
+  it('defaults to Today', async () => {
+    const session = await onboarding();
+    expect(session.current.destination()).toBe('/today');
+    await act(() => session.current.completeOnboarding());
+    expect(session.current.destination()).toBe('/today');
+  });
+
+  it('keeps where onboarding said to go until it is cleared, then falls back to Today', async () => {
+    const session = await onboarding();
+    await act(() => session.current.completeOnboarding('/camera'));
+    expect(session.current.status).toBe('ready');
+    expect(session.current.destination()).toBe('/camera');
+    expect(session.current.destination()).toBe('/camera');
+    session.current.clearDestination();
+    expect(session.current.destination()).toBe('/today');
+  });
+
+  it('ignores a destination when onboarding is not in progress', async () => {
+    const session = await setup();
+    await act(() => session.current.completeOnboarding('/camera'));
+    expect(session.current.status).toBe('signed_out');
+    expect(session.current.destination()).toBe('/today');
+  });
+
+  it('forgets the destination on sign-out', async () => {
+    const session = await onboarding();
+    await act(() => session.current.completeOnboarding('/camera'));
+    await act(() => session.current.signOut());
+    expect(session.current.destination()).toBe('/today');
+  });
+});

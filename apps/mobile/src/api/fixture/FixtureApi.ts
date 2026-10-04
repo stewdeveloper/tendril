@@ -27,6 +27,7 @@ import {
   type QuotaKind,
   type QuotaState,
   type ScanResult,
+  type Settings,
   type SpeciesRef,
   type StreakSummary,
   type ToxicityEntry,
@@ -128,6 +129,7 @@ interface WorldData {
   quota: Record<QuotaKind, QuotaState>;
   entitlement: Entitlement;
   household: Household;
+  settings: Settings;
   profile: typeof aoife.profile;
   plantdex: PlantdexEntry[];
   counts: { all: number; houseplants: number; wild: number };
@@ -161,7 +163,12 @@ function createWorld(scenario: FixtureScenario): World {
   const entitlement: Entitlement = premium
     ? { plan: 'premium', source: 'store', activeUntil: '2027-09-20', previewUsed: false }
     : clone(aoife.entitlement);
-  const noBoard = (board: LeagueBoard): LeagueBoard => ({ ...board, joined: false, rows: [] });
+  const noBoard = (board: LeagueBoard): LeagueBoard => ({
+    ...board,
+    size: 0,
+    joined: false,
+    rows: [],
+  });
   const noStreak: StreakSummary = {
     ...aoife.today.streak,
     careDays: 0,
@@ -183,6 +190,8 @@ function createWorld(scenario: FixtureScenario): World {
     quota: { identification: quotaFor('identification'), diagnosis: quotaFor('diagnosis') },
     entitlement,
     household: aoife.household,
+    // A new account has set neither; Aoife has both.
+    settings: { homeAreaSet: !empty, remindersOn: !empty },
     profile: empty
       ? {
           ...aoife.profile,
@@ -716,6 +725,30 @@ export class FixtureApi implements TendrilApi {
   deleteAccount() {
     return this.run(() => {
       this.world = createWorld('empty');
+    });
+  }
+
+  getSettings() {
+    return this.run(() => clone(this.world.settings));
+  }
+
+  saveHomeArea(input: { lat: number; lng: number; radiusM: number }) {
+    return this.run(() => {
+      if (!Number.isFinite(input.lat) || !Number.isFinite(input.lng) || !(input.radiusM > 0))
+        throw new Error('invalid_home_area');
+      this.world.settings.homeAreaSet = true;
+    });
+  }
+
+  clearHomeArea() {
+    return this.run(() => {
+      this.world.settings.homeAreaSet = false;
+    });
+  }
+
+  setReminders(on: boolean) {
+    return this.run(() => {
+      this.world.settings.remindersOn = on;
     });
   }
 
