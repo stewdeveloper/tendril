@@ -1,9 +1,16 @@
-import { cameraCopy, parseLabelCode, type CaptureSource, type Organ } from '@tendril/core';
+import {
+  cameraCopy,
+  limitReachedTitle,
+  parseLabelCode,
+  type CaptureSource,
+  type Organ,
+} from '@tendril/core';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { StatusBar } from 'expo-status-bar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
+import { Snackbar } from '../components/Snackbar';
 import { useIdentify, useQuota } from '../api/hooks';
 import { choosePhotos, type PickOutcome } from '../lib/pickPhotos';
 import { useScreenFocused } from '../lib/useScreenFocused';
@@ -66,11 +73,19 @@ function PlantCameraRoute() {
   const identify = useIdentify();
   const camera = useRef<CameraView>(null);
   const capturing = useRef(false);
+  const identifying = useRef(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [photos, setPhotos] = useState<Taken[]>([]);
   const [organ, setOrgan] = useState<Organ>('leaf');
   const [healthCheck, setHealthCheck] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [galleryOnly, setGalleryOnly] = useState(false);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 5000);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   const room = MAX_PHOTOS - photos.length;
   const atCap = quota.data != null && quota.data.used >= quota.data.limit;
@@ -78,6 +93,7 @@ function PlantCameraRoute() {
   const add = async (
     items: { uri: string; width: number; height: number }[],
     source: CaptureSource,
+    organ: Organ,
   ) => {
     try {
       const prepared = await Promise.all(items.map((i) => preparePhoto(i.uri, i.width, i.height)));
@@ -96,9 +112,11 @@ function PlantCameraRoute() {
   const shutter = async () => {
     if (room <= 0 || capturing.current || !camera.current) return;
     capturing.current = true;
+    // The organ chosen now, not whatever it is by the time the photo is ready.
+    const pressedOrgan = organ;
     try {
       const picture = await camera.current.takePictureAsync();
-      await add([picture], 'camera');
+      await add([picture], 'camera', pressedOrgan);
     } catch {
       setError(cameraCopy.photoFailed);
     } finally {
@@ -109,27 +127,38 @@ function PlantCameraRoute() {
   const gallery = async () => {
     if (room <= 0) return;
     const outcome: PickOutcome = await choosePhotos(room);
-    if (outcome.status === 'picked') await add(outcome.assets, 'gallery');
+    if (outcome.status === 'picked') await add(outcome.assets, 'gallery', organ);
   };
 
   const identifyNow = async () => {
     // At the cap the Limit reached sheet is already up; nothing is sent.
-    if (atCap || photos.length === 0) return;
+    if (atCap || photos.length === 0 || identifying.current) return;
+    identifying.current = true;
     setError(null);
+    const withHealth =
+      healthCheck &&
+      !(diagnosisQuota.data && diagnosisQuota.data.used >= diagnosisQuota.data.limit);
     try {
       const result = await identify.mutateAsync({
         photoUris: photos.map((p) => p.uri),
         organs: photos.map((p) => p.organ),
         captureSource: photos.some((p) => p.source === 'gallery') ? 'gallery' : 'camera',
-        healthCheck:
-          healthCheck &&
-          !(diagnosisQuota.data && diagnosisQuota.data.used >= diagnosisQuota.data.limit),
+        healthCheck: withHealth,
       });
       router.replace(`/scan/${result.observationId}`);
     } catch (e) {
-      // The server refused: a month used up elsewhere. The refreshed quota opens the sheet.
-      if (e instanceof Error && e.message === 'quota_exceeded') void quota.refetch();
-      else setError(cameraCopy.identifyFailed);
+      if (e instanceof Error && e.message === 'quota_exceeded') {
+        // The server refused: a month used up elsewhere. If it is identifications, the refreshed
+        // quota opens the sheet; if only the diagnosis, the scan can still go without a health check.
+        const [ident, diagnosis] = await Promise.all([quota.refetch(), diagnosisQuota.refetch()]);
+        const identCapped = ident.data != null && ident.data.used >= ident.data.limit;
+        if (!identCapped && withHealth && diagnosis.data) {
+          setHealthCheck(false);
+          setNotice(limitReachedTitle('diagnosis', diagnosis.data.plan, diagnosis.data.limit));
+        }
+      } else setError(cameraCopy.identifyFailed);
+    } finally {
+      identifying.current = false;
     }
   };
 
@@ -192,6 +221,7 @@ function PlantCameraRoute() {
     <>
       <StatusBar style={access === 'denied' ? 'auto' : 'light'} />
       {screen}
+      {notice ? <Snackbar text={notice} /> : null}
       {atCap && quota.data ? (
         <LimitSheet
           visible

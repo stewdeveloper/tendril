@@ -69,25 +69,77 @@ describe('Camera route', () => {
     expect(preparePhoto).toHaveBeenCalledWith('file:///shutter-1.jpg', 4000, 3000);
   });
 
-  it('identifies the photos with their organs, then opens the result', async () => {
+  it('identifies the photos in tray order with their organs and source, then opens the result', async () => {
     const api = new FixtureApi();
     const spy = jest.spyOn(api, 'identify');
     await renderRoute(<CameraRoute />, api);
     await shutter();
     await screen.findByText('1 of 5');
     await fireEvent.press(screen.getByRole('radio', { name: 'Flower' }));
-    await shutter();
+    await fireEvent.press(screen.getByRole('button', { name: 'Gallery' }));
     await screen.findByText('2 of 5');
     await fireEvent.press(screen.getByRole('button', { name: 'Identify' }));
     await waitFor(() => expect(routerMock.replace).toHaveBeenCalled());
     expect(spy).toHaveBeenCalledWith({
-      photoUris: ['prepared:file:///shutter-1.jpg', 'prepared:file:///shutter-1.jpg'],
+      photoUris: ['prepared:file:///shutter-1.jpg', 'prepared:file:///library-1.jpg'],
       organs: ['leaf', 'flower'],
-      captureSource: 'camera',
+      captureSource: 'gallery',
       healthCheck: false,
     });
     const target = routerMock.replace.mock.calls[0]![0] as string;
     expect(target).toMatch(/^\/scan\/obs-/);
+  });
+
+  it('a double tap on Identify sends one identification', async () => {
+    const api = new FixtureApi({ latencyMs: 20 });
+    const spy = jest.spyOn(api, 'identify');
+    await renderRoute(<CameraRoute />, api);
+    await shutter();
+    await screen.findByText('1 of 5');
+    const identifyButton = screen.getByRole('button', { name: 'Identify' });
+    // Both taps land before React can re-render the button as busy.
+    const press = identifyButton.props.onClick ?? identifyButton.props.onPress;
+    await act(async () => {
+      press({ nativeEvent: {} });
+      press({ nativeEvent: {} });
+    });
+    await waitFor(() => expect(routerMock.replace).toHaveBeenCalled());
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the organ chosen when the shutter was pressed, even if it changes before the photo lands', async () => {
+    const api = new FixtureApi();
+    const spy = jest.spyOn(api, 'identify');
+    let release: (v: { uri: string; width: number; height: number }) => void = () => {};
+    takePictureAsync.mockReturnValueOnce(new Promise((resolve) => (release = resolve)));
+    await renderRoute(<CameraRoute />, api);
+    await shutter();
+    await fireEvent.press(screen.getByRole('radio', { name: 'Flower' }));
+    await act(async () => release({ uri: 'file:///slow.jpg', width: 800, height: 600 }));
+    await screen.findByText('1 of 5');
+    await fireEvent.press(screen.getByRole('button', { name: 'Identify' }));
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    expect(spy.mock.calls[0]![0].organs).toEqual(['leaf']);
+  });
+
+  it('a diagnosis refusal turns the health toggle off and says why, without the limit sheet', async () => {
+    const api = new FixtureApi();
+    jest.spyOn(api, 'identify').mockRejectedValue(new Error('quota_exceeded'));
+    await renderRoute(<CameraRoute />, api);
+    await fireEvent.press(await screen.findByRole('switch', { name: 'Check its health' }));
+    await shutter();
+    await screen.findByText('1 of 5');
+    jest.spyOn(api, 'getQuota').mockImplementation(async (kind) => ({
+      kind,
+      used: kind === 'diagnosis' ? 1 : 7,
+      limit: kind === 'diagnosis' ? 1 : 10,
+      resetsOn: '2026-11-01',
+      plan: 'free',
+    }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Identify' }));
+    expect(await screen.findByText("You've used this month's diagnosis")).toBeTruthy();
+    expect(screen.getByRole('switch', { name: 'Check its health' })).not.toBeChecked();
+    expect(screen.queryByText('Limit reached')).toBeNull();
   });
 
   it('a gallery photo marks the scan as a gallery capture, within the room left in the tray', async () => {
