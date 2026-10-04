@@ -25,13 +25,13 @@ export type Database = {
           Tables: {
             "care_events": {
                   Row: {
-                    "client_id": string | null,"created_at": string,"household_id": string,"id": string,"kind": string,"leaf_states": (string)[],"occurred_at": string,"photo_path": string | null,"plant_id": string,"soil_dry": boolean | null,"user_id": string | null
+                    "client_id": string | null,"created_at": string,"household_id": string,"id": string,"kind": string,"leaf_states": (string)[],"next_check_on": string | null,"occurred_at": string,"photo_path": string | null,"plant_id": string,"soil_dry": boolean | null,"user_id": string | null,"water_task_created": boolean | null
                   }
                   Insert: {
-                    "client_id"?: string | null,"created_at"?: string,"household_id": string,"id"?: string,"kind": string,"leaf_states"?: (string)[],"occurred_at": string,"photo_path"?: string | null,"plant_id": string,"soil_dry"?: boolean | null,"user_id"?: string | null
+                    "client_id"?: string | null,"created_at"?: string,"household_id": string,"id"?: string,"kind": string,"leaf_states"?: (string)[],"next_check_on"?: string | null,"occurred_at": string,"photo_path"?: string | null,"plant_id": string,"soil_dry"?: boolean | null,"user_id"?: string | null,"water_task_created"?: boolean | null
                   }
                   Update: {
-                    "client_id"?: string | null,"created_at"?: string,"household_id"?: string,"id"?: string,"kind"?: string,"leaf_states"?: (string)[],"occurred_at"?: string,"photo_path"?: string | null,"plant_id"?: string,"soil_dry"?: boolean | null,"user_id"?: string | null
+                    "client_id"?: string | null,"created_at"?: string,"household_id"?: string,"id"?: string,"kind"?: string,"leaf_states"?: (string)[],"next_check_on"?: string | null,"occurred_at"?: string,"photo_path"?: string | null,"plant_id"?: string,"soil_dry"?: boolean | null,"user_id"?: string | null,"water_task_created"?: boolean | null
                   }
                   Relationships: [
                     {
@@ -472,7 +472,7 @@ isOneToOne: false
 { Args: { "p_drainage": string,"p_first_check_on": string,"p_household_id": string,"p_indoor": boolean,"p_label_code": string,"p_light": string,"p_nickname": string,"p_now": string,"p_observation_id": string,"p_pot_material": string,"p_pot_size_cm": number,"p_room": string,"p_source": string,"p_species_id": string,"p_uid": string }; Returns: string
                            },
 "srv_get_provider_token":
-{ Args: { "p_observation_id": string }; Returns: string
+{ Args: { "p_observation_id": string,"p_uid": string }; Returns: string
                            },
 "srv_is_premium":
 { Args: { "p_uid": string }; Returns: boolean
@@ -487,13 +487,13 @@ isOneToOne: false
 { Args: { "p_kind": string,"p_period_key": string,"p_uid": string }; Returns: undefined
                            },
 "srv_replace_pets":
-{ Args: { "p_household_id": string,"p_pets": Json }; Returns: undefined
+{ Args: { "p_household_id": string,"p_pets": Json,"p_uid": string }; Returns: undefined
                            },
 "srv_reserve_usage":
 { Args: { "p_kind": string,"p_limit": number,"p_period_key": string,"p_uid": string }; Returns: Json
                            },
 "srv_store_provider":
-{ Args: { "p_access_token": string,"p_observation_id": string,"p_provider": string,"p_raw": Json }; Returns: undefined
+{ Args: { "p_access_token": string,"p_observation_id": string,"p_provider": string,"p_raw": Json,"p_uid": string }; Returns: undefined
                            }
           }
           Enums: {
