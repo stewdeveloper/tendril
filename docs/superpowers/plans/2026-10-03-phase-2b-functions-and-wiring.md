@@ -532,7 +532,7 @@ git commit -m "feat(functions): Plant.id provider with fixtures, fake provider a
     - `PUT /pets` replaces the household's pets. The user must be a member.
     - `PUT /vet`.
     - `PUT /home-area` stores `randomizeZone(home, radiusM, crypto-random)` and never the original point. `DELETE /home-area`.
-    - `POST /push-token` upserts on the token and reassigns the owner (`push_tokens.token` is unique across users, so a shared device follows the signed-in account).
+    - `POST /push-token` upserts with `onConflict: 'token'` and reassigns the owner. `push_tokens.token` is unique across users, so a shared device follows the signed-in account, and the default primary-key upsert would fail with 23505.
   - **`identify` route:** `POST /` (`IdentifyRequest`, header `X-Firebase-AppCheck`) returns `IdentifyResponse`. In order:
     1. Require the user, and validate the photos: 1–5, each path starting with `<uid>/`.
     2. Load the profile's timezone and premium status.
@@ -542,7 +542,7 @@ git commit -m "feat(functions): Plant.id provider with fixtures, fake provider a
     6. Call the provider.
        - Not a plant: status `not_a_plant`, release every reservation, return `state: 'not_a_plant'`.
        - Provider error: status `failed`, release every reservation, rethrow `provider_unavailable`.
-    7. Upsert the suggested species, by `provider_entity_id`, then by scientific name. The slug is `kebab-case(common name)`, falling back to the scientific name, with `-2` and so on if taken.
+    7. Upsert the suggested species, by `provider_entity_id`, then by scientific name (in that order; the 32 reference-catalogue rows have a null `provider_entity_id` and a unique `scientific_name`, so a single-key upsert would fail with 23505). When a match comes from the reference catalogue, set its `provider_entity_id` and keep its curated fields. The slug is `kebab-case(common name)`, falling back to the scientific name, with `-2` and so on if taken.
     8. Store the suggestions JSON, the confidence and the provider token in `private.observation_provider` (through a `public.srv_store_provider` wrapper, as above).
     9. Read the toxicity rows for the top suggestion. If that species has none, fall back to the genus-level species row: same genus, with `scientific_name` equal to the genus, as the seed stores *Spathiphyllum*, *Dieffenbachia*, *Phalaenopsis* and so on. Plant.id returns species-level names, and a peace lily must not read Unknown. Add a test for the fallback.
     10. Return the response, with `integrity.appCheck` stored on the observation.

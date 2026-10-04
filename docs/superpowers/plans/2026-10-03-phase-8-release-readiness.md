@@ -81,30 +81,39 @@ git commit -m "feat: Tendril spiral app icon, adaptive icon, splash and favicons
 
 ### Task 2: EAS build profiles
 
+The full pipeline (accounts, signing, test distribution, store submission, CI) is documented in `docs/deployment/expo-release-pipeline.md`. This task lands the config it depends on.
+
 **Files:**
 - Create: `apps/mobile/eas.json`
 - Modify: `apps/mobile/app.config.ts`:
   - `extra.eas.projectId` from `EAS_PROJECT_ID`
   - `runtimeVersion: { policy: 'appVersion' }`
   - `updates.url` only when `EAS_PROJECT_ID` is set
-  - `ios.buildNumber` and `android.versionCode` from env, defaulting to 1
+  - no `ios.buildNumber` or `android.versionCode`: `appVersionSource: remote` makes EAS own them, and values in app config are ignored
+  - `ios.infoPlist.ITSAppUsesNonExemptEncryption: false`
 
-`apps/mobile/eas.json`:
+`apps/mobile/eas.json` (section 2.3 of the pipeline guide explains each field):
 ```json
 {
-  "cli": { "version": ">= 16.0.0", "appVersionSource": "remote" },
+  "cli": { "version": ">= 19.1.0", "appVersionSource": "remote" },
   "build": {
-    "development": { "developmentClient": true, "distribution": "internal", "env": { "EXPO_PUBLIC_API_MODE": "supabase", "EXPO_PUBLIC_APP_CHECK_DEV": "1" } },
-    "preview": { "distribution": "internal", "env": { "EXPO_PUBLIC_API_MODE": "supabase" } },
-    "production": { "autoIncrement": true, "env": { "EXPO_PUBLIC_API_MODE": "supabase" } }
+    "base": { "pnpm": "12.8.1" },
+    "development": { "extends": "base", "developmentClient": true, "distribution": "internal", "environment": "development", "env": { "EXPO_PUBLIC_API_MODE": "supabase", "EXPO_PUBLIC_APP_CHECK_DEV": "1" } },
+    "preview": { "extends": "base", "distribution": "internal", "channel": "preview", "environment": "preview", "env": { "EXPO_PUBLIC_API_MODE": "supabase" } },
+    "production": { "extends": "base", "autoIncrement": true, "channel": "production", "environment": "production", "env": { "EXPO_PUBLIC_API_MODE": "supabase" } }
   },
-  "submit": { "production": {} }
+  "submit": {
+    "production": {
+      "ios": { "ascAppId": "<Apple ID number from App Store Connect>" },
+      "android": { "track": "internal", "releaseStatus": "draft" }
+    }
+  }
 }
 ```
 
-- [ ] **Step 1: Write the file and the config changes.** `expo-dev-client` is needed for `development`: run `npx expo install expo-dev-client`.
+- [ ] **Step 1: Write the file and the config changes.** Inside `apps/mobile`, run `npx expo install expo-dev-client expo-updates`.
 
-EAS installs the whole workspace. That pulls in the 146 MB Supabase CLI binary and Deno, which slows builds. Add an `eas-build-pre-install` script, or set `build.*.env` with `PNPM_FLAGS`, so EAS does a filtered install (`pnpm install --filter @tendril/mobile...`). Pin pnpm 12.8.1 in `eas.json` (`"pnpm": "12.8.1"` on each profile). Do the same for Vercel in Phase 7: an install command of `pnpm install --filter @tendril/web...`.
+EAS runs a plain `pnpm install` at the repo root, and no documented setting filters it. Don't add an install hook. After the first EAS build, read the "Install dependencies" log and measure. Only optimise if it costs real minutes. GitHub Actions jobs that only need the app may use `pnpm install --filter @tendril/mobile...`. Vercel in Phase 7 uses an install command of `pnpm install --filter @tendril/web...`.
 - [ ] **Step 2: Verify:** `npx expo config --type public` prints the resolved config without errors, both with and without `EAS_PROJECT_ID` set. `npx expo-doctor` passes.
 - [ ] **Step 3: Commit**
 
@@ -114,6 +123,32 @@ git commit -m "chore(mobile): EAS development, preview and production build prof
 ```
 
 ---
+
+### Task 2b: App Review sign-in
+
+App Review needs a demo account. Tendril's sign-in is Apple, Google or a 15-minute email magic link, and a reviewer can't use a link sent to our inbox. A build-time flag doesn't help either, because the reviewed build is the build that ships. Password sign-in stays disabled for everyone.
+
+**Files:**
+- Create:
+  - `supabase/functions/review-login/index.ts`
+  - `supabase/functions/review-login/handler.ts`
+  - `supabase/functions/tests/review_login_test.ts`
+- Modify:
+  - `supabase/config.toml` (`[functions.review-login] verify_jwt = false`)
+  - the sign-in screen and `SupabaseApi`/session: when the entered email equals `EXPO_PUBLIC_REVIEW_EMAIL` (case-insensitive, trimmed), show a password field and call `review-login` instead of sending a link
+
+**Behaviour:**
+- `POST /review-login { email, password }`:
+  - It returns 404 unless both `REVIEW_EMAIL` and `REVIEW_PASSWORD` function secrets are set. It is off by default.
+  - It compares in constant time and refuses any other email with the same 401 as a wrong password.
+  - It rate-limits to 5 attempts per hour per IP.
+  - On success it signs in the pre-created reviewer user: the admin API generates a magic link for `REVIEW_EMAIL`, the server verifies it, and the response returns `{ access_token, refresh_token }`. The client calls `setSession`.
+- The reviewer account is created once by a script in `RUNBOOK.md`. Its profile is past onboarding, and its household has one cat so the pet check shows.
+- Rotate `REVIEW_PASSWORD` after each review. Unset both secrets once the app is live and no review is pending.
+
+- [ ] **Step 1: Write the failing tests:** unset secrets give 404; a wrong password, and any other email, give 401; the right credentials give tokens; the 6th attempt in an hour gives 429.
+- [ ] **Step 2: Implement.** Run `pnpm test:functions && pnpm --filter @tendril/mobile test`.
+- [ ] **Step 3: Commit:** `git commit -m "feat: App Review sign-in for a single pre-created reviewer account"`
 
 ### Task 3: Privacy-safe analytics and crash reporting
 
@@ -267,13 +302,14 @@ git commit -m "ci: database, functions e2e and web e2e jobs; env documentation c
      - App Store Connect privacy labels: the data types collected and whether each is linked to the user
      - age rating 13+
      - review notes explaining the server-granted preview (guideline 3.1.1), with the fallback plan of a store introductory offer
+     - the reviewer account (Task 2b): the script that creates it, how to set and rotate `REVIEW_EMAIL`/`REVIEW_PASSWORD`, and the sign-in steps to paste into review notes
   7. **Google:**
      - OAuth clients (web, iOS, Android)
      - Play Console: Data safety form, closed test with at least 12 testers for 14 days, opened by 1 February 2027
      - app signing SHA-256 for `assetlinks.json`
      - account deletion URL
   8. **Firebase App Check:** project, Play Integrity and App Attest providers, config files, `FIREBASE_PROJECT_NUMBER`, `FIREBASE_APP_IDS`, `APP_CHECK_MODE=firebase`.
-  9. **Expo/EAS:** project ID, credentials, push notification credentials, build commands, submission.
+  9. **Expo/EAS:** a short pointer to `docs/deployment/expo-release-pipeline.md`, which owns accounts, signing, test distribution, submission and CI. Keep only the Tendril-specific values here (project ID, bundle id, `ascAppId`).
   10. **Vercel:** Pro plan, project root `apps/web`, Node 24, environment variables, domain with no apex redirect on `/.well-known`, `curl -I` checks.
   11. **Sentry and PostHog:** DSN, keys, privacy settings.
   12. **Before launch** (owner: you):

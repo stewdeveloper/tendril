@@ -34,6 +34,16 @@
 
   Record each frame's diff % and a one-line verdict in the report.
 - Check-in frames 4c, 4d and 4e use `CheckInSheet presentation="overlay"`.
+- Route placement follows the frames (Phase 1A final fix wave):
+  - `today/streaks` is a root-stack route with no tab bar (4f–4h).
+  - `plants/[id]` lives at `(tabs)/plants/[id]/index` in the My Plants tab's nested Stack (2d, 6d show the bar). Its closed states 4k and 4l show no bar: hide it for dead and given-away plants through the screen's tab options.
+  - The full route-to-frame table is in `docs/superpowers/ledger/phase-1a.md`.
+- Use the `TabScreenFrame` catalog helper for every frame that shows the tab bar, so the catalog matches the app's in-flow layout.
+- Use the existing `components/useReduceMotion` hook rather than creating `src/hooks/useReduceMotion.ts`.
+- `CheckInSheet` states are typed `CheckInState`, and `nextCheckWeekday` is required for `answered_no` and `saved_offline`.
+- Care-plan rows on 2d use `RowsCard` icon leads. Match 2d's 4/16 vertical padding.
+- "Continue with Apple" (3d) uses `Button variant="ink"`.
+- Mutations go through the hooks in `api/hooks.ts` (`useIdentify`, `useSavePets`, `useSetPlantStatus`, `useDiagnose`, `useApplyDiagnosis`, `useSendFriendRequest`, `useDeleteAccount`), never `useApi()` directly, so the caches stay fresh.
 - My Plants (4i) lists plants with `PlantCard variant="row"` inside a `RowsCard`. The `card` variant is for other contexts.
 - Components that compare dates (`PlantCard`, `TaskRow`) take `today`. Screens pass the fixture date `2026-10-03` from `FixtureApi`, never the device clock.
 - Frame 2d shows compact pet rows, so add `PetCheckCard variant="compact"` when building it (no avatar, kind caption or match footer).
@@ -244,7 +254,7 @@ git commit -m "feat(mobile): onboarding screens with conservative age gate (3a-3
   - `TaskRow`, `StreakCounter`, `StreakCalendar`, `QuotaMeter`, `CheckInSheet`, `EmptyState`, `Note`, `RowsCard`, `ScreenHeader` and `BackBar`
   - `streakLastDay` and `freezeUsed` from core
 - Produces:
-  - `TodayScreen({ summary: TodaySummary; checkIn: { taskId: string; state: CheckInSheet['state']; nextCheckWeekday?: string; streakDays?: number } | null; onOpenTask(taskId); onAnswer(dry, leaves); onCloseCheckIn(); onScan(); onScanLabel(); onOpenStreaks(); onOpenLeague(); onAvatar() })`
+  - `TodayScreen({ summary: TodaySummary; checkIn: { taskId: string; state: CheckInState; nextCheckWeekday?: string; streakDays?: number } | null; onOpenTask(taskId); onAnswer(dry, leaves); onCloseCheckIn(); onScan(); onScanLabel(); onOpenStreaks(); onOpenLeague(); onAvatar() })`
   - `StreaksScreen({ streak: StreakSummary; onBack(); onInvite(); onCheckInFirst(); onToggleWinter?(on: boolean) })`
 
 **Frames:**
@@ -670,7 +680,7 @@ Expected: FAIL.
 - `preview` is a `CameraView`, unmounted when the screen loses focus.
 - The shutter calls `takePictureAsync`, then `preparePhoto`, and adds the result to the tray.
 - Gallery uses `launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: 5 - photos.length })` and marks the capture source as gallery.
-- "Identify" calls a new `useIdentify()` mutation hook (add it to `api/hooks.ts`; on success it invalidates the `quota` and `scanResult` keys), then `router.replace('/scan/<id>')`.
+- "Identify" calls `useIdentify()` (from `api/hooks.ts`, which invalidates quota and scan keys), then `router.replace('/scan/<id>')`.
 - The health toggle is disabled with "Diagnosis used this month" when the diagnosis quota is used up.
 
 The catalog passes a dark `View` as the preview.
@@ -804,7 +814,6 @@ git commit -m "feat(mobile): scan result states and log-a-find sheet (2a, 2c, 4v
 - Create:
   - `apps/mobile/src/screens/scan/NewSpeciesScreen.tsx`
   - `apps/mobile/src/screens/collection/SetCompleteScreen.tsx`
-  - `apps/mobile/src/hooks/useReduceMotion.ts`
   - `apps/mobile/src/catalog/frames/moments.tsx`
 - Modify: `apps/mobile/src/app/scan/[id]/new-species.tsx`, `apps/mobile/src/app/collection/sets/[id]/complete.tsx`, `apps/mobile/src/catalog/frames.ts`
 - Test: `apps/mobile/src/screens/scan/moments.test.tsx`
@@ -812,7 +821,7 @@ git commit -m "feat(mobile): scan result states and log-a-find sheet (2a, 2c, 4v
 **Interfaces:**
 - Consumes: `useOutcome`, `RarityBadge`, `RowsCard`, `Note`, `PhotoSlot`, `copy.pointsHeld`, `copy.galleryNote`, and Reanimated.
 - Produces:
-  - `useReduceMotion(): boolean`: the live value from `AccessibilityInfo.isReduceMotionEnabled()` plus the `reduceMotionChanged` listener.
+  - `useReduceMotion(): boolean`, from `components/useReduceMotion` (Phase 1A): the live Reduce Motion value
   - `NewSpeciesScreen({ species: SpeciesRef; outcome: Outcome; photoLabel: string; reduceMotion: boolean; onContinue() })`:
     - photo, "New to your Plantdex", the name in `moment`, the italic scientific name, `RarityBadge`
     - awarded: rows "Points +40", "Plantdex 38 species", "Irish hedgerow 5 of 8"
