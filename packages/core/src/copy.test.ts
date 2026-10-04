@@ -157,7 +157,12 @@ describe('emergency copy', () => {
   });
   it('the poison line button carries the number', () => {
     expect(emergencyCopy.callPoisonLine('ASPCA Poison Control', '(888) 426-4435')).toBe(
-      'Call ASPCA Poison Control (888) 426-4435',
+      'Call ASPCA Poison Control (888)\u00A0426\u20114435',
+    );
+  });
+  it('a vet whose number cannot be dialled still gets guidance', () => {
+    expect(emergencyCopy.vetNoNumber('Riverside Vets')).toBe(
+      "We can't dial the number saved for Riverside Vets. Call your nearest vet now.",
     );
   });
   it('the source and match line reads as the frame does', () => {
@@ -166,6 +171,9 @@ describe('emergency copy', () => {
     );
     expect(emergencyCopy.sourceLine('ASPCA', 0.71)).toBe(
       'Source: ASPCA. Based on a likely match, 71%.',
+    );
+    expect(emergencyCopy.sourceLine('ASPCA', 0.34)).toBe(
+      'Source: ASPCA. Based on the match: Not sure, 34%.',
     );
     expect(emergencyCopy.sourceLine('ASPCA', null)).toBe('Source: ASPCA.');
     expect(emergencyCopy.sourceLine(null, null)).toBeNull();

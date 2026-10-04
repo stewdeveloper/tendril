@@ -208,11 +208,41 @@ describe('Pet emergency route', () => {
     paramsMock.current = { petId: 'pet-miso', plantId: 'lily' };
     await renderRoute(<PetEmergencyRoute />, apiWith({ scenario: 'us' }));
     const button = await screen.findByRole('button', {
-      name: 'Call ASPCA Poison Control (888) 426-4435',
+      name: 'Call ASPCA Poison Control (888)\u00A0426\u20114435',
     });
     expect(screen.getByText('Open 24 hours. A fee may apply.')).toBeTruthy();
     await fireEvent.press(button);
     expect(Linking.openURL).toHaveBeenCalledWith('tel:8884264435');
+  });
+
+  it('a missing pet id shows the safe actions and asks for nothing', async () => {
+    paramsMock.current = {};
+    const api = new FixtureApi();
+    const spy = jest.spyOn(api, 'getEmergency');
+    await renderRoute(<PetEmergencyRoute />, api);
+    expect(screen.getByText('Call your nearest vet now.')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Find a vet nearby' }));
+    expect(Linking.openURL).toHaveBeenCalledWith(
+      'https://www.google.com/maps/search/?api=1&query=vet',
+    );
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('a lookup that fails still shows the safe actions', async () => {
+    paramsMock.current = { petId: 'nope', plantId: 'lily' };
+    await renderRoute(<PetEmergencyRoute />);
+    expect(await screen.findByText('Call your nearest vet now.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Find a vet nearby' })).toBeTruthy();
+    expect(screen.queryByRole('progressbar')).toBeNull();
+  });
+
+  it('while it loads the actions are already there, with a spinner', async () => {
+    paramsMock.current = { petId: 'pet-miso', plantId: 'lily' };
+    await renderRoute(<PetEmergencyRoute />, new FixtureApi({ latencyMs: 50 }));
+    expect(screen.getByRole('progressbar')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Find a vet nearby' })).toBeTruthy();
+    expect(await screen.findByText('If Miso ate peace lily')).toBeTruthy();
+    expect(screen.queryByRole('progressbar')).toBeNull();
   });
 
   it('with a vet saved the vet is called first', async () => {

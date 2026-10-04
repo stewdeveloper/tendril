@@ -17,6 +17,8 @@ export interface ButtonProps {
   icon?: ComponentType<IconProps>;
   /** 48 pt tall instead of 52: the buttons inside cards (the pet check in 2a, "Check in" in 2e). */
   compact?: boolean;
+  /** No side padding inside the ring: a long label gets the whole width before it wraps (4bh). */
+  tight?: boolean;
   /** Draws the pressed state without a touch, for the component sheet (5o). */
   previewPressed?: boolean;
   accessibilityLabel?: string;
@@ -39,6 +41,7 @@ export function Button({
   loading = false,
   icon: Icon,
   compact = false,
+  tight = false,
   previewPressed = false,
   accessibilityLabel,
   accessibilityHint,
@@ -69,6 +72,7 @@ export function Button({
       style={[
         styles.base,
         compact && styles.compact,
+        tight && styles.tight,
         {
           backgroundColor: look.bg,
           borderColor: look.ring,
@@ -135,6 +139,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   compact: { minHeight: 48 },
+  tight: { paddingHorizontal: 0 },
   content: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   hidden: { opacity: 0 },
   overlay: { ...StyleSheet.absoluteFill, pointerEvents: 'none' },

@@ -1,4 +1,4 @@
-import { aoife, poisonLineFor } from '@tendril/core';
+import { aoife, isActionableDiagnosis, poisonLineFor } from '@tendril/core';
 import { FIXTURE_TODAY } from '../fixtureDate';
 import { FixtureApi } from './FixtureApi';
 
@@ -403,6 +403,18 @@ describe('FixtureApi people, pets and Premium', () => {
     });
     expect((await api.getQuota('diagnosis')).limit).toBe(10);
     await expect(api.startPreview()).rejects.toThrow('preview_unavailable');
+  });
+
+  it('uses a diagnosis only when the result is actionable', async () => {
+    const api = new FixtureApi();
+    const before = (await api.getQuota('diagnosis')).used;
+    const good = await api.diagnose({ plantId: 'monty', photoUris: ['p'] });
+    expect(isActionableDiagnosis(good)).toBe(true);
+    expect((await api.getQuota('diagnosis')).used).toBe(before + 1);
+    const unsure = new FixtureApi({ scenario: 'not_sure' });
+    const none = await unsure.diagnose({ plantId: 'monty', photoUris: ['p'] });
+    expect(isActionableDiagnosis(none)).toBe(false);
+    expect((await unsure.getQuota('diagnosis')).used).toBe(before);
   });
 
   it('serves the ASPCA line for a US household and none for Ireland', async () => {

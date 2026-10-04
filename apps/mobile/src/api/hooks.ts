@@ -122,11 +122,12 @@ export const useLabel = (code: string) => {
   const api = useApi();
   return useQuery({ queryKey: queryKeys.label(code), queryFn: () => api.getLabel(code) });
 };
-export const useEmergency = (input: Input<'getEmergency'>) => {
+export const useEmergency = (input: Input<'getEmergency'>, enabled = true) => {
   const api = useApi();
   return useQuery({
     queryKey: queryKeys.emergency(input),
     queryFn: () => api.getEmergency(input),
+    enabled,
   });
 };
 

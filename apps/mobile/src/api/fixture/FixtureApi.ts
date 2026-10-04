@@ -1,6 +1,7 @@
 import {
   aoife,
   midSentenceName,
+  isActionableDiagnosis,
   petNameOrFallback,
   poisonLineFor,
   plantdexCounts,
@@ -570,7 +571,7 @@ export class FixtureApi implements TendrilApi {
       if (w.quota.diagnosis.used >= w.quota.diagnosis.limit) throw new Error('quota_exceeded');
       const result = this.diagnosisFor(`diag-${++w.counter}`, input.plantId);
       // A "not sure" result doesn't use the month's diagnosis (frame 4s).
-      if (result.planChange) w.quota.diagnosis.used += 1;
+      if (isActionableDiagnosis(result)) w.quota.diagnosis.used += 1;
       return clone(result);
     });
   }

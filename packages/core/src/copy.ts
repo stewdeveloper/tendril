@@ -1,6 +1,7 @@
 import type { IsoDate } from './domain.ts';
-import { bandFor, bandWord, toPercent } from './confidence.ts';
+import { bandFor, bandWord, confidenceLabel, toPercent } from './confidence.ts';
 import { longDate } from './dates.ts';
+import { nonBreakingPhone } from './emergency.ts';
 
 /** Fixed lines from the UX brief's Copy table. Never use the word "safe". */
 export const copy = {
@@ -242,15 +243,25 @@ export const emergencyCopy = {
   findVet: 'Find a vet nearby',
   saveVet: 'Save your vet',
   noVetNote: "You haven't saved a vet yet. Call your nearest vet now.",
+  /** A vet is saved, but the number has no digits to dial. */
+  vetNoNumber: (name: string) =>
+    `We can't dial the number saved for ${name}. Call your nearest vet now.`,
+  /** The screen with nothing known yet (still loading, or the lookup failed): the safe actions. */
+  fallbackTitle: 'If your pet ate a plant',
+  callNearestVet: 'Call your nearest vet now.',
   title: (petName: string, speciesName: string) => `If ${petName} ate ${speciesName}`,
-  callPoisonLine: (name: string, phone: string) => `Call ${name} ${phone}`,
+  callPoisonLine: (name: string, phone: string) => `Call ${name} ${nonBreakingPhone(phone)}`,
   /** "Source: ASPCA. Based on a very likely match, 94%." The match part only when there is one. */
   sourceLine: (sourceName: string | null, matchProbability: number | null): string | null => {
     const source = sourceName ? `Source: ${sourceName}.` : null;
+    const band = matchProbability == null ? null : bandFor(matchProbability);
+    // "Not sure" is not a kind of match, so it reads as the label: "Based on the match: Not sure, 34%."
     const match =
-      matchProbability == null
+      matchProbability == null || band == null
         ? null
-        : `Based on a ${bandWord(bandFor(matchProbability)).toLowerCase()} match, ${toPercent(matchProbability)}%.`;
+        : band === 'not_sure'
+          ? `Based on the match: ${confidenceLabel(matchProbability)}.`
+          : `Based on a ${bandWord(band).toLowerCase()} match, ${toPercent(matchProbability)}%.`;
     return [source, match].filter(Boolean).join(' ') || null;
   },
 } as const;

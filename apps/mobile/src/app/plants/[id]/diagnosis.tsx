@@ -1,5 +1,5 @@
 import type { DiagnosisResult } from '@tendril/core';
-import { bandFor, diagnosisCopy } from '@tendril/core';
+import { diagnosisCopy, isActionableDiagnosis } from '@tendril/core';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useApplyDiagnosis, useDiagnose, usePlant, useQuota } from '../../../api/hooks';
@@ -9,10 +9,6 @@ import {
   MAX_DIAGNOSIS_PHOTOS,
 } from '../../../screens/plants/DiagnosisPhotosScreen';
 import { DiagnosisScreen } from '../../../screens/plants/DiagnosisScreen';
-
-/** A result with a change to the plan, at a confidence worth acting on; anything else is "not sure". */
-const isActionable = (result: DiagnosisResult) =>
-  result.planChange != null && bandFor(result.probability) !== 'not_sure';
 
 export default function DiagnosisRoute() {
   const router = useRouter();
@@ -83,7 +79,7 @@ export default function DiagnosisRoute() {
     return (
       <DiagnosisScreen
         {...shared}
-        state={isActionable(result) ? 'result' : 'not_sure'}
+        state={isActionableDiagnosis(result) ? 'result' : 'not_sure'}
         result={result}
         applying={apply.isPending}
         applyFailed={applyFailed}
