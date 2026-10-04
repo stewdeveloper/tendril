@@ -12,13 +12,21 @@ interface KeyValueStorage {
 let native: KeyValueStorage | null | undefined;
 
 /**
- * SQLite-backed `localStorage` on iOS and Android, so the under-13 stop survives restarts. The
- * install is skipped on web and in jest: the native module isn't there, and the in-memory map is
- * enough. If it fails to load, the block still holds for the session.
+ * Persistent storage for the block. On web that is the browser's own `localStorage`, which may be
+ * missing or throw (private modes, blocked cookies), so every touch is guarded. On iOS and Android
+ * it is SQLite-backed `localStorage`, installed on first use, so the under-13 stop survives
+ * restarts; the install is skipped in jest, where the in-memory map is enough. If neither works,
+ * the block still holds for the session.
  */
 function nativeStorage(): KeyValueStorage | null {
   if (native !== undefined) return native;
   native = null;
+  try {
+    native = (globalThis as { localStorage?: KeyValueStorage }).localStorage ?? null;
+  } catch {
+    native = null;
+  }
+  if (native) return native;
   // The check sits inline so Metro drops the require from web bundles.
   if (process.env.EXPO_OS !== 'web' && process.env.JEST_WORKER_ID === undefined) {
     try {
@@ -54,6 +62,7 @@ export function writeAgeBlock(): void {
 /** Test seam: forget the block, as a fresh install would. */
 export function resetAgeBlockForTests(): void {
   memory.clear();
+  native = undefined;
   try {
     (
       nativeStorage() as (KeyValueStorage & { removeItem?(key: string): void }) | null

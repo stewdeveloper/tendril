@@ -28,11 +28,18 @@ const SessionContext = createContext<Session | null>(null);
  * What survives between launches. Async because Phase 2's Supabase session restore will be, so
  * every caller already waits for it.
  */
+function skipsOnboarding(): boolean {
+  if (process.env.EXPO_PUBLIC_FIXTURE_SKIP_ONBOARDING !== '1') return false;
+  const fixtureApi = process.env.EXPO_PUBLIC_API_MODE !== 'supabase';
+  return __DEV__ || fixtureApi;
+}
+
 async function restoreSession(): Promise<{ status: SessionStatus; ageBlocked: boolean }> {
   return {
     ageBlocked: readAgeBlock(),
-    // Dev and catalog runs skip onboarding and start with the app open.
-    status: process.env.EXPO_PUBLIC_FIXTURE_SKIP_ONBOARDING === '1' ? 'ready' : 'signed_out',
+    // Dev and catalog runs skip onboarding and start with the app open. A release build on the
+    // real backend never honours the flag, even if it was baked in by mistake.
+    status: skipsOnboarding() ? 'ready' : 'signed_out',
   };
 }
 
