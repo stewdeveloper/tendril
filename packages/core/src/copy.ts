@@ -19,6 +19,8 @@ export const streakContinues = (days: number) => `Your ${days}-day streak contin
 export const freezeUsed = (days: number) => `A freeze kept your ${days}-day streak going.`;
 export const previewEnding = () =>
   "Your Premium preview ends tomorrow. You'll go back to Free, and nothing is charged.";
+export const previewDaysLeft = (days: number) =>
+  `Premium preview: ${days} ${days === 1 ? 'day' : 'days'} left. It ends on its own, and nothing is charged.`;
 export const pointsPendingReview = 'Points pending review';
 export const taskDueTitle = (nickname: string) => `Time to check ${nickname}'s soil.`;
 

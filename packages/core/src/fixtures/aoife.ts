@@ -649,6 +649,7 @@ const row = (rank: number, handle: string, points: number, isYou = false) => ({
 });
 
 const league: LeagueBoard = {
+  size: 20,
   daysLeft: 3,
   resetsOn: 'Monday',
   joined: true,
@@ -663,6 +664,7 @@ const league: LeagueBoard = {
 };
 
 const friends: LeagueBoard = {
+  size: 3,
   daysLeft: 3,
   resetsOn: 'Monday',
   joined: true,

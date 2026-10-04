@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatResetDate,
+  limitReachedBody,
   limitReachedLine,
+  limitReachedTitle,
   QUOTA_LIMITS,
   quotaLeft,
   quotaMeterLabel,
@@ -51,5 +53,48 @@ describe('quota', () => {
     ).toBe(
       "You've used this month's diagnosis. More arrive on 1 November, or get 10 a month with Premium.",
     );
+  });
+});
+
+describe('limit reached title and body', () => {
+  const free = {
+    kind: 'identification',
+    used: 3,
+    limit: 10,
+    resetsOn: '2026-11-01',
+    plan: 'free',
+  } as const;
+  const diag = {
+    kind: 'diagnosis',
+    used: 1,
+    limit: 1,
+    resetsOn: '2026-11-01',
+    plan: 'free',
+  } as const;
+  it('splits the free diagnosis line as frame 4r shows it', () => {
+    expect(limitReachedTitle('diagnosis')).toBe("You've used this month's diagnosis");
+    expect(limitReachedBody(diag)).toBe(
+      'More arrive on 1 November, or get 10 a month with Premium.',
+    );
+  });
+  it('titles the identification sheet "Limit reached" and keeps the whole sentence in the body', () => {
+    expect(limitReachedTitle('identification')).toBe('Limit reached');
+    expect(limitReachedBody({ ...free, used: 10 })).toBe(
+      "You've used your 10 free identifications this month. More arrive on 1 November, or get 60 a month with Premium.",
+    );
+    expect(limitReachedBody({ ...free, used: 60, limit: 60, plan: 'premium' })).toBe(
+      "You've used your 60 identifications this month. More arrive on 1 November.",
+    );
+  });
+  it('titles a premium diagnosis cap with its count', () => {
+    expect(limitReachedTitle('diagnosis', 'premium')).toBe(
+      "You've used your 10 diagnoses this month",
+    );
+  });
+  it('keeps the joined line for diagnoses, and the body alone for identifications', () => {
+    expect(limitReachedLine(diag)).toBe(
+      "You've used this month's diagnosis. More arrive on 1 November, or get 10 a month with Premium.",
+    );
+    expect(limitReachedLine({ ...free, used: 10 })).toBe(limitReachedBody({ ...free, used: 10 }));
   });
 });

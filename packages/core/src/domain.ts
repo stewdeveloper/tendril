@@ -226,6 +226,8 @@ export interface BoardRow {
   pending: boolean;
 }
 export interface LeagueBoard {
+  /** People in the league ("with 20 people near you"), which may exceed the rows shown. */
+  size: number;
   daysLeft: number;
   resetsOn: string;
   rows: BoardRow[];
@@ -269,4 +271,10 @@ export interface LabelInfo {
   care: CareBasics;
   careLines: string[];
   toxicity: ToxicityEntry[];
+}
+
+/** Device-level choices the settings screen shows. */
+export interface Settings {
+  homeAreaSet: boolean;
+  remindersOn: boolean;
 }

@@ -31,6 +31,8 @@ describe('aoife fixture (UX brief sample data)', () => {
     });
     expect(aoife.today.streak).toMatchObject({ careDays: 12, discoveryWeeks: 3, freezesHeld: 1 });
     expect(aoife.today.league).toEqual({ rank: 4, of: 20, points: 340, daysLeft: 3 });
+    expect(aoife.league.size).toBe(20);
+    expect(aoife.friends.size).toBe(3);
     expect(aoife.profile.plantdexCount).toBe(37);
     expect(aoife.sets.map((s) => [s.name, s.found, s.total])).toEqual([
       ['Irish hedgerow', 4, 8],

@@ -7,6 +7,7 @@ import {
   indefiniteArticle,
   midSentenceName,
   petNameOrFallback,
+  previewDaysLeft,
   pointsPendingReview,
   PROPER_FIRST_WORDS,
   taskDueTitle,
@@ -62,5 +63,16 @@ describe('copy', () => {
     expect(petNameOrFallback('  ', 'cat')).toBe('your cat');
     expect(petNameOrFallback(null, 'dog')).toBe('your dog');
     expect(petNameOrFallback(null, 'other')).toBe('your pet');
+  });
+});
+
+describe('previewDaysLeft', () => {
+  it('says how long the preview has left, and that nothing is charged', () => {
+    expect(previewDaysLeft(5)).toBe(
+      'Premium preview: 5 days left. It ends on its own, and nothing is charged.',
+    );
+    expect(previewDaysLeft(1)).toBe(
+      'Premium preview: 1 day left. It ends on its own, and nothing is charged.',
+    );
   });
 });
