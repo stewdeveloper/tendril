@@ -133,4 +133,28 @@ describe('parseCareState', () => {
       expect(parseCareState({ checkBasis: bad }).checkBasis).toBeNull();
     }
   });
+
+  it('clamps a stored boost factor into (0, 1] and drops one that is not a positive number', () => {
+    const factor = (f: unknown) => parseCareState({ boost: { factor: f, cyclesLeft: 2 } }).boost;
+    for (const big of [5, 1e6, 1e300]) expect(factor(big)).toEqual({ factor: 1, cyclesLeft: 2 });
+    expect(factor(0.8)).toEqual({ factor: 0.8, cyclesLeft: 2 });
+    expect(factor(1)).toEqual({ factor: 1, cyclesLeft: 2 });
+    for (const bad of [-0.8, -1e300, 0, '0.8', NaN, Infinity, -Infinity, null])
+      expect(factor(bad)).toBeNull();
+  });
+
+  it('caps boost cycles and dry checks at 2', () => {
+    expect(parseCareState({ boost: { factor: 0.8, cyclesLeft: 5 } }).boost).toEqual({
+      factor: 0.8,
+      cyclesLeft: 2,
+    });
+    expect(parseCareState({ boost: { factor: 0.8, cyclesLeft: 1e300 } }).boost).toEqual({
+      factor: 0.8,
+      cyclesLeft: 2,
+    });
+    expect(
+      parseCareState({ pause: { reason: 'overwatering', dryChecksNeeded: 99 } }).pause,
+    ).toEqual({ reason: 'overwatering', dryChecksNeeded: 2 });
+    expect(parseCareState({ boost: { factor: 0.8, cyclesLeft: Infinity } }).boost).toBeNull();
+  });
 });

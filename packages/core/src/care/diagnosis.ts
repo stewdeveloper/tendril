@@ -13,6 +13,10 @@ export type DiagnosisEffect =
  * including Plant.id's other watering-related ones ("dry air", "root damage", "watering on the leaves",
  * "inappropriate leaf rosette watering"), gives advice only: none of them says how often to water.
  */
+const PAUSE_DRY_CHECKS = 2;
+const BOOST_FACTOR = 0.8;
+const BOOST_CYCLES = 2;
+
 const OVERWATERING = new Set(['water excess or uneven watering', 'overwatering', 'root rot']);
 const UNDERWATERING = new Set(['water deficiency', 'underwatering', 'dehydration', 'water stress']);
 
@@ -22,25 +26,27 @@ export function diagnosisEffect(conditionName: string): DiagnosisEffect {
     typeof conditionName === 'string'
       ? conditionName.trim().toLowerCase().replace(/\s+/g, ' ')
       : '';
-  if (OVERWATERING.has(name)) return { kind: 'pause_watering', dryChecksNeeded: 2 };
-  if (UNDERWATERING.has(name)) return { kind: 'boost', factor: 0.8, cycles: 2 };
+  if (OVERWATERING.has(name)) return { kind: 'pause_watering', dryChecksNeeded: PAUSE_DRY_CHECKS };
+  if (UNDERWATERING.has(name)) return { kind: 'boost', factor: BOOST_FACTOR, cycles: BOOST_CYCLES };
   return { kind: 'advice_only' };
 }
 
 /**
  * The state with the effect applied, on Free and Premium alike. Applying the same effect again gives
- * the same state. Overwatering and underwatering cancel each other: the latest diagnosis wins.
+ * the same state. Overwatering and underwatering cancel each other: the latest diagnosis wins. The
+ * numbers come from the kind alone, never from the effect's fields, so a stored effect read back from
+ * JSON with missing or odd fields still applies exactly as designed.
  */
 export function applyEffect(state: CareState, effect: DiagnosisEffect): CareState {
   switch (effect.kind) {
     case 'pause_watering':
       return {
         ...state,
-        pause: { reason: 'overwatering', dryChecksNeeded: effect.dryChecksNeeded },
+        pause: { reason: 'overwatering', dryChecksNeeded: PAUSE_DRY_CHECKS },
         boost: null,
       };
     case 'boost':
-      return { ...state, boost: { factor: effect.factor, cyclesLeft: effect.cycles }, pause: null };
+      return { ...state, boost: { factor: BOOST_FACTOR, cyclesLeft: BOOST_CYCLES }, pause: null };
     default:
       return state; // advice only, or an effect this version does not know
   }

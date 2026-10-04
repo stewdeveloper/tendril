@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyEffect, diagnosisEffect, planChangeCopy } from './diagnosis.ts';
+import { applyEffect, diagnosisEffect, planChangeCopy, type DiagnosisEffect } from './diagnosis.ts';
 import { INITIAL_CARE_STATE, type CareState } from './state.ts';
 
 const PAUSE = { kind: 'pause_watering', dryChecksNeeded: 2 } as const;
@@ -147,5 +147,34 @@ describe('planChangeCopy', () => {
       detail: 'For the next two checks',
     });
     expect(planChangeCopy({ kind: 'advice_only' })).toBeNull();
+  });
+});
+
+describe('applyEffect with a stored effect', () => {
+  const stored = (e: object) => e as unknown as DiagnosisEffect;
+  it('takes its numbers from the kind, never from the effect’s own fields', () => {
+    for (const e of [
+      { kind: 'pause_watering' },
+      { kind: 'pause_watering', dryChecksNeeded: 99 },
+      { kind: 'pause_watering', dryChecksNeeded: 'x' },
+    ]) {
+      expect(applyEffect(INITIAL_CARE_STATE, stored(e)).pause).toEqual({
+        reason: 'overwatering',
+        dryChecksNeeded: 2,
+      });
+    }
+    for (const e of [
+      { kind: 'boost' },
+      { kind: 'boost', factor: 5, cycles: 1e6 },
+      { kind: 'boost', factor: -1, cycles: 0 },
+    ]) {
+      expect(applyEffect(INITIAL_CARE_STATE, stored(e)).boost).toEqual({
+        factor: 0.8,
+        cyclesLeft: 2,
+      });
+    }
+  });
+  it('leaves the state alone for an unknown kind', () => {
+    expect(applyEffect(INITIAL_CARE_STATE, stored({ kind: 'repot' }))).toEqual(INITIAL_CARE_STATE);
   });
 });

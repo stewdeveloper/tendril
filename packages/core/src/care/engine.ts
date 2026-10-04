@@ -61,6 +61,8 @@ export interface RecomputeDecision {
 
 const MIN_DAYS = 2;
 const MAX_DAYS = 21;
+/** Free's ceiling, the longest curated interval (`species.check_interval_days` is 2..30). */
+const FREE_MAX_DAYS = 30;
 const RAIN_MM = 5;
 const RAIN_DAYS = 2;
 const HEAT_C = 28;
@@ -86,6 +88,11 @@ const LIGHT: Record<LightLevel, number> = { bright: 0.85, medium: 1, low: 1.25, 
 const DRAINAGE: Record<Drainage, number> = { yes: 1, no: 1.2, unknown: 1 };
 const SEASON = { summer: 0.85, shoulder: 1, winter: 1.35 } as const;
 
+/** The table's factor for an own key; anything else (an unknown value, `constructor`) is 1. */
+function factorFor<K extends string>(table: Record<K, number>, key: K): number {
+  return Object.hasOwn(table, key) ? table[key] : 1;
+}
+
 /** Northern hemisphere unless the latitude is negative: Jun–Aug summer, Dec–Feb winter. */
 export function season(month: number, latitude: number | null): 'summer' | 'winter' | 'shoulder' {
   const southern = latitude !== null && latitude < 0;
@@ -101,11 +108,11 @@ function potSizeFactor(cm: number | null): number {
   return 1.2;
 }
 
-/** The boost multiplier while it has cycles left, else 1. */
+/** The boost multiplier, at most 1, while it has cycles left; else 1. */
 function boostFactor(state: CareState): number {
   const b = state.boost;
   if (!b || !(b.cyclesLeft >= 1) || !Number.isFinite(b.factor) || b.factor <= 0) return 1;
-  return b.factor;
+  return Math.min(1, b.factor);
 }
 
 function isFresh(fetchedAt: string, now: Date): boolean {
@@ -127,7 +134,7 @@ export function usableWeather(
 
 /**
  * Days from a dry check or a watering to the next check.
- * - Free: the base interval, shortened by a diagnosis boost.
+ * - Free: the base interval, shortened by a diagnosis boost (then kept to 1–30).
  * - Premium: the base interval × pot, pot size, light, drainage, season, learned and boost factors,
  *   rounded and clamped to 2–21; then for an outdoor plant, fresh weather adds 2 days for rain or
  *   takes 1 off for heat, never below 1.
@@ -136,15 +143,17 @@ export function intervalDays(input: EngineInput): number {
   const { factors: f, state } = input;
   const base = baseIntervalDays({ min: f.wateringMin, max: f.wateringMax }, f.intervalOverride);
   const boost = boostFactor(state);
-  if (input.plan !== 'premium') return boost === 1 ? base : Math.max(1, Math.round(base * boost));
+  if (input.plan !== 'premium') {
+    return boost === 1 ? base : Math.min(FREE_MAX_DAYS, Math.max(1, Math.round(base * boost)));
+  }
 
   const month = Number(input.today.slice(5, 7));
   const raw =
     base *
-    (POT[f.potMaterial] ?? 1) *
+    factorFor(POT, f.potMaterial) *
     potSizeFactor(f.potSizeCm) *
-    (LIGHT[f.light] ?? 1) *
-    (DRAINAGE[f.drainage] ?? 1) *
+    factorFor(LIGHT, f.light) *
+    factorFor(DRAINAGE, f.drainage) *
     SEASON[season(month, input.latitude)] *
     clampLearned(state.learned) *
     boost;

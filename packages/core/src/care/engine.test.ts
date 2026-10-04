@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { localDate } from '../period.ts';
+import { addDays, localDate } from '../period.ts';
 import { baseIntervalDays, basicCheckIn } from './basic.ts';
 import {
   decideAfterCheckIn,
@@ -11,7 +11,8 @@ import {
   type PlantFactors,
   type WeatherSummary,
 } from './engine.ts';
-import { INITIAL_CARE_STATE, type CareState } from './state.ts';
+import { applyEffect, type DiagnosisEffect } from './diagnosis.ts';
+import { INITIAL_CARE_STATE, parseCareState, type CareState } from './state.ts';
 
 const factors = {
   wateringMin: 2,
@@ -232,6 +233,7 @@ describe('intervalDays', () => {
       [1, 3],
     ] as const;
     const seen = new Set<number>();
+    const bad: string[] = [];
     for (const plan of ['free', 'premium'] as const)
       for (const potMaterial of ['plastic', 'terracotta', 'ceramic', 'unknown'] as const)
         for (const light of ['bright', 'medium', 'low', 'unknown'] as const)
@@ -259,11 +261,15 @@ describe('intervalDays', () => {
                             indoor: false,
                           },
                         });
-                        expect(Number.isInteger(d)).toBe(true);
-                        expect(d).toBeGreaterThanOrEqual(1);
-                        expect(d).toBeLessThanOrEqual(plan === 'free' ? 30 : 23);
+                        // Collected, not asserted per case: 62k expect calls can time out under load.
+                        if (!Number.isInteger(d) || d < 1 || d > (plan === 'free' ? 30 : 23)) {
+                          bad.push(
+                            `${plan} ${potMaterial} ${light} ${drainage} ${potSizeCm} ${today} → ${d}`,
+                          );
+                        }
                         seen.add(d);
                       }
+    expect(bad).toEqual([]);
     expect(seen.has(1)).toBe(true);
     expect(seen.has(23)).toBe(true);
   });
@@ -863,6 +869,129 @@ describe('season', () => {
       expect(season(m, 51.5)).toBe(north[m - 1]);
       expect(season(m, 0)).toBe(north[m - 1]);
       expect(season(m, -0.1)).toBe(south[m - 1]);
+    }
+  });
+});
+
+describe('boundaries', () => {
+  it('pot size: up to 12 cm is small, 13 to 20 cm is medium, over 20 cm is large', () => {
+    const at = (potSizeCm: number) => intervalDays({ ...base, factors: { ...factors, potSizeCm } });
+    expect(at(12)).toBe(6); // 7 × .8 = 5.6
+    expect(at(13)).toBe(7);
+    expect(at(20)).toBe(7);
+    expect(at(21)).toBe(8); // 7 × 1.2 = 8.4
+  });
+  it('infers an unchecked plant’s basis from its own base interval, not a fixed 7', () => {
+    const slow: PlantFactors = { ...factors, wateringMin: 1, wateringMax: 1, potSizeCm: 10 }; // base 10; 10 × .8 = 8
+    const r = recomputeNextCheck({ ...base, factors: slow, openCheckOn: '2026-10-11' });
+    expect(r).toMatchObject({ nextCheckOn: '2026-10-09', changed: true });
+    expect(r.state.checkBasis).toEqual({ from: '2026-10-01', kind: 'interval' });
+    const quick: PlantFactors = { ...factors, intervalOverride: 4 }; // Free boosted: 4 × .8 = 3.2 → 3
+    expect(
+      recomputeNextCheck({
+        ...base,
+        plan: 'free',
+        factors: quick,
+        state: BOOSTED,
+        openCheckOn: '2026-10-06',
+      }),
+    ).toMatchObject({ nextCheckOn: '2026-10-05', changed: true });
+  });
+  it('a premium recheck is never under 2 days, even when the interval is 2 or 1', () => {
+    const thirsty: PlantFactors = {
+      ...outdoor,
+      wateringMin: 3,
+      wateringMax: 3,
+      potMaterial: 'terracotta',
+      light: 'bright',
+      potSizeCm: 10,
+    };
+    const input = {
+      ...base,
+      today: '2026-07-15',
+      factors: thirsty,
+      state: { ...INITIAL_CARE_STATE, learned: 0.6 },
+      soilDry: false,
+      dueOn: '2026-07-15',
+    };
+    expect(decideAfterCheckIn(input)).toMatchObject({ intervalDays: 2, nextCheckOn: '2026-07-17' });
+    expect(decideAfterCheckIn({ ...input, weather: HEAT })).toMatchObject({
+      intervalDays: 1,
+      nextCheckOn: '2026-07-17',
+    });
+  });
+});
+
+describe('hardening: stored nonsense never escapes the engine', () => {
+  const ISO = /^\d{4}-\d{2}-\d{2}$/;
+  const sqlBound = addDays(base.today, 31);
+  const inBounds = (on: string) => ISO.test(on) && on > base.today && on <= sqlBound;
+
+  it('a stored boost factor of 5, 1e6, 1e300, a negative or a string parses to a safe state, and every date stays inside SQL’s bound', () => {
+    for (const factor of [5, 1e6, 1e300, -0.8, '0.8', 0, NaN, Infinity]) {
+      const state = parseCareState({ boost: { factor, cyclesLeft: 2 } });
+      if (state.boost) {
+        expect(state.boost.factor).toBeGreaterThan(0);
+        expect(state.boost.factor).toBeLessThanOrEqual(1);
+      }
+      for (const plan of ['free', 'premium'] as const) {
+        expect(intervalDays({ ...base, plan, state })).toBe(7);
+        for (const soilDry of [true, false]) {
+          expect(
+            inBounds(
+              decideAfterCheckIn({ ...base, plan, state, soilDry, dueOn: base.today }).nextCheckOn,
+            ),
+          ).toBe(true);
+        }
+        expect(inBounds(decideAfterWatering({ ...base, plan, state }).nextCheckOn)).toBe(true);
+        expect(
+          inBounds(
+            recomputeNextCheck({ ...base, plan, state, openCheckOn: '2026-10-08' }).nextCheckOn,
+          ),
+        ).toBe(true);
+      }
+    }
+  });
+  it('the engine also refuses a boost factor that skipped parseCareState', () => {
+    for (const factor of [5, 1e6, 1e300, Infinity]) {
+      const state: CareState = { ...INITIAL_CARE_STATE, boost: { factor, cyclesLeft: 2 } };
+      for (const plan of ['free', 'premium'] as const) {
+        expect(intervalDays({ ...base, plan, state })).toBe(7);
+        expect(() =>
+          decideAfterCheckIn({ ...base, plan, state, soilDry: true, dueOn: base.today }),
+        ).not.toThrow();
+      }
+    }
+  });
+  it('clamps the free boosted interval to 1..30', () => {
+    const huge: PlantFactors = { ...factors, intervalOverride: 40 };
+    expect(intervalDays({ ...base, plan: 'free', factors: huge, state: BOOSTED })).toBe(30); // 40 × .8 = 32
+    const tiny: CareState = { ...INITIAL_CARE_STATE, boost: { factor: 1e-9, cyclesLeft: 2 } };
+    expect(intervalDays({ ...base, plan: 'free', state: tiny })).toBe(1);
+  });
+  it('a stored pause effect with no count still pauses for two dry checks', () => {
+    const stored = { kind: 'pause_watering' } as unknown as DiagnosisEffect;
+    const paused = applyEffect(INITIAL_CARE_STATE, stored);
+    const first = decideAfterCheckIn({ ...base, state: paused, soilDry: true, dueOn: base.today });
+    expect(first.waterTaskOn).toBeNull();
+    expect(first.state.pause).toEqual({ reason: 'overwatering', dryChecksNeeded: 1 });
+    const second = decideAfterCheckIn({
+      ...base,
+      state: first.state,
+      soilDry: true,
+      dueOn: base.today,
+    });
+    expect(second.waterTaskOn).toBe(base.today);
+  });
+  it('ignores factor keys that only exist on Object.prototype', () => {
+    for (const key of ['constructor', 'toString', '__proto__', 'hasOwnProperty', 'valueOf']) {
+      const odd = {
+        ...factors,
+        potMaterial: key,
+        light: key,
+        drainage: key,
+      } as unknown as PlantFactors;
+      expect(intervalDays({ ...base, factors: odd })).toBe(7);
     }
   });
 });

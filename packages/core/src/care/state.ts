@@ -54,10 +54,13 @@ function isIsoDate(value: unknown): value is IsoDate {
   );
 }
 
-/** A count of at least one, rounded down; anything else is null. */
+/** Diagnoses set at most two dry checks or two boost cycles; a stored count is capped there. */
+const MAX_COUNT = 2;
+
+/** A count rounded down and capped at 2; none left (or unreadable) is null. */
 function wholeCount(value: unknown): number | null {
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
-  const n = Math.floor(value);
+  const n = Math.min(MAX_COUNT, Math.floor(value));
   return n >= 1 ? n : null;
 }
 
@@ -71,8 +74,9 @@ function parseBoost(value: unknown): CareState['boost'] {
   if (!isRecord(value)) return null;
   const { factor } = value;
   const cyclesLeft = wholeCount(value.cyclesLeft);
+  // A boost only ever shortens the interval: a factor over 1 is clamped to 1, a non-positive one is dropped.
   if (typeof factor !== 'number' || !Number.isFinite(factor) || factor <= 0) return null;
-  return cyclesLeft === null ? null : { factor, cyclesLeft };
+  return cyclesLeft === null ? null : { factor: Math.min(1, factor), cyclesLeft };
 }
 
 function parseBasis(value: unknown): CheckBasis | null {
