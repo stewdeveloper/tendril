@@ -33,6 +33,10 @@
   - the precedence substitutions above
 
   Record each frame's diff % and a one-line verdict in the report.
+- Check-in frames 4c, 4d and 4e use `CheckInSheet presentation="overlay"`.
+- My Plants (4i) lists plants with `PlantCard variant="row"` inside a `RowsCard`. The `card` variant is for other contexts.
+- Components that compare dates (`PlantCard`, `TaskRow`) take `today`. Screens pass the fixture date `2026-10-03` from `FixtureApi`, never the device clock.
+- Frame 2d shows compact pet rows, so add `PetCheckCard variant="compact"` when building it (no avatar, kind caption or match footer).
 - Catalog frames that show a sheet render the screen behind it plus `SheetOverlay` (inline scrim and panel, no Modal, no animation), so the device chrome stays above the scrim and captures don't race the slide-up. Screens in the running app use `Sheet`.
 - Read safe areas with the `useSafeAreaInsets()` hook, never the `SafeAreaView` component. The catalog supplies fixed iPhone 16 insets through context, and `SafeAreaView` may not read them on web.
 - Text never sits on a photo without the scrim. Scientific names are always italic. Never write "safe".

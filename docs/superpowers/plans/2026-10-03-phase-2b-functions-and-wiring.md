@@ -967,7 +967,7 @@ git commit -m "feat(mobile): Supabase session with Apple, Google and email-link 
   - `uploadPhotos(userId, observationTempId, photos)`: uploads to `plant-photos/<uid>/<tempId>/<n>.jpg` with the user client and returns the paths.
   - `IntegrityProvider` in `services/integrity.ts`: `{ getToken(): Promise<string | null> }`. It returns `'dev-ok'` when `EXPO_PUBLIC_APP_CHECK_DEV === '1'`, otherwise `null`. Firebase arrives in Phase 4.
   - Mappers convert DB rows into the domain types:
-    - `plants` row plus species, to `PlantSummary`
+    - `plants` row plus species, to `PlantSummary` (`statusOn` from `plants.status_at` as a date, null while active)
     - tasks, to `CareTask`, with `overdue` when `due_on < today`
     - toxicity rows, to `ToxicityEntry`
     - `IdentifyResponse`, to `ScanResult`
