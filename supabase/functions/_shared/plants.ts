@@ -17,6 +17,8 @@ export interface CreatePlantInput {
   /** The user's local date; the first check falls one base interval after it. */
   today: IsoDate;
   now?: Date;
+  /** A retry with the same id returns the first plant. */
+  clientId?: string;
 }
 
 /**
@@ -53,6 +55,7 @@ export async function createPlant(db: Db, input: CreatePlantInput): Promise<stri
     p_label_code: input.labelCode ?? null,
     p_first_check_on: addDays(input.today, interval),
     p_now: (input.now ?? new Date()).toISOString(),
+    p_client_id: input.clientId ?? null,
   });
   return id as string;
 }

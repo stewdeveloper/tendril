@@ -163,7 +163,16 @@ export function assertPhotoPath(path: unknown, uid: string): string {
   return path;
 }
 
-const DEVICE_TIME_SKEW_MS = 2 * 24 * 60 * 60 * 1000;
+const TIME_SKEW_MS = 2 * 24 * 60 * 60 * 1000;
+
+/** A date-time within two days of now (a queued offline action may be a little old, never far from the clock). */
+function instant(v: unknown, field: string, now: Date): string {
+  const ms = typeof v === 'string' ? Date.parse(v) : NaN;
+  if (Number.isNaN(ms) || Math.abs(ms - now.getTime()) > TIME_SKEW_MS) {
+    throw bad(`${field} must be a date-time within two days of now.`);
+  }
+  return new Date(ms).toISOString();
+}
 
 export function parseIdentify(body: unknown, uid: string, now: Date): IdentifyRequest {
   const o = obj(body);
@@ -196,16 +205,13 @@ export function parseIdentify(body: unknown, uid: string, now: Date): IdentifyRe
       mocked: l.mocked,
     };
   }
-  const deviceMs = typeof o.deviceTime === 'string' ? Date.parse(o.deviceTime) : NaN;
-  if (Number.isNaN(deviceMs) || Math.abs(deviceMs - now.getTime()) > DEVICE_TIME_SKEW_MS) {
-    throw bad('deviceTime must be a date-time within two days of now.');
-  }
+  const deviceTime = instant(o.deviceTime, 'deviceTime', now);
   if (typeof o.healthCheck !== 'boolean') throw bad('healthCheck must be true or false.');
   return {
     photos,
     captureSource: o.captureSource,
     location,
-    deviceTime: new Date(deviceMs).toISOString(),
+    deviceTime,
     healthCheck: o.healthCheck,
   };
 }
@@ -290,16 +296,6 @@ export function parseLabelEvent(body: unknown): LabelEvent {
   };
 }
 
-const TIME_SKEW_MS = 2 * 24 * 60 * 60 * 1000;
-/** A date-time within two days of now (a queued offline action may be a little old, never far from the clock). */
-function instant(v: unknown, field: string, now: Date): string {
-  const ms = typeof v === 'string' ? Date.parse(v) : NaN;
-  if (Number.isNaN(ms) || Math.abs(ms - now.getTime()) > TIME_SKEW_MS) {
-    throw bad(`${field} must be a date-time within two days of now.`);
-  }
-  return new Date(ms).toISOString();
-}
-
 const LABEL_CODE = /^[A-Z0-9-]{4,32}$/; // qr_codes.code check
 const LEAF_STATES: readonly LeafState[] = [
   'healthy',
@@ -323,6 +319,9 @@ export function parseCreatePlant(body: unknown): CreatePlantRequest {
   }
   if (o.householdId !== undefined && o.householdId !== null) {
     out.householdId = assertUuid(o.householdId, 'householdId');
+  }
+  if (o.clientId !== undefined && o.clientId !== null) {
+    out.clientId = assertUuid(o.clientId, 'clientId');
   }
   return out;
 }
@@ -388,7 +387,10 @@ export function parsePlantStatus(body: unknown): PlantStatusRequest {
     status: oneOf(o.status, 'status', ['alive', 'dead', 'given_away'] as const),
   };
   const cause = optStr(o.deathCause, 'deathCause', 80);
-  if (cause !== null) out.deathCause = cause;
+  if (cause !== null) {
+    if (out.status !== 'dead') throw bad('deathCause only goes with status dead.');
+    out.deathCause = cause;
+  }
   return out;
 }
 

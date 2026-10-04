@@ -16,6 +16,7 @@ const H1 = 'd1d1d1d1-d1d1-d1d1-d1d1-d1d1d1d1d1d1';
 const H2 = 'd2d2d2d2-d2d2-d2d2-d2d2-d2d2d2d2d2d2';
 const T1 = 'e1e1e1e1-e1e1-e1e1-e1e1-e1e1e1e1e1e1';
 const T2 = 'e2e2e2e2-e2e2-e2e2-e2e2-e2e2e2e2e2e2';
+const T3 = 'e4e4e4e4-e4e4-e4e4-e4e4-e4e4e4e4e4e4';
 const TC = 'e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3';
 
 const seed = (extra: Record<string, unknown> = {}) =>
@@ -57,11 +58,11 @@ const seed = (extra: Record<string, unknown> = {}) =>
   });
 type Db = ReturnType<typeof seed>;
 
-const make = (db: Db, uid = UID) =>
+const make = (db: Db, uid = UID, at = NOW) =>
   createHandler({
     db,
     verifier: { verify: () => Promise.resolve({ userId: uid }) },
-    now: () => NOW,
+    now: () => at,
   });
 const call = async (
   h: (r: Request) => Promise<Response>,
@@ -193,20 +194,20 @@ Deno.test(
 Deno.test('check-in: validation happens before any write', async () => {
   const db = seed();
   const h = make(db);
-  const bad: Record<string, unknown>[] = [
-    { clientId: 'not-a-uuid' },
-    { occurredAt: '2026-10-09T10:00:00Z' }, // more than two days out
-    { occurredAt: 'yesterday' },
-    { leafStates: ['mouldy'] },
-    { leafStates: 'healthy' },
-    { soilDry: 'yes' },
-    { photoPath: `${UID}/../${PARTNER}/a.jpg` },
-    { photoPath: `${PARTNER}/a.jpg` },
-    { plantId: 'nope' },
+  const bad: [Record<string, unknown>, number][] = [
+    [{ clientId: 'not-a-uuid' }, 400],
+    [{ occurredAt: '2026-10-09T10:00:00Z' }, 400], // more than two days out
+    [{ occurredAt: 'yesterday' }, 400],
+    [{ leafStates: ['mouldy'] }, 400],
+    [{ leafStates: 'healthy' }, 400],
+    [{ soilDry: 'yes' }, 400],
+    [{ photoPath: `${UID}/../${PARTNER}/a.jpg` }, 400],
+    [{ photoPath: `${PARTNER}/a.jpg` }, 403], // another user's folder
+    [{ plantId: 'nope' }, 400],
   ];
-  for (const patch of bad) {
+  for (const [patch, status] of bad) {
     const r = await call(h, 'POST', '/checkins', { ...checkIn(CID(1), true), ...patch });
-    assertEquals([400, 403].includes(r.status), true, JSON.stringify(patch));
+    assertEquals(r.status, status, JSON.stringify(patch));
   }
   assertEquals(db.tables.care_events!.length, 0);
   const ok = await call(
@@ -519,4 +520,128 @@ Deno.test('care routes need a signed-in user and know their own paths', async ()
   });
   assertEquals((await call(h, 'POST', '/checkins', checkIn(CID(1), true))).status, 401);
   assertEquals((await call(make(db), 'GET', '/plants')).status, 404);
+});
+
+// --- fix round 1 ------------------------------------------------------------------------------------------------
+Deno.test(
+  'check-in: a replay on a plant closed since still returns the original answer',
+  async () => {
+    const db = seed();
+    const h = make(db);
+    const first = await call(h, 'POST', '/checkins', checkIn(CID(1), true));
+    await call(h, 'POST', `/plants/${P1}/status`, { status: 'given_away' });
+    const replay = await call(h, 'POST', '/checkins', checkIn(CID(1), true));
+    assertEquals(replay.status, 200);
+    assertEquals(replay.body, first.body);
+    const fresh = await call(h, 'POST', '/checkins', checkIn(CID(2), true));
+    assertEquals(fresh.status, 409);
+    assertEquals(due(db).length, 0);
+  },
+);
+
+Deno.test('check-in: a dry check-in with a water task already open re-dates it', async () => {
+  const db = withOpenTasks();
+  db.tables.care_tasks!.find((t) => t.id === T2)!.due_on = '2026-10-01';
+  const r = await call(make(db), 'POST', '/checkins', checkIn(CID(1), true));
+  assertEquals(r.body.waterTaskCreated, true);
+  const water = db.tables.care_tasks!.filter((t) => t.kind === 'water' && t.status === 'due');
+  assertEquals(
+    water.map((t) => [t.id, t.due_on]),
+    [[T2, TODAY]],
+  );
+});
+
+Deno.test('check-in: dates follow the local day, not the UTC day', async () => {
+  const db = seed({
+    profiles: [{ id: UID, timezone: 'Pacific/Auckland' }],
+  });
+  // 12:00 UTC on 3 October is 01:00 on 4 October in Auckland (UTC+13).
+  const at = new Date('2026-10-03T12:00:00Z');
+  const no = await call(make(db, UID, at), 'POST', '/checkins', {
+    ...checkIn(CID(1), false),
+    occurredAt: at.toISOString(),
+  });
+  assertEquals(no.body.nextCheckOn, '2026-10-06');
+  const yes = await call(make(db, UID, at), 'POST', '/checkins', {
+    ...checkIn(CID(2), true),
+    occurredAt: at.toISOString(),
+  });
+  assertEquals(yes.body.nextCheckOn, '2026-10-08');
+  assertEquals(due(db).find((t) => t.kind === 'water')!.due_on, '2026-10-04');
+  // 03:00 UTC on 3 October is still the evening of 2 October in Los Angeles (UTC-7)
+  const late = new Date('2026-10-03T03:00:00Z');
+  const la = seed({ profiles: [{ id: UID, timezone: 'America/Los_Angeles' }] });
+  const r = await call(make(la, UID, late), 'POST', '/checkins', {
+    ...checkIn(CID(3), false),
+    occurredAt: late.toISOString(),
+  });
+  assertEquals(r.body.nextCheckOn, '2026-10-04');
+});
+
+Deno.test('POST /plants with a clientId is idempotent', async () => {
+  const db = seed();
+  const body = { source: 'label_qr', labelCode: 'PL-0001', setup, clientId: CID(40) };
+  const a = await call(make(db), 'POST', '/plants', body);
+  const b = await call(make(db), 'POST', '/plants', body);
+  assertEquals(b.status, 200);
+  assertEquals(b.body, a.body);
+  assertEquals(db.tables.plants!.length, 3);
+  assertEquals(db.tables.qr_scans!.length, 1);
+  assertEquals(db.tables.care_tasks!.filter((t) => t.plant_id === a.body.plantId).length, 1);
+  assertEquals(db.tables.care_events!.filter((e) => e.plant_id === a.body.plantId).length, 1);
+  assertEquals((await call(make(db, PARTNER), 'POST', '/plants', body)).status, 409);
+  assertEquals(
+    (await call(make(db), 'POST', '/plants', { ...body, clientId: 'nope' })).status,
+    400,
+  );
+});
+
+Deno.test('status: dead and given_away are not interchangeable', async () => {
+  const db = withOpenTasks();
+  const h = make(db);
+  const path = `/plants/${P1}/status`;
+  await call(h, 'POST', path, { status: 'dead', deathCause: 'Drought' });
+  assertEquals((await call(h, 'POST', path, { status: 'given_away' })).status, 409);
+  assertEquals(db.tables.plants!.find((x) => x.id === P1)!.status, 'dead');
+  // the same status is a no-op; a new cause updates it
+  assertEquals((await call(h, 'POST', path, { status: 'dead' })).status, 200);
+  assertEquals(db.tables.plants!.find((x) => x.id === P1)!.death_cause, 'Drought');
+  assertEquals((await call(h, 'POST', path, { status: 'dead', deathCause: 'Pests' })).status, 200);
+  assertEquals(db.tables.plants!.find((x) => x.id === P1)!.death_cause, 'Pests');
+  assertEquals(db.tables.care_events!.filter((e) => e.kind === 'status').length, 1);
+  await call(h, 'POST', path, { status: 'alive' });
+  assertEquals((await call(h, 'POST', path, { status: 'given_away' })).status, 200);
+  assertEquals((await call(h, 'POST', path, { status: 'given_away' })).status, 200); // no-op
+  assertEquals((await call(h, 'POST', path, { status: 'dead' })).status, 409);
+  const statuses = db.tables
+    .care_events!.filter((e) => e.kind === 'status')
+    .map((e) => e.new_status);
+  assertEquals(statuses, ['dead', 'alive', 'given_away']);
+});
+
+Deno.test('status: a cause only goes with dead', async () => {
+  const db = withOpenTasks();
+  const h = make(db);
+  for (const status of ['alive', 'given_away']) {
+    const r = await call(h, 'POST', `/plants/${P1}/status`, { status, deathCause: 'x' });
+    assertEquals(r.status, 400, status);
+  }
+  assertEquals(db.tables.plants!.find((x) => x.id === P1)!.status, 'alive');
+});
+
+Deno.test('POST /tasks/:id/done: a clientId used for another task is a conflict', async () => {
+  const db = withOpenTasks();
+  db.tables.care_tasks!.push({
+    id: T3,
+    plant_id: P1,
+    household_id: H1,
+    kind: 'water',
+    due_on: TODAY,
+    status: 'due',
+  });
+  const h = make(db);
+  const body = { clientId: CID(7), occurredAt: NOW.toISOString() };
+  assertEquals((await call(h, 'POST', `/tasks/${T2}/done`, body)).status, 204);
+  assertEquals((await call(h, 'POST', `/tasks/${T3}/done`, body)).status, 409);
+  assertEquals(db.tables.care_tasks!.find((t) => t.id === T3)!.status, 'due');
 });

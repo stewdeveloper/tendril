@@ -26,6 +26,7 @@ export function throwDbError(error: DbError): never {
     case 'P0409':
     case '23505':
       throw new ApiError('conflict', 'That already exists.');
+    case '23502':
     case '23514':
     case '22023':
     case '22P02':

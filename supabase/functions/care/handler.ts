@@ -102,6 +102,7 @@ export function createHandler(deps: CareDeps): (req: Request) => Promise<Respons
       labelCode: body.source === 'label_qr' ? body.labelCode : null,
       today: localDate(at, profile.data?.timezone ?? 'UTC'),
       now: at,
+      clientId: body.clientId,
     });
     return json({ plantId } satisfies CreatePlantResponse);
   }
@@ -148,10 +149,9 @@ export function createHandler(deps: CareDeps): (req: Request) => Promise<Respons
     const at = now();
     const body = parseCheckIn(await readJson(req), uid, at);
     const plant = await memberPlant(uid, body.plantId);
-    if (plant.status !== 'alive') throw new ApiError('conflict', 'That plant is no longer alive.');
     const { today, baseDays } = await careContext(uid, plant.species_id);
     const outcome = basicCheckIn({ today, soilDry: body.soilDry, baseDays });
-    // Idempotent on clientId inside SQL: a repeat returns the stored answer, not this recomputation.
+    // Idempotent on clientId inside SQL (which also refuses a closed plant, after the replay branch): a repeat returns the stored answer, not this recomputation.
     const res = (await callPrivate(db, 'srv_check_in', {
       p_uid: uid,
       p_client_id: body.clientId,

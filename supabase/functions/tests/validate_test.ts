@@ -29,8 +29,8 @@ Deno.test('bootstrap timezones are canonical IANA names', () => {
   }
 });
 
-Deno.test('date and time SQLSTATEs are invalid input', () => {
-  for (const code of ['22007', '22008']) {
+Deno.test('date, time and not-null SQLSTATEs are invalid input', () => {
+  for (const code of ['22007', '22008', '23502']) {
     const e = assertThrows(() => throwDbError({ code, message: 'x' }), ApiError);
     assertEquals(e.code, 'invalid_input');
   }

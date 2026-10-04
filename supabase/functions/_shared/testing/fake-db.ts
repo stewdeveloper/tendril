@@ -267,6 +267,13 @@ export function fakeDb(seed: Record<string, any> = {}): FakeDb {
         !tables.observations!.some((o) => o.id === a.p_observation_id && o.user_id === a.p_uid)
       )
         return err('P0403', 'observation is not yours');
+      if (a.p_client_id) {
+        const old = tables.plants!.find((p) => p.client_id === a.p_client_id);
+        if (old)
+          return old.created_by === a.p_uid ? ok(old.id) : err('P0409', 'client id already used');
+      }
+      if (a.p_label_code && a.p_source !== 'label_qr')
+        return err('22023', 'a label code needs the label_qr source');
       if (a.p_source === 'label_qr') {
         if (!a.p_label_code) return err('22023', 'a label plant needs a code');
         const q = tables.qr_codes!.find((c) => c.code === a.p_label_code && c.status === 'active');
@@ -291,6 +298,7 @@ export function fakeDb(seed: Record<string, any> = {}): FakeDb {
         source: a.p_source,
         label_code: a.p_label_code,
         created_by: a.p_uid,
+        client_id: a.p_client_id ?? null,
       });
       tables.care_tasks!.push({
         id: crypto.randomUUID(),
@@ -337,6 +345,7 @@ export function fakeDb(seed: Record<string, any> = {}): FakeDb {
           waterTaskCreated: old.water_task_created ?? false,
         });
       }
+      if (plant.status !== 'alive') return err('P0409', 'plant is not alive');
       const eventId = crypto.randomUUID();
       tables.care_events!.push({
         id: eventId,
@@ -366,7 +375,13 @@ export function fakeDb(seed: Record<string, any> = {}): FakeDb {
           due_on,
           status: 'due',
         });
-      if (a.p_create_water) task('water', a.p_today);
+      if (a.p_create_water) {
+        const open = tables.care_tasks!.find(
+          (t) => t.plant_id === a.p_plant_id && t.kind === 'water' && t.status === 'due',
+        );
+        if (open) open.due_on = a.p_today;
+        else task('water', a.p_today);
+      }
       task('check', a.p_next_check_on);
       return ok({
         duplicate: false,
@@ -386,8 +401,14 @@ export function fakeDb(seed: Record<string, any> = {}): FakeDb {
         )
       )
         return err('P0403', 'not a member of this household');
-      if (plant.status === a.p_status)
+      const cause = ((a.p_death_cause ?? '') as string).trim() || null;
+      if (cause && a.p_status !== 'dead') return err('22023', 'only a death has a cause');
+      if (plant.status === a.p_status) {
+        if (a.p_status === 'dead' && cause) plant.death_cause = cause;
         return ok({ status: plant.status, statusAt: plant.status_at ?? null, nextCheckOn: null });
+      }
+      if (plant.status !== 'alive' && a.p_status !== 'alive')
+        return err('P0409', 'a closed plant must be brought back first');
       const mine = (t: Row) => t.plant_id === a.p_plant_id;
       let next: string | null = null;
       if (a.p_status === 'alive') {
@@ -417,7 +438,7 @@ export function fakeDb(seed: Record<string, any> = {}): FakeDb {
         Object.assign(plant, {
           status: a.p_status,
           status_at: a.p_now,
-          death_cause: a.p_status === 'dead' ? (a.p_death_cause ?? '').trim() || null : null,
+          death_cause: cause,
         });
         for (const t of tables.care_tasks!) {
           if (mine(t) && t.status === 'due')
@@ -430,6 +451,7 @@ export function fakeDb(seed: Record<string, any> = {}): FakeDb {
         household_id: plant.household_id,
         user_id: a.p_uid,
         kind: 'status',
+        new_status: a.p_status,
         occurred_at: a.p_now,
       });
       return ok({
@@ -450,7 +472,12 @@ export function fakeDb(seed: Record<string, any> = {}): FakeDb {
       if (task.kind !== 'water') return err('P0409', 'only water tasks are completed here');
       const old = tables.care_events!.find((e) => e.client_id === a.p_client_id);
       if (old) {
-        if (old.plant_id !== task.plant_id || old.user_id !== a.p_uid || old.kind !== 'water')
+        if (
+          old.plant_id !== task.plant_id ||
+          old.user_id !== a.p_uid ||
+          old.kind !== 'water' ||
+          old.task_id !== task.id
+        )
           return err('P0409', 'client id already used');
         return ok({ duplicate: true, eventId: old.id, taskId: task.id });
       }
@@ -462,6 +489,7 @@ export function fakeDb(seed: Record<string, any> = {}): FakeDb {
         household_id: task.household_id,
         user_id: a.p_uid,
         kind: 'water',
+        task_id: task.id,
         client_id: a.p_client_id,
         occurred_at: a.p_occurred_at,
       });

@@ -100,6 +100,8 @@ export interface CreatePlantRequest {
   speciesId?: string;
   setup: PlantSetup;
   householdId?: string;
+  /** Makes a retry return the first plant instead of making another. */
+  clientId?: string;
 }
 export interface CreatePlantResponse {
   plantId: string;
