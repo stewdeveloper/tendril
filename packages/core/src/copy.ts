@@ -70,3 +70,91 @@ export function soilCheckLine(intervalDays: number): string {
   const { min, max } = soilCheckRange(intervalDays);
   return `Check the soil every ${min} to ${max} days`;
 }
+
+/** Onboarding (3a to 3k): the lines the frames fix, so the screens and the tests read one source. */
+export const onboardingCopy = {
+  welcomeLine: 'Name any plant from a photo, see how sure we are, and check it against your pets.',
+  ageTitle: 'When were you born?',
+  ageLine: 'Month and year are enough.',
+  ageStopTitle: 'Thanks for telling us',
+  ageStopLine: "You can't create a Tendril account right now. We haven't kept your date of birth.",
+  signInTitle: 'Save your plants',
+  signInLine: 'Sign in so your plants and finds follow you to a new phone.',
+  linkSentTitle: 'Check your email',
+  linkExpiredTitle: 'This link has expired',
+  petsTitle: 'Who lives with you?',
+  petsLine: 'Pick all that apply. Every plant gets a pet check for each of them.',
+  petsNone: 'No pet checks for now. Add a pet any time in Settings and every plant gets checked.',
+  homeAreaTitle: "Where's home?",
+  townNotFoundTitle: "We couldn't find that town",
+  townNotFoundBody: 'Check the spelling, or move the area on the map instead.',
+  firstScanTitle: 'Your first scan',
+  firstScanLines: [
+    'Fill the frame with one leaf, a flower or the whole plant.',
+    'Tendril needs the camera to take plant photos.',
+    'Photos stay private unless you share one.',
+  ],
+  orUseEmail: 'or use email',
+  emailRequired: 'Enter your email address.',
+  linkResent: 'Sent again. Check your email.',
+  namesOptional: 'Names (optional)',
+  skip: 'Skip',
+  petsSaveFailed: "Couldn't save your pets. Try again.",
+  homeAreaSaveFailed: "Couldn't save your area. Try again.",
+  homeAreaSkipped: "Home area skipped. We'll ask again before your first public find.",
+} as const;
+
+export const linkSentLine = (email: string) =>
+  `We sent a sign-in link to ${email}. Open it on this phone within 15 minutes.`;
+export const linkExpiredLine = (email: string) =>
+  `Sign-in links work once, for 15 minutes. We can send a fresh one to ${email}.`;
+
+/** Today, the check-in and Streaks (2e, 4a to 4h): the lines the frames fix. */
+export const todayCopy = {
+  today: 'Today',
+  dueToday: 'Due today',
+  emptyLine: "Add your first plant and we'll tell you when to check its soil.",
+  scanPlant: 'Scan a plant',
+  scanLabel: 'Scan your plant label',
+  checkIn: 'Check in',
+  checkInFailed: "Couldn't save your check-in. Try again.",
+  careStreakLabel: 'day care streak',
+  discoveryStreakLabel: 'week discovery streak',
+  league: 'League',
+  identifications: 'Identifications',
+  streaksTitle: 'Streaks',
+  discoveryRow: 'Discovery streak',
+  discoveryRowLine: 'A new species each week',
+  freezesRow: 'Freezes',
+  freezesRowLine: 'Spent on a missed day',
+  freezesRowLineSpent: 'Invite a friend to earn another',
+  winterRow: 'Winter mode',
+  winterRowLine: 'Protects discovery when little grows',
+  invite: 'Invite a friend to earn a freeze',
+} as const;
+
+/** The note under a check-in that was saved without a connection (4e, and an offline Yes). */
+export const offlineSaved = "You're offline. Saved, and it will sync when you're back.";
+
+/** "1 freeze held", "2 freezes held": the line under the Today streak tiles (2e). */
+export const freezesHeldLine = (n: number) => `${n} ${n === 1 ? 'freeze' : 'freezes'} held`;
+/** "1 held": the Freezes row on Streaks (4f, 4g). */
+export const freezesHeldShort = (n: number) => `${n} held`;
+/** "3 weeks", "1 week": the Discovery streak row (4f). */
+export const weeksLabel = (n: number) => `${n} ${n === 1 ? 'week' : 'weeks'}`;
+/** The line under a broken streak. It says what happened and how to start again, never who failed (4h). */
+export const streakBroken = (days: number) =>
+  `Your last streak ran ${days} ${days === 1 ? 'day' : 'days'}. Any check-in starts a new one.`;
+/** "Check in on Monty" (4h). */
+export const checkInOn = (nickname: string) => `Check in on ${nickname}`;
+/** A finished task in the all-done list (4b). */
+export const taskDoneTitle = (kind: 'water' | 'check', nickname: string) =>
+  kind === 'water' ? `Watered ${nickname}` : `Checked ${nickname}'s soil`;
+/** "340 points · 3 days left": under the league rank (2e, 4b). */
+export const leaguePointsLine = (points: number, daysLeft: number) =>
+  `${points} points · ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left`;
+/** "All done for today. Next check: Spidey, tomorrow." `when` is "tomorrow" or a weekday (4b). */
+export const allDoneToday = (next?: { plantNickname: string; when: string }) =>
+  next
+    ? `All done for today. Next check: ${next.plantNickname}, ${next.when}.`
+    : 'All done for today.';

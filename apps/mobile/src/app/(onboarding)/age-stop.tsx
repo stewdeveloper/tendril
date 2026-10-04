@@ -1,5 +1,5 @@
-import { PlaceholderScreen } from '../../screens/PlaceholderScreen';
+import { AgeStopScreen } from '../../screens/onboarding/AgeStopScreen';
 
-export default function AgeStopScreen() {
-  return <PlaceholderScreen title="Age stop" frames="3c" kind="plain" />;
+export default function AgeStopRoute() {
+  return <AgeStopScreen />;
 }

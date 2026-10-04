@@ -1,7 +1,7 @@
 import type { IsoDate, PlantStatus, QuotaKind } from '@tendril/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApi } from './ApiProvider';
-import { FIXTURE_TODAY } from './fixture/FixtureApi';
+import { FIXTURE_TODAY } from './fixtureDate';
 import type { TendrilApi } from './types';
 
 type Input<K extends keyof TendrilApi> = Parameters<TendrilApi[K]>[0];

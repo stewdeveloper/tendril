@@ -1,12 +1,5 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
+import { useFocusEffect } from 'expo-router';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 
 interface TabBarVisibility {
   hidden: boolean;
@@ -45,13 +38,17 @@ export function useTabBarHidden(): boolean {
 }
 
 /**
- * Hides the tab bar while `hidden` is true and this screen is mounted (a plant that has died or
- * been given away shows no bar, frames 4k and 4l). Does nothing outside a provider.
+ * Hides the tab bar while `hidden` is true and this screen is focused (a plant that has died or
+ * been given away shows no bar, frames 4k and 4l). Only while focused: a stack screen stays
+ * mounted underneath the next one, and must not keep the bar hidden for it. Does nothing outside
+ * a provider.
  */
 export function useHideTabBar(hidden: boolean): void {
   const hide = useContext(TabBarVisibilityContext)?.hide;
-  useEffect(() => {
-    if (!hidden || !hide) return;
-    return hide();
-  }, [hidden, hide]);
+  useFocusEffect(
+    useCallback(() => {
+      if (!hidden || !hide) return;
+      return hide();
+    }, [hidden, hide]),
+  );
 }

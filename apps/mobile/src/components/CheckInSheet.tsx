@@ -1,6 +1,7 @@
 import {
   checkInAnsweredNo,
   checkInQuestion,
+  offlineSaved,
   radius,
   streakContinues,
   type LeafState,
@@ -43,9 +44,11 @@ interface CheckInSheetBase {
 export type CheckInSheetProps = CheckInSheetBase &
   (
     | { state: 'unanswered'; nextCheckWeekday?: string }
-    | { state: 'answered_yes'; nextCheckWeekday?: string }
+    // `offline`: the Yes was saved without a connection. It still says to water, plus the sync note.
+    | { state: 'answered_yes'; nextCheckWeekday?: string; offline?: boolean }
     // These two say when the next check is, so they cannot be drawn without the day.
     | { state: 'answered_no'; nextCheckWeekday: string }
+    // Offline, "No, still damp" only: an offline Yes is `answered_yes` with `offline`.
     | { state: 'saved_offline'; nextCheckWeekday: string }
   );
 
@@ -137,12 +140,15 @@ export function CheckInSheet(props: CheckInSheetProps) {
             <AppText variant="sub" color="textSecondary">
               We&apos;ve added a watering task for today.
             </AppText>
+            {props.offline ? (
+              <Note tone="dark" text={offlineSaved} />
+            ) : null}
           </>
         ) : (
           <>
             <AppText variant="title">{checkInAnsweredNo(props.nextCheckWeekday)}</AppText>
             {props.state === 'saved_offline' ? (
-              <Note tone="dark" text="You're offline. Saved, and it will sync when you're back." />
+              <Note tone="dark" text={offlineSaved} />
             ) : streakDays != null && streakDays > 0 ? (
               <AppText variant="sub" color="textSecondary">
                 {streakContinues(streakDays)}

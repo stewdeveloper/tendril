@@ -34,6 +34,7 @@ import {
   type WeekResult,
 } from '@tendril/core';
 import { weekdayName } from '../../components/dates';
+import { FIXTURE_TODAY } from '../fixtureDate';
 import type {
   CheckInResult,
   EmergencyInfo,
@@ -59,13 +60,6 @@ export interface FixtureApiOptions {
   latencyMs?: number;
   scenario?: FixtureScenario;
 }
-
-/**
- * "Today" in the fixture world: Saturday 3 October 2026, the day the design frames show. Every
- * date the API derives (next checks, history, find dates) counts from here, never the device clock,
- * so screens read the same on any day.
- */
-export const FIXTURE_TODAY: IsoDate = '2026-10-03';
 
 /** The free plan's basic schedule, and the 2-day recheck when the soil was still damp (spec §9). */
 const CHECK_INTERVAL_DAYS = 7;

@@ -1,5 +1,6 @@
 import { aoife } from '@tendril/core';
-import { FIXTURE_TODAY, FixtureApi } from './FixtureApi';
+import { FIXTURE_TODAY } from '../fixtureDate';
+import { FixtureApi } from './FixtureApi';
 
 const camera = { photoUris: ['p1'], organs: ['leaf' as const], captureSource: 'camera' as const };
 const setup = (nickname: string) => ({

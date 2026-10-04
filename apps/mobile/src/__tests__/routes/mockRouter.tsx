@@ -12,6 +12,7 @@ export const routerMock = {
   navigate: jest.fn(),
   back: jest.fn(),
   canGoBack: jest.fn(() => true),
+  setParams: jest.fn(),
 };
 /** What `useLocalSearchParams()` returns. Set `paramsMock.current = { id: 'monty' }` before rendering. */
 export const paramsMock: { current: Record<string, string | string[]> } = { current: {} };

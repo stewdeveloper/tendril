@@ -214,3 +214,30 @@ export function TrophyIcon(props: IconProps) {
     </Glyph>
   );
 }
+
+/** The Apple logo for "Continue with Apple" (3d): a filled glyph, 18 x 20 at the default size. */
+export function AppleIcon({ size = 20, color }: IconProps) {
+  return (
+    <Svg
+      width={size * 0.9}
+      height={size}
+      viewBox="0 0 17 20"
+      fill={color}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      aria-hidden
+    >
+      <Path d="M14.1 10.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8s2 .8 3.4.8c1.4 0 2.3-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9 0 0-2.7-1-2.7-4.1ZM11.6 3c.7-.9 1.2-2 1-3.2-1 0-2.2.7-3 1.5-.6.7-1.2 1.9-1 3.1 1.1.1 2.3-.6 3-1.4Z" />
+    </Svg>
+  );
+}
+
+/** The smaller tendril line drawing on the age stop (3c): 120 x 120, drawn faint by its screen. */
+export function TendrilCurlDrawing({ size = 120, color, strokeWidth = 3 }: IconProps) {
+  return (
+    <Glyph color={color} strokeWidth={strokeWidth} viewBox="0 0 120 120" size={size}>
+      <Path d="M20 100c10-30 30-40 50-40s28-14 22-28-26-12-26 4 14 18 26 10" />
+      <Path d="M60 60c-4-14 4-26 16-30" />
+    </Glyph>
+  );
+}

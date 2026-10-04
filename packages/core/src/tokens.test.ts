@@ -142,5 +142,7 @@ describe('tokens', () => {
   it('shadow effects', () => {
     expect(shadows.floating).toBe('0 8px 24px rgba(29, 36, 32, 0.25)');
     expect(shadows.raised).toBe('0 4px 12px rgba(29, 36, 32, 0.18)');
+    expect(shadows.popover).toBe('0 8px 24px rgba(29, 36, 32, 0.08)');
+    expect(shadows.handle).toBe('0 2px 6px rgba(29, 36, 32, 0.2)');
   });
 });

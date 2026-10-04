@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
+  allDoneToday,
   checkInAnsweredNo,
+  checkInOn,
+  freezesHeldLine,
+  freezesHeldShort,
+  leaguePointsLine,
+  offlineSaved,
+  streakBroken,
+  taskDoneTitle,
+  weeksLabel,
   checkInQuestion,
   copy,
   soilCheckLine,
@@ -81,5 +90,31 @@ describe('previewDaysLeft', () => {
 describe('soilCheckLine', () => {
   it('words the soil check range', () => {
     expect(soilCheckLine(6)).toBe('Check the soil every 5 to 7 days');
+  });
+});
+
+describe('today copy', () => {
+  it('matches the frames', () => {
+    expect(freezesHeldLine(1)).toBe('1 freeze held');
+    expect(freezesHeldLine(2)).toBe('2 freezes held');
+    expect(freezesHeldShort(0)).toBe('0 held');
+    expect(weeksLabel(3)).toBe('3 weeks');
+    expect(weeksLabel(1)).toBe('1 week');
+    expect(streakBroken(16)).toBe('Your last streak ran 16 days. Any check-in starts a new one.');
+    expect(checkInOn('Monty')).toBe('Check in on Monty');
+    expect(taskDoneTitle('check', 'Monty')).toBe("Checked Monty's soil");
+    expect(taskDoneTitle('water', 'Lily')).toBe('Watered Lily');
+    expect(leaguePointsLine(340, 3)).toBe('340 points · 3 days left');
+    expect(leaguePointsLine(5, 1)).toBe('5 points · 1 day left');
+    expect(allDoneToday({ plantNickname: 'Spidey', when: 'tomorrow' })).toBe(
+      'All done for today. Next check: Spidey, tomorrow.',
+    );
+    expect(allDoneToday()).toBe('All done for today.');
+  });
+});
+
+describe('offlineSaved', () => {
+  it('is the one sanctioned offline note', () => {
+    expect(offlineSaved).toBe("You're offline. Saved, and it will sync when you're back.");
   });
 });

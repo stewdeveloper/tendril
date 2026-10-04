@@ -4,7 +4,8 @@ import { Animated, Easing, Platform, Pressable, StyleSheet, View } from 'react-n
 import { AppText, useTheme } from '../theme';
 import type { IconProps } from './icons';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'text' | 'danger' | 'ink';
+export type ButtonVariant =
+  'primary' | 'secondary' | 'text' | 'danger' | 'ink' | 'neutral' | 'outline';
 
 export interface ButtonProps {
   label: string;
@@ -50,6 +51,10 @@ export function Button({
     danger: { bg: c.danger, fg: c.onChip, ring: 'transparent' },
     // "Continue with Apple" (3d): the page's ink with surface-coloured text, white in light mode.
     ink: { bg: c.textPrimary, fg: c.surface, ring: 'transparent' },
+    // "Continue with Google" (3d): a surface button with the field ring and ink text.
+    neutral: { bg: c.surface, fg: c.textPrimary, ring: c.border },
+    // "Scan your plant label" (3a): no fill, the page's ink for both ring and text, for use over a photo.
+    outline: { bg: 'transparent', fg: c.textPrimary, ring: c.textPrimary },
   }[variant];
   const inert = disabled || loading;
   const baseLabel = accessibilityLabel ?? label;

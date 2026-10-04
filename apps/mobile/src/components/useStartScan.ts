@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useApi } from '../api/ApiProvider';
 import { queryKeys } from '../api/hooks';
 
@@ -9,24 +9,32 @@ import { queryKeys } from '../api/hooks';
  * identification quota fresh. At the cap it goes to the Scan tab screen, which shows "Limit
  * reached" instead of a camera that could not identify anything; otherwise it opens the camera.
  * If the quota can't be read it opens the camera, and the server refuses at the cap on its own.
+ * A call made while one is still reading the quota is ignored, so a double tap navigates once.
  */
 export function useStartScan(): () => Promise<void> {
   const router = useRouter();
   const client = useQueryClient();
   const api = useApi();
+  const busy = useRef(false);
   return useCallback(async () => {
-    let atCap = false;
+    if (busy.current) return;
+    busy.current = true;
     try {
-      const quota = await client.fetchQuery({
-        queryKey: queryKeys.quota('identification'),
-        queryFn: () => api.getQuota('identification'),
-        staleTime: 0,
-      });
-      atCap = quota.used >= quota.limit;
-    } catch {
-      atCap = false;
+      let atCap = false;
+      try {
+        const quota = await client.fetchQuery({
+          queryKey: queryKeys.quota('identification'),
+          queryFn: () => api.getQuota('identification'),
+          staleTime: 0,
+        });
+        atCap = quota.used >= quota.limit;
+      } catch {
+        atCap = false;
+      }
+      if (atCap) router.navigate('/(tabs)/scan');
+      else router.push('/camera');
+    } finally {
+      busy.current = false;
     }
-    if (atCap) router.navigate('/(tabs)/scan');
-    else router.push('/camera');
   }, [api, client, router]);
 }

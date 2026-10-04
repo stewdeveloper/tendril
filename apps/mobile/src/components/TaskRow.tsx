@@ -29,12 +29,20 @@ export function taskTitle(task: CareTask): string {
     : `Check ${task.plantNickname}'s soil`;
 }
 
-/** "Living room · due today", "Kitchen · overdue since yesterday", "Bedroom · done". */
+/** "Living room · due today", "Kitchen · tomorrow", "Kitchen · overdue since yesterday", "Bedroom · done". */
 export function taskSubtitle(task: CareTask, today: IsoDate): string {
   let status: string;
   if (task.status === 'done') status = 'done';
-  else if (task.status === 'due') status = 'due today';
-  else {
+  else if (task.status === 'due') {
+    // A check that is not due yet (4c's second row) names its day.
+    const ahead = daysBetween(today, task.dueOn);
+    status =
+      ahead === 1
+        ? 'tomorrow'
+        : ahead != null && ahead > 1
+          ? (dayMonth(task.dueOn) ?? 'due today')
+          : 'due today';
+  } else {
     const diff = daysBetween(task.dueOn, today);
     const since = diff === 1 ? 'yesterday' : diff != null && diff > 1 ? dayMonth(task.dueOn) : null;
     status = since ? `overdue since ${since}` : 'overdue';

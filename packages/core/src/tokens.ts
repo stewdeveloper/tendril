@@ -111,8 +111,12 @@ export const space = { 1: 4, 2: 8, 3: 12, 4: 16, 5: 20, 6: 24, 8: 32, 10: 40, 12
 export const radius = { card: 16, button: 14, note: 14, input: 12, tile: 14, pill: 999 } as const;
 export const motion = { fast: 200, base: 250, slow: 300 } as const;
 
-/** Drop shadows as CSS box-shadow strings: the floating snackbar and the raised Scan circle. */
+/** Drop shadows as CSS box-shadow strings: the floating snackbar, the raised Scan circle, the search popover and the map handle. */
 export const shadows = {
   floating: '0 8px 24px rgba(29, 36, 32, 0.25)',
   raised: '0 4px 12px rgba(29, 36, 32, 0.18)',
+  /** The "not found" card under a search field (3j). */
+  popover: '0 8px 24px rgba(29, 36, 32, 0.08)',
+  /** The draggable handle on the home-area circle (3i). */
+  handle: '0 2px 6px rgba(29, 36, 32, 0.2)',
 } as const;
