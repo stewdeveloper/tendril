@@ -77,12 +77,13 @@ export default function TodayRoute() {
         if (!current || current.clientId !== clientId) return current;
         const next = { clientId, plantId, taskId: current.taskId, sheetKey: current.sheetKey };
         const streakDays = result.streakDays;
-        if (dry && !result.savedOffline)
+        if (dry)
           return {
             ...next,
             streakDays,
             state: 'answered_yes',
             nextCheckWeekday: result.nextCheckWeekday,
+            offline: result.savedOffline,
           };
         return {
           ...next,

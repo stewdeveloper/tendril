@@ -47,7 +47,8 @@ export type TodayCheckIn = {
   sheetKey?: number;
   streakDays?: number;
 } & (
-  | { state: 'unanswered' | 'answered_yes'; nextCheckWeekday?: string }
+  | { state: 'unanswered'; nextCheckWeekday?: string }
+  | { state: 'answered_yes'; nextCheckWeekday?: string; offline?: boolean }
   | { state: 'answered_no' | 'saved_offline'; nextCheckWeekday: string }
 );
 
@@ -154,16 +155,13 @@ function Sheet({
   const shared = {
     visible: true,
     plantNickname: nickname,
-    streakDays: checkIn.streakDays,
     onAnswer,
     onAddPhoto,
     onClose: onCloseCheckIn,
     onDone,
   };
-  const sheet: CheckInSheetProps =
-    checkIn.state === 'answered_no' || checkIn.state === 'saved_offline'
-      ? { ...shared, state: checkIn.state, nextCheckWeekday: checkIn.nextCheckWeekday }
-      : { ...shared, state: checkIn.state, nextCheckWeekday: checkIn.nextCheckWeekday };
+  // `taskId` and `sheetKey` ride along; the sheet ignores them.
+  const sheet: CheckInSheetProps = { ...shared, ...checkIn };
   return <CheckInSheet {...sheet} />;
 }
 

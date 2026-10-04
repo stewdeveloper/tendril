@@ -90,6 +90,17 @@ describe('Today route', () => {
     ).toBeTruthy();
   });
 
+  it('offline, a dry answer still says to water, with the offline note', async () => {
+    await renderRoute(<TodayRoute />, new FixtureApi({ scenario: 'offline' as FixtureScenario }));
+    await openMontyCheckIn();
+    await fireEvent.press(screen.getByRole('button', { name: 'Yes, dry' }));
+    expect(await screen.findByText('Time to water Monty.')).toBeTruthy();
+    expect(
+      screen.getByText("You're offline. Saved, and it will sync when you're back."),
+    ).toBeTruthy();
+    expect(screen.queryByText(/^Good\./)).toBeNull();
+  });
+
   it('a rejected check-in resets the sheet, shows the error, and the retry reuses the clientId', async () => {
     const api = new FixtureApi();
     const real = api.checkIn.bind(api);

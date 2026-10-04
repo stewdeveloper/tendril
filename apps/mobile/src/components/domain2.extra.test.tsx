@@ -549,6 +549,14 @@ describe('CheckInSheet states', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Done' }));
     expect(onDone).toHaveBeenCalledTimes(1);
   });
+  it('answered Yes offline still says to water, and adds the sync note', async () => {
+    await wrap(sheet({ state: 'answered_yes', offline: true }));
+    expect(screen.getByText('Time to water Monty.')).toBeTruthy();
+    expect(
+      screen.getByText("You're offline. Saved, and it will sync when you're back."),
+    ).toBeTruthy();
+    expect(screen.queryByText(/^Good\./)).toBeNull();
+  });
   it('answered No names the streak only when there is one', async () => {
     const { unmount } = await wrap(sheet({ state: 'answered_no', nextCheckWeekday: 'Friday' }));
     expect(screen.queryByText(/streak/)).toBeNull();
