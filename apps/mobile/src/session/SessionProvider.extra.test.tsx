@@ -172,4 +172,40 @@ describe('SessionProvider destination', () => {
     await act(() => session.current.signOut());
     expect(session.current.destination()).toBe('/today');
   });
+
+  it('takes the label scanner as a destination', async () => {
+    const session = await onboarding();
+    await act(() => session.current.completeOnboarding('/camera?mode=label'));
+    expect(session.current.destination()).toBe('/camera?mode=label');
+  });
+
+  it('remembers the label scanner from the welcome screen: "Allow camera" goes there, "Not now" to Today', async () => {
+    const first = await setup();
+    await act(async () => first.current.rememberDestination('/camera?mode=label'));
+    await act(() => first.current.signIn('email', 'aoife@example.com'));
+    await act(() => first.current.completeOnboarding('/camera'));
+    expect(first.current.destination()).toBe('/camera?mode=label');
+
+    const second = await setup();
+    await act(async () => second.current.rememberDestination('/camera?mode=label'));
+    await act(() => second.current.signIn('email', 'aoife@example.com'));
+    await act(() => second.current.completeOnboarding('/today'));
+    expect(second.current.destination()).toBe('/today');
+  });
+
+  it('forgets a remembered label scan when the person chooses otherwise, and on sign-out', async () => {
+    const session = await setup();
+    await act(async () => session.current.rememberDestination('/camera?mode=label'));
+    await act(async () => session.current.rememberDestination(null));
+    await act(() => session.current.signIn('email', 'aoife@example.com'));
+    await act(() => session.current.completeOnboarding('/camera'));
+    expect(session.current.destination()).toBe('/camera');
+    await act(() => session.current.signOut());
+    await act(() => session.current.signIn('email', 'aoife@example.com'));
+    await act(async () => session.current.rememberDestination('/camera?mode=label'));
+    await act(() => session.current.signOut());
+    await act(() => session.current.signIn('email', 'aoife@example.com'));
+    await act(() => session.current.completeOnboarding('/camera'));
+    expect(session.current.destination()).toBe('/camera');
+  });
 });

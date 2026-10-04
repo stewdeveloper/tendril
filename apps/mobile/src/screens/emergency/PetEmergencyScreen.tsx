@@ -115,6 +115,9 @@ export function PetEmergencyScreen({
               <Button
                 tight
                 label={emergencyCopy.callPoisonLine(poisonLine.name, poisonLine.phone)}
+                // Spoken with the plain number: the display string joins it with non-breaking
+                // characters so it never wraps, and a screen reader reads those oddly.
+                accessibilityLabel={`Call ${poisonLine.name} ${poisonLine.phone}`}
                 variant="secondary"
                 onPress={onCallPoisonLine}
               />

@@ -1,13 +1,15 @@
-import { todayCopy, type LeafState } from '@tendril/core';
+import { cameraCopy, diagnosisCopy, todayCopy, type LeafState } from '@tendril/core';
 import { randomUUID } from 'expo-crypto';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useAppToday, useCheckIn, useProfile, useToday } from '../../../api/hooks';
 import { useStartScan } from '../../../components';
+import { pickOnePhoto } from '../../../lib/pickPhotos';
+import { preparePhoto } from '../../../services/photos';
 import { TodayScreen, type TodayCheckIn } from '../../../screens/today/TodayScreen';
 
 /** The open check-in sheet. The `clientId` is made once per opened sheet, so a retry reuses it. */
-type Sheet = { clientId: string; plantId: string } & TodayCheckIn;
+type Sheet = { clientId: string; plantId: string; photoPath?: string } & TodayCheckIn;
 
 const ERROR_MS = 5000;
 
@@ -28,14 +30,14 @@ export default function TodayRoute() {
   const checkIn = useCheckIn();
   const startScan = useStartScan();
   const [sheet, setSheet] = useState<Sheet | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const tasks = today.data?.tasks;
   const open = (taskId: string) => {
     const task = tasks?.find((t) => t.id === taskId);
     if (!task) return;
     if (task.kind === 'check' && task.status !== 'done') {
-      setFailed(false);
+      setNotice(null);
       setSheet(newSheet(taskId, task.plantId));
     } else {
       router.push(`/plants/${task.plantId}`);
@@ -58,20 +60,42 @@ export default function TodayRoute() {
   }, [wanted, router]);
 
   useEffect(() => {
-    if (!failed) return;
-    const timer = setTimeout(() => setFailed(false), ERROR_MS);
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), ERROR_MS);
     return () => clearTimeout(timer);
-  }, [failed]);
+  }, [notice]);
+
+  // The photo is picked, shrunk and kept with the open sheet; it goes with the answer. A sheet
+  // closed meanwhile (or reopened as a new check-in) drops it.
+  const addPhoto = async () => {
+    if (!sheet) return;
+    const { clientId } = sheet;
+    const outcome = await pickOnePhoto();
+    if (outcome.status === 'denied') setNotice(diagnosisCopy.permissionDenied);
+    if (outcome.status !== 'picked') return;
+    const [asset] = outcome.assets;
+    try {
+      const photo = await preparePhoto(asset!.uri, asset!.width, asset!.height);
+      setSheet((current) =>
+        current && current.clientId === clientId
+          ? { ...current, photoPath: photo.uri, hasPhoto: true }
+          : current,
+      );
+    } catch {
+      setNotice(cameraCopy.photoFailed);
+    }
+  };
 
   const answer = async (dry: boolean, leaves: LeafState[]) => {
     if (!sheet) return;
-    const { clientId, plantId } = sheet;
+    const { clientId, plantId, photoPath } = sheet;
     try {
       const result = await checkIn.mutateAsync({
         clientId,
         plantId,
         soilDry: dry,
         leafStates: leaves,
+        ...(photoPath ? { photoPath } : null),
       });
       setSheet((current) => {
         if (!current || current.clientId !== clientId) return current;
@@ -103,10 +127,12 @@ export default function TodayRoute() {
               taskId: current.taskId,
               sheetKey: (current.sheetKey ?? 0) + 1,
               state: 'unanswered',
+              photoPath: current.photoPath,
+              hasPhoto: current.hasPhoto,
             }
           : current,
       );
-      setFailed(true);
+      setNotice(todayCopy.checkInFailed);
     }
   };
 
@@ -117,10 +143,10 @@ export default function TodayRoute() {
       today={appToday}
       avatarLetter={profile.data?.displayName.charAt(0).toUpperCase() ?? ''}
       checkIn={sheet}
-      error={failed ? todayCopy.checkInFailed : null}
+      error={notice}
       onOpenTask={open}
       onAnswer={answer}
-      onAddPhoto={() => {}}
+      onAddPhoto={() => void addPhoto()}
       onCloseCheckIn={() => setSheet(null)}
       onDone={() => setSheet(null)}
       onScan={startScan}

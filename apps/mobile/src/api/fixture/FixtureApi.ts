@@ -282,6 +282,7 @@ export class FixtureApi implements TendrilApi {
     plantId: string;
     soilDry: boolean;
     leafStates: LeafState[];
+    photoPath?: string;
   }): Promise<CheckInResult> {
     return this.run(() => {
       const w = this.world;

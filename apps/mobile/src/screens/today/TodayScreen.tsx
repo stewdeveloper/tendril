@@ -46,6 +46,8 @@ export type TodayCheckIn = {
   taskId: string;
   sheetKey?: number;
   streakDays?: number;
+  /** A photo is attached to the check-in, so the sheet offers to change it. */
+  hasPhoto?: boolean;
 } & (
   | { state: 'unanswered'; nextCheckWeekday?: string }
   | { state: 'answered_yes'; nextCheckWeekday?: string; offline?: boolean }

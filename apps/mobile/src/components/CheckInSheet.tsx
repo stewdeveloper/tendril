@@ -1,4 +1,5 @@
 import {
+  cameraCopy,
   checkInAnsweredNo,
   checkInQuestion,
   offlineSaved,
@@ -36,6 +37,8 @@ interface CheckInSheetBase {
    */
   onAnswer: (dry: boolean, leaves: LeafState[]) => void;
   onAddPhoto: () => void;
+  /** A photo is already attached: the button then offers to change it. */
+  hasPhoto?: boolean;
   onClose: () => void;
   onDone: () => void;
   presentation?: CheckInPresentation;
@@ -81,6 +84,7 @@ export function CheckInSheet(props: CheckInSheetProps) {
     streakDays,
     onAnswer,
     onAddPhoto,
+    hasPhoto = false,
     onClose,
     onDone,
     presentation = 'modal',
@@ -122,7 +126,11 @@ export function CheckInSheet(props: CheckInSheetProps) {
           onChange={(v) => setLeaves(v as LeafState[])}
         />
         <View style={styles.tightAbove}>
-          <Button label="Add a photo" variant="secondary" onPress={onAddPhoto} />
+          <Button
+            label={hasPhoto ? cameraCopy.changePhoto : cameraCopy.addPhoto}
+            variant="secondary"
+            onPress={onAddPhoto}
+          />
         </View>
         <View style={styles.spacer} />
         <View style={styles.answers}>

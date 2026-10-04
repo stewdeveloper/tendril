@@ -61,9 +61,6 @@ const APP = join(__dirname, '../../app');
 const rendersPlaceholder = (route: string) =>
   /\bPlaceholderScreen\b.*\bfrom\b/.test(readFileSync(join(APP, `${route}.tsx`), 'utf8'));
 
-/** The Scan tab redirects to the camera under the cap, so its placeholder is seen at the cap. */
-const SCENARIO: Partial<Record<string, FixtureScenario>> = { '(tabs)/scan': 'limit_free' };
-
 const wrap = (ui: React.ReactElement, scenario?: FixtureScenario) =>
   render(
     <ThemeProvider scheme="light">
@@ -87,7 +84,7 @@ describe('route tree', () => {
       const Screen = jest.requireActual(join(APP, route)).default;
       expect(typeof Screen).toBe('function');
       if (!rendersPlaceholder(route)) return;
-      await wrap(<Screen />, SCENARIO[route]);
+      await wrap(<Screen />);
       // Tab screens read the profile for their avatar letter; a plant's page is a stack screen.
       if (/^\(tabs\)\/(?!plants\/\[id\])/.test(route))
         expect(await screen.findByText('A')).toBeTruthy();
@@ -97,7 +94,7 @@ describe('route tree', () => {
   );
 
   it('detects a placeholder by its import, not by its route name', () => {
-    expect(rendersPlaceholder('camera')).toBe(true);
+    expect(rendersPlaceholder('scan/[id]/index')).toBe(true);
     expect(rendersPlaceholder('index')).toBe(false);
     expect(rendersPlaceholder('_layout')).toBe(false);
   });

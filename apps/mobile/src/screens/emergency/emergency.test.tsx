@@ -53,6 +53,18 @@ describe('PetEmergencyScreen', () => {
     expect(onCallVet).toHaveBeenCalled();
   });
 
+  it('names the poison line to a screen reader with the plain number, not the non-breaking display', async () => {
+    await wrap(
+      <PetEmergencyScreen
+        {...handlers}
+        info={{ ...base, vet: { name: 'Riverside Vets', phone: '01 555 0100' }, poisonLine }}
+      />,
+    );
+    expect(
+      screen.getByRole('button', { name: 'Call ASPCA Poison Control (888) 426-4435' }),
+    ).toBeTruthy();
+  });
+
   it('keeps both call buttons in the lower half of the screen content', async () => {
     await wrap(
       <PetEmergencyScreen

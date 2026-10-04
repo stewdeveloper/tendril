@@ -1,9 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 import { ApiProvider } from '../../api/ApiProvider';
 import { FixtureApi, type FixtureScenario } from '../../api/fixture/FixtureApi';
 import StreaksRoute from '../../app/today/streaks';
 import TodayRoute from '../../app/(tabs)/today/index';
+import { launchCameraAsync, resetImagePickerMock } from '../../testing/expoImagePickerMock';
 import { ThemeProvider } from '../../theme';
 import { paramsMock, resetRouterMock, routerMock } from './mockRouter';
 
@@ -11,6 +13,17 @@ jest.mock('expo-router', () => jest.requireActual('./mockRouter').mockExpoRouter
 // jest-expo stubs the native module, which has no UUID to give; one per call is all these tests need.
 let mockUuidCount = 0;
 jest.mock('expo-crypto', () => ({ randomUUID: () => `uuid-${++mockUuidCount}` }));
+
+// The photo service is tested on its own; here it hands the uri back with a marker.
+jest.mock('../../services/photos', () => ({
+  preparePhoto: jest.fn(async (uri: string, width: number, height: number) => ({
+    uri: `prepared:${uri}`,
+    base64: '',
+    sha256: '',
+    width,
+    height,
+  })),
+}));
 
 const renderRoute = (node: React.ReactElement, api = new FixtureApi()) =>
   render(
@@ -72,6 +85,64 @@ describe('Today route', () => {
     expect(spy.mock.calls[0]![0]).toMatchObject({ plantId: 'monty', soilDry: false });
     await fireEvent.press(screen.getByRole('button', { name: 'Done' }));
     await waitFor(() => expect(screen.queryByText(/^Good\. We'll check again/)).toBeNull());
+  });
+
+  describe('"Add a photo" in the check-in sheet', () => {
+    // The sheet asks where the photo comes from; answer with one of its two choices.
+    const choose = (text: string) =>
+      jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+        buttons?.find((b) => b.text === text)?.onPress?.();
+      });
+    beforeEach(() => resetImagePickerMock());
+    afterEach(() => jest.restoreAllMocks());
+
+    it('picks a library photo and sends its path with the check-in', async () => {
+      choose('Choose from library');
+      const api = new FixtureApi();
+      const spy = jest.spyOn(api, 'checkIn');
+      await renderRoute(<TodayRoute />, api);
+      await openMontyCheckIn();
+      await fireEvent.press(screen.getByRole('button', { name: 'Add a photo' }));
+      expect(await screen.findByRole('button', { name: 'Change photo' })).toBeTruthy();
+      await fireEvent.press(screen.getByRole('button', { name: 'No, still damp' }));
+      await screen.findByText(/^Good\. We'll check again on /);
+      expect(spy.mock.calls[0]![0]).toMatchObject({
+        plantId: 'monty',
+        photoPath: 'prepared:file:///library-1.jpg',
+      });
+    });
+
+    it('takes a photo with the camera instead', async () => {
+      choose('Take a photo');
+      const api = new FixtureApi();
+      const spy = jest.spyOn(api, 'checkIn');
+      await renderRoute(<TodayRoute />, api);
+      await openMontyCheckIn();
+      await fireEvent.press(screen.getByRole('button', { name: 'Add a photo' }));
+      await screen.findByRole('button', { name: 'Change photo' });
+      await fireEvent.press(screen.getByRole('button', { name: 'Yes, dry' }));
+      await screen.findByText('Time to water Monty.');
+      expect(launchCameraAsync).toHaveBeenCalledTimes(1);
+      expect(spy.mock.calls[0]![0]).toMatchObject({ photoPath: 'prepared:file:///camera-1.jpg' });
+    });
+
+    it('a check-in with no photo sends none', async () => {
+      const api = new FixtureApi();
+      const spy = jest.spyOn(api, 'checkIn');
+      await renderRoute(<TodayRoute />, api);
+      await openMontyCheckIn();
+      await fireEvent.press(screen.getByRole('button', { name: 'Yes, dry' }));
+      await screen.findByText('Time to water Monty.');
+      expect(spy.mock.calls[0]![0].photoPath).toBeUndefined();
+    });
+
+    it('backing out of the choice leaves the sheet as it was', async () => {
+      jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+      await renderRoute(<TodayRoute />);
+      await openMontyCheckIn();
+      await fireEvent.press(screen.getByRole('button', { name: 'Add a photo' }));
+      expect(screen.getByRole('button', { name: 'Add a photo' })).toBeTruthy();
+    });
   });
 
   it('a dry answer offers the watering task', async () => {

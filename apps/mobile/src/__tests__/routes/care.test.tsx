@@ -208,7 +208,7 @@ describe('Pet emergency route', () => {
     paramsMock.current = { petId: 'pet-miso', plantId: 'lily' };
     await renderRoute(<PetEmergencyRoute />, apiWith({ scenario: 'us' }));
     const button = await screen.findByRole('button', {
-      name: 'Call ASPCA Poison Control (888)\u00A0426\u20114435',
+      name: 'Call ASPCA Poison Control (888) 426-4435',
     });
     expect(screen.getByText('Open 24 hours. A fee may apply.')).toBeTruthy();
     await fireEvent.press(button);

@@ -62,6 +62,19 @@ describe('Index', () => {
     expect(clearDestination).toHaveBeenCalled();
   });
 
+  it('sends a ready session to the label scanner, query and all', async () => {
+    destination.mockReturnValue('/camera?mode=label');
+    mockUseSession.mockReturnValue({
+      status: 'ready',
+      ageBlocked: false,
+      destination,
+      clearDestination,
+    });
+    await render(<Index />);
+    expect(redirectedTo()).toBe('/camera?mode=label');
+    expect(clearDestination).toHaveBeenCalled();
+  });
+
   it('keeps the destination until the session is ready', async () => {
     destination.mockReturnValue('/camera');
     mockUseSession.mockReturnValue({

@@ -72,6 +72,8 @@ export interface TendrilApi {
     plantId: string;
     soilDry: boolean;
     leafStates: LeafState[];
+    /** A local file path of the photo added to the check-in, from `preparePhoto`. */
+    photoPath?: string;
   }): Promise<CheckInResult>;
   getHouseholds(): Promise<{ id: string; name: string }[]>;
   getPlants(householdId: string): Promise<PlantSummary[]>;

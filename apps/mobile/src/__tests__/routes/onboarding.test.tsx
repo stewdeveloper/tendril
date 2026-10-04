@@ -69,6 +69,12 @@ describe('onboarding routes', () => {
     expect(routerMock.push).toHaveBeenCalledWith('/age');
   });
 
+  it('"Scan your plant label" also starts the age step', async () => {
+    await renderRoute(<WelcomeRoute />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Scan your plant label' }));
+    expect(routerMock.push).toHaveBeenCalledWith('/age');
+  });
+
   describe('age', () => {
     // The fixture's today is 3 October 2026.
     const enter = async (year: number, month: number) => {
@@ -244,6 +250,35 @@ describe('onboarding routes', () => {
       expect(destinationAtReplace).toEqual(['/today']);
       await view.rerender(app(api, <Index />));
       expect(await screen.findByText('redirect:/today')).toBeTruthy();
+    });
+
+    describe('after "Scan your plant label" on the welcome screen', () => {
+      const labelPath = async (welcomeButton: string, lastButton: string) => {
+        await renderRoute(
+          <>
+            <WelcomeRoute />
+            <FirstScanRoute />
+          </>,
+        );
+        await fireEvent.press(screen.getByRole('button', { name: welcomeButton }));
+        await act(async () => session.signIn('apple'));
+        await fireEvent.press(screen.getByRole('button', { name: lastButton }));
+      };
+
+      it('"Allow camera" lands on the label scanner', async () => {
+        await labelPath('Scan your plant label', 'Allow camera');
+        expect(destinationAtReplace).toEqual(['/camera?mode=label']);
+      });
+
+      it('"Not now" still lands on Today', async () => {
+        await labelPath('Scan your plant label', 'Not now');
+        expect(destinationAtReplace).toEqual(['/today']);
+      });
+
+      it('"Get started" instead keeps the plain camera', async () => {
+        await labelPath('Get started', 'Allow camera');
+        expect(destinationAtReplace).toEqual(['/camera']);
+      });
     });
 
     it('shows the skipped note only when the home area was skipped', async () => {

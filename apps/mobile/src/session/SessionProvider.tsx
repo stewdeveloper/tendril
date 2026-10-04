@@ -13,8 +13,11 @@ import { readAgeBlock, writeAgeBlock } from './ageBlockStore';
 export type SessionStatus = 'loading' | 'signed_out' | 'onboarding' | 'ready';
 export type SignInMethod = 'apple' | 'google' | 'email';
 
-/** Where a ready session lands after onboarding: the camera for a first scan, otherwise Today. */
-export type Destination = '/camera' | '/today';
+/**
+ * Where a ready session lands after onboarding: the camera for a first scan, the label scanner for
+ * someone who started from "Scan your plant label", otherwise Today.
+ */
+export type Destination = '/camera' | '/camera?mode=label' | '/today';
 
 export interface Session {
   status: SessionStatus;
@@ -23,6 +26,12 @@ export interface Session {
   signIn(method: SignInMethod, email?: string): Promise<void>;
   /** Finishes onboarding and remembers where `/` should send the person next (default Today). */
   completeOnboarding(then?: Destination): void;
+  /**
+   * Remembers, from the welcome screen (before sign-in), where the person wants to start once
+   * onboarding is done: the label scanner, or null for the usual. Allowing the camera at the end
+   * of onboarding then lands there; "Not now" still lands on Today.
+   */
+  rememberDestination(then: '/camera?mode=label' | null): void;
   /** Where `/` sends a ready session. Reading it changes nothing; `clearDestination` resets it. */
   destination(): Destination;
   clearDestination(): void;
@@ -61,6 +70,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [ageBlocked, setAgeBlocked] = useState(false);
   // A ref, not state: it is read when `/` renders and cleared afterwards, and neither may re-render.
   const destinationRef = useRef<Destination>('/today');
+  const rememberedRef = useRef<Destination | null>(null);
   const statusRef = useRef(status);
   useEffect(() => {
     statusRef.current = status;
@@ -88,8 +98,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   );
   const completeOnboarding = useCallback((then: Destination = '/today') => {
     if (statusRef.current !== 'onboarding') return;
-    destinationRef.current = then;
+    destinationRef.current =
+      then === '/camera' && rememberedRef.current ? rememberedRef.current : then;
+    rememberedRef.current = null;
     setStatus('ready');
+  }, []);
+  const rememberDestination = useCallback((then: '/camera?mode=label' | null) => {
+    rememberedRef.current = then;
   }, []);
   const destination = useCallback(() => destinationRef.current, []);
   const clearDestination = useCallback(() => {
@@ -101,6 +116,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
   const signOut = useCallback(() => {
     destinationRef.current = '/today';
+    rememberedRef.current = null;
     setStatus('signed_out');
   }, []);
 
@@ -110,6 +126,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       ageBlocked,
       signIn,
       completeOnboarding,
+      rememberDestination,
       destination,
       clearDestination,
       blockForAge,
@@ -120,6 +137,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       ageBlocked,
       signIn,
       completeOnboarding,
+      rememberDestination,
       destination,
       clearDestination,
       blockForAge,
