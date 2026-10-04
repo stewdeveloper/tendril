@@ -462,6 +462,39 @@ isOneToOne: false
             "public_label":
 { Args: { "p_code": string }; Returns: Json
                            }
+            "srv_bootstrap":
+{ Args: { "p_country_code": string,"p_display_name": string,"p_handle": string,"p_timezone": string,"p_uid": string }; Returns: Json
+                           }
+            "srv_check_in":
+{ Args: { "p_client_id": string,"p_create_water": boolean,"p_leaf_states": (string)[],"p_next_check_on": string,"p_occurred_at": string,"p_photo_path": string,"p_plant_id": string,"p_soil_dry": boolean,"p_today": string,"p_uid": string }; Returns: Json
+                           }
+            "srv_create_plant":
+{ Args: { "p_drainage": string,"p_first_check_on": string,"p_household_id": string,"p_indoor": boolean,"p_label_code": string,"p_light": string,"p_nickname": string,"p_now": string,"p_observation_id": string,"p_pot_material": string,"p_pot_size_cm": number,"p_room": string,"p_source": string,"p_species_id": string,"p_uid": string }; Returns: string
+                           }
+            "srv_get_provider_token":
+{ Args: { "p_observation_id": string }; Returns: string
+                           }
+            "srv_is_premium":
+{ Args: { "p_uid": string }; Returns: boolean
+                           }
+            "srv_plantdex_record":
+{ Args: { "p_category": string,"p_found_at": string,"p_observation_id": string,"p_species_id": string,"p_uid": string }; Returns: Json
+                           }
+            "srv_point_in_zone":
+{ Args: { "p_lat": number,"p_lng": number,"p_uid": string }; Returns: boolean
+                           }
+            "srv_release_usage":
+{ Args: { "p_kind": string,"p_period_key": string,"p_uid": string }; Returns: undefined
+                           }
+            "srv_replace_pets":
+{ Args: { "p_household_id": string,"p_pets": Json }; Returns: undefined
+                           }
+            "srv_reserve_usage":
+{ Args: { "p_kind": string,"p_limit": number,"p_period_key": string,"p_uid": string }; Returns: Json
+                           }
+            "srv_store_provider":
+{ Args: { "p_access_token": string,"p_observation_id": string,"p_provider": string,"p_raw": Json }; Returns: undefined
+                           }
           }
           Enums: {
             [_ in never]: never
