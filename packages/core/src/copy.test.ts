@@ -6,6 +6,8 @@ import {
   freezesHeldLine,
   freezesHeldShort,
   leaguePointsLine,
+  diedNote,
+  givenAwayNote,
   offlineSaved,
   streakBroken,
   taskDoneTitle,
@@ -109,5 +111,19 @@ describe('today copy', () => {
 describe('offlineSaved', () => {
   it('is the one sanctioned offline note', () => {
     expect(offlineSaved).toBe("You're offline. Saved, and it will sync when you're back.");
+  });
+});
+
+describe('plant closed notes (4k, 4l)', () => {
+  it('say what happened and on which day, and that it stays in the history', () => {
+    expect(givenAwayNote('2026-09-12')).toBe('Given away on 12 September. Kept in your history.');
+  });
+  it('a plant that died names the cause when there is one', () => {
+    expect(diedNote('2026-08-20', 'too dry')).toBe(
+      'Marked as died on 20 August: too dry. We use this to give better advice.',
+    );
+    expect(diedNote('2026-08-20', null)).toBe(
+      'Marked as died on 20 August. We use this to give better advice.',
+    );
   });
 });

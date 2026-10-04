@@ -1,3 +1,6 @@
+import type { IsoDate } from './domain.ts';
+import { longDate } from './dates.ts';
+
 /** Fixed lines from the UX brief's Copy table. Never use the word "safe". */
 export const copy = {
   galleryNote: "Gallery photos get identified but don't earn points.",
@@ -23,6 +26,51 @@ export const previewDaysLeft = (days: number) =>
   `Premium preview: ${days} ${days === 1 ? 'day' : 'days'} left. It ends on its own, and nothing is charged.`;
 export const pointsPendingReview = 'Points pending review';
 export const taskDueTitle = (nickname: string) => `Time to check ${nickname}'s soil.`;
+
+/** My Plants, plant detail, setup and label adoption (2d, 4i to 4p): the lines the frames fix. */
+export const plantsCopy = {
+  myPlants: 'My Plants',
+  addPlant: 'Add a plant',
+  emptyLine: 'No plants yet. Scan one, or scan the label it came with.',
+  scanPlant: 'Scan a plant',
+  scanPlantLabel: 'Scan a plant label',
+  nextSoilCheck: 'Next soil check',
+  checkInToday: 'Today',
+  carePlan: 'Care plan',
+  history: 'History',
+  nickname: 'Nickname',
+  lightTitle: 'Light in the room',
+  potTitle: 'Pot',
+  drainsTitle: 'Drains at the bottom?',
+  notSure: 'Not sure',
+  notSureNote:
+    "Not sure is fine. We'll start with the species' basic schedule and you can change it later.",
+  save: 'Save',
+  cancel: 'Cancel',
+  saveFailed: "Couldn't save your plant. Try again.",
+  labelUnknown: "We don't know this label. The code may be retired.",
+  labelUnknownBody: 'You can still scan the plant itself.',
+  scanThePlant: 'Scan the plant',
+  addToMyPlants: 'Add to my plants',
+  noIdentificationUsed: 'No identification used.',
+  markDied: 'Mark as died',
+  givenAway: 'Given away',
+  diedCauseTitle: 'What happened?',
+  diedCauseLine: 'Optional. We use this to give better advice.',
+  diedCauseOther: 'Anything else? (optional)',
+  statusFailed: "Couldn't update the plant. Try again.",
+} as const;
+
+/** "Set up Lily" (4m). */
+export const setupTitle = (name: string) => `Set up ${name}`;
+/** "From the label · Greenhouse Growers" (4o). */
+export const fromLabelLine = (grower: string) => `From the label · ${grower}`;
+/** The note on a plant that was given away (4k). */
+export const givenAwayNote = (on: IsoDate) =>
+  `Given away on ${longDate(on)}. Kept in your history.`;
+/** The note on a plant that died (4l): the cause when the person gave one. */
+export const diedNote = (on: IsoDate, cause: string | null) =>
+  `Marked as died on ${longDate(on)}${cause ? `: ${cause}` : ''}. We use this to give better advice.`;
 
 /** Proper adjectives and names that keep their capital when a plant name sits mid-sentence. */
 export const PROPER_FIRST_WORDS: readonly string[] = [

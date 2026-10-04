@@ -30,6 +30,12 @@ export interface PetCheckCardProps {
   /** Called with the pet that ate it; with several pets the card asks which one first. */
   onPetAte: (petId: string) => void;
   onSourcePress?: (url: string) => void;
+  /**
+   * `compact` is the plant detail's pet check (2d): one line per pet with its name and verdict, no
+   * avatar, kind caption or names in the header, and no "Based on the match" footer, because the
+   * plant is already the person's own.
+   */
+  variant?: 'full' | 'compact';
 }
 
 const KIND: Record<Animal, string> = { cat: 'Cat', dog: 'Dog', other: 'Other pet' };
@@ -54,10 +60,11 @@ export function PetCheckCard({
   speciesName,
   onPetAte,
   onSourcePress,
+  variant = 'full',
 }: PetCheckCardProps) {
   const { c } = useTheme();
-  const [choosing, setChoosing] = useState(false);
   if (pets.length === 0) return null;
+  const compact = variant === 'compact';
   const band = matchProbability == null ? null : bandFor(matchProbability);
   const note = band == null ? null : likelyMatchNote(band);
   const names = joinNames(pets);
@@ -67,7 +74,7 @@ export function PetCheckCard({
         <AppText variant="heading" accessibilityRole="header">
           Pet check
         </AppText>
-        {names ? (
+        {names && !compact ? (
           <AppText variant="caption" color="textSecondary" style={styles.names}>
             {names}
           </AppText>
@@ -86,10 +93,11 @@ export function PetCheckCard({
                 : toxicity.find((t) => t.animal === pet.animal)
             }
             onSourcePress={onSourcePress}
+            compact={compact}
           />
         </Fragment>
       ))}
-      {matchProbability != null && band != null ? (
+      {!compact && matchProbability != null && band != null ? (
         <View style={styles.match}>
           <View style={[styles.footer, { backgroundColor: c.primaryTint }]}>
             <ConfidenceIcon band={band} color={c.primary} />
@@ -100,6 +108,24 @@ export function PetCheckCard({
           {note ? <AppText variant="sub">{note}</AppText> : null}
         </View>
       ) : null}
+      <PetAteAction pets={pets} speciesName={speciesName} onPetAte={onPetAte} />
+    </Card>
+  );
+}
+
+/**
+ * "My pet ate this": calls through at once with a single pet, and with several asks which pet
+ * first. The pet check card draws it, and so does label adoption (4o), which has no card.
+ */
+export function PetAteAction({
+  pets,
+  speciesName,
+  onPetAte,
+}: Pick<PetCheckCardProps, 'pets' | 'speciesName' | 'onPetAte'>) {
+  const [choosing, setChoosing] = useState(false);
+  if (pets.length === 0) return null;
+  return (
+    <>
       <Button
         label="My pet ate this"
         variant="secondary"
@@ -128,7 +154,7 @@ export function PetCheckCard({
           ))}
         </View>
       ) : null}
-    </Card>
+    </>
   );
 }
 
@@ -136,10 +162,12 @@ function PetRow({
   pet,
   entry: rawEntry,
   onSourcePress,
+  compact,
 }: {
   pet: Pet;
   entry: ToxicityEntry | undefined;
   onSourcePress?: (url: string) => void;
+  compact: boolean;
 }) {
   const { c } = useTheme();
   const Icon = pet.animal === 'cat' ? Cat : pet.animal === 'dog' ? Dog : PawPrint;
@@ -161,14 +189,18 @@ function PetRow({
   return (
     <View style={styles.pet}>
       <View style={styles.petTop}>
-        <View style={[styles.avatar, { backgroundColor: c.primaryTint }]}>
-          <Icon {...DECORATIVE} size={22} color={c.primary} strokeWidth={2} />
-        </View>
+        {compact ? null : (
+          <View style={[styles.avatar, { backgroundColor: c.primaryTint }]}>
+            <Icon {...DECORATIVE} size={22} color={c.primary} strokeWidth={2} />
+          </View>
+        )}
         <View style={styles.who}>
           <AppText variant="bodyStrong">{pet.name?.trim() || YOUR[pet.animal]}</AppText>
-          <AppText variant="caption" color="textSecondary">
-            {KIND[pet.animal]}
-          </AppText>
+          {compact ? null : (
+            <AppText variant="caption" color="textSecondary">
+              {KIND[pet.animal]}
+            </AppText>
+          )}
         </View>
         <VerdictChip animal={pet.animal} severity={entry?.severity ?? 'unknown'} />
       </View>

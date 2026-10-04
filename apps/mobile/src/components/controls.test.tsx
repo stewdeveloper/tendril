@@ -90,6 +90,27 @@ describe('controls', () => {
     await wrap(<RowsCard rows={[{ key: 'a', title: 'Bright, indirect light', icon: Icon }]} />);
     expect(Icon.mock.calls[0]?.[0]).toMatchObject({ size: 24, color: '#2E6B4E', strokeWidth: 2 });
   });
+  it('RowsCard inset pads the card 4/16, insets the rows and drops the last divider (2d)', async () => {
+    await wrap(
+      <RowsCard
+        inset
+        rows={[
+          { key: 'a', title: 'One' },
+          { key: 'b', title: 'Two' },
+        ]}
+      />,
+    );
+    const first = StyleSheet.flatten(screen.getByTestId('row-a').props.style);
+    const last = StyleSheet.flatten(screen.getByTestId('row-b').props.style);
+    expect(first).toMatchObject({
+      paddingHorizontal: 0,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+    });
+    expect(last).toMatchObject({ borderBottomWidth: 0 });
+    const card = StyleSheet.flatten(screen.getByTestId('row-a').parent?.props.style);
+    expect(card).toMatchObject({ paddingVertical: 4, paddingHorizontal: 16 });
+  });
   it('TextField shows its label and value', async () => {
     await wrap(<TextField label="Handle" value="@siobhanplants" onChangeText={() => {}} focused />);
     expect(screen.getByText('Handle')).toBeTruthy();
