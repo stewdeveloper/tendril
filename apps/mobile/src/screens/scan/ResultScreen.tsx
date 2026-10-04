@@ -41,8 +41,10 @@ export interface ResultScreenProps {
     locationOn: boolean;
     saving?: boolean;
     error?: string | null;
-    /** The save cannot work again (already saved, or rejected): Save find stays off. */
+    /** The save is already done and its outcome could not be read: Save find stays off. */
     blocked?: boolean;
+    /** The server cannot save this result: the action is Scan again (`onRetake`). */
+    rejected?: boolean;
   } | null;
   /** `modal` is the app's sheet; `overlay` draws it inline over the screen, for the catalog frames. */
   presentation?: 'modal' | 'overlay';
@@ -95,9 +97,11 @@ export function ResultScreen(props: ResultScreenProps) {
           saving={logFind.saving}
           error={logFind.error}
           blocked={logFind.blocked}
+          rejected={logFind.rejected}
           presentation={presentation}
           onPlaceType={props.onPlaceType}
           onSave={props.onSaveFind}
+          onScanAgain={props.onRetake}
           onTurnOnLocation={props.onTurnOnLocation}
           onClose={props.onCloseLogFind}
         />

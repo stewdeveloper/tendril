@@ -331,6 +331,7 @@ export const resultCopy = {
   cannotSave: "We can't save this result. Try scanning again.",
   findSaved: 'Find saved',
   allowLocation: 'Allow location',
+  scanAgain: 'Scan again',
 } as const;
 /** "3 photos", "1 photo": the count over a result's photo strip. */
 export const resultPhotoCount = (n: number) => `${n} ${n === 1 ? 'photo' : 'photos'}`;

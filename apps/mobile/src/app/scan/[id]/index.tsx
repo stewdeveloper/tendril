@@ -14,6 +14,7 @@ import {
   wasLocationPrimerShown,
 } from '../../../lib/useLocationAccess';
 import { ResultScreen } from '../../../screens/scan/ResultScreen';
+import { saveDestination, savedDestination } from '../../../lib/saveDestination';
 import { useTheme } from '../../../theme';
 
 const FAILURE_COPY: Record<ConfirmFailure, string> = {
@@ -21,6 +22,8 @@ const FAILURE_COPY: Record<ConfirmFailure, string> = {
   rejected: resultCopy.cannotSave,
   retry: resultCopy.saveFindFailed,
 };
+
+const COLLECTION_SAVED = '/collection?saved=1';
 
 interface LogFindState {
   placeType: PlaceType | null;
@@ -106,10 +109,18 @@ export default function ScanResultRoute() {
       });
       // A species new to the Plantdex gets its moment; any other find goes to the Collection.
       const outcome = await fetchOutcome(result.observationId).catch(() => null);
-      if (outcome?.newToPlantdex) router.replace(`/scan/${result.observationId}/new-species`);
-      else router.replace('/collection?saved=1');
+      router.replace(saveDestination(outcome, result.observationId, COLLECTION_SAVED));
     } catch (e) {
-      setFailed(confirmFailure(e));
+      const failure = confirmFailure(e);
+      if (failure === 'already_saved') {
+        // Already saved is a success: go where a save goes, unless its outcome cannot be read.
+        const next = await savedDestination(fetchOutcome, result.observationId, COLLECTION_SAVED);
+        if (next) {
+          router.replace(next);
+          return;
+        }
+      }
+      setFailed(failure);
     } finally {
       saving.current = false;
     }
@@ -146,7 +157,8 @@ export default function ScanResultRoute() {
                 locationOn: logFind.locationOn,
                 saving: confirm.isPending,
                 error: failed ? FAILURE_COPY[failed] : null,
-                blocked: failed === 'already_saved' || failed === 'rejected',
+                blocked: failed === 'already_saved',
+                rejected: failed === 'rejected',
               }
             : null
         }

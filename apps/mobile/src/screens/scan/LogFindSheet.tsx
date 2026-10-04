@@ -17,10 +17,14 @@ export interface LogFindSheetProps {
   saving?: boolean;
   /** What went wrong saving, in words. */
   error?: string | null;
-  /** The save cannot work again (already saved, or rejected): Save find stays off. */
+  /** Save find stays off (the save cannot be confirmed as already done). */
   blocked?: boolean;
+  /** The server cannot save this result: the action becomes Scan again. */
+  rejected?: boolean;
   onPlaceType: (placeType: PlaceType) => void;
   onSave: () => void;
+  /** Rejected: goes back to the camera. */
+  onScanAgain?: () => void;
   onTurnOnLocation: () => void;
   onClose: () => void;
   /** `modal` is the app's bottom sheet; `overlay` is drawn inline over the screen, for the catalog frames. */
@@ -43,8 +47,10 @@ export function LogFindSheet({
   saving = false,
   error,
   blocked = false,
+  rejected = false,
   onPlaceType,
   onSave,
+  onScanAgain,
   onTurnOnLocation,
   onClose,
   presentation = 'modal',
@@ -67,12 +73,16 @@ export function LogFindSheet({
       ) : null}
       <View style={styles.spacer} />
       <View style={styles.action}>
-        <Button
-          label={resultCopy.saveFind}
-          disabled={placeType == null || blocked}
-          loading={saving}
-          onPress={onSave}
-        />
+        {rejected ? (
+          <Button label={resultCopy.scanAgain} onPress={() => onScanAgain?.()} />
+        ) : (
+          <Button
+            label={resultCopy.saveFind}
+            disabled={placeType == null || blocked}
+            loading={saving}
+            onPress={onSave}
+          />
+        )}
       </View>
       {locationOn ? null : (
         <View style={styles.action}>

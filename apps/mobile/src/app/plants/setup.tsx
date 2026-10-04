@@ -9,6 +9,7 @@ import {
   useLabel,
   useScanResult,
 } from '../../api/hooks';
+import { saveDestination, savedDestination } from '../../lib/saveDestination';
 import { PlantSetupScreen } from '../../screens/plants/PlantSetupScreen';
 
 type Source =
@@ -120,10 +121,16 @@ function ScanSetup({
           setup,
         });
         const outcome = await fetchOutcome(source.observationId).catch(() => null);
-        return outcome?.newToPlantdex
-          ? `/scan/${source.observationId}/new-species`
-          : `/plants/${plantId}`;
+        return saveDestination(
+          outcome,
+          source.observationId,
+          `/plants/${plantId}`,
+          plantId ?? undefined,
+        );
       }}
+      // Already saved is a success. The plant's id is not known here, so the fallback is My Plants.
+      alreadySaved={() => savedDestination(fetchOutcome, source.observationId, '/plants')}
+      scanAgain
     />
   );
 }
@@ -132,11 +139,17 @@ function Setup({
   speciesName,
   saving,
   save: persist,
+  alreadySaved,
+  scanAgain = false,
 }: {
   speciesName: string;
   saving: boolean;
   /** Saves the plant and says where to go next. */
   save: (setup: PlantSetup) => Promise<string>;
+  /** Where an already-saved scan goes, or null when that cannot be told (scans only). */
+  alreadySaved?: () => Promise<string | null>;
+  /** A rejected scan offers Scan again, which goes back to the camera. */
+  scanAgain?: boolean;
 }) {
   const router = useRouter();
   const [failed, setFailed] = useState<ConfirmFailure | null>(null);
@@ -150,7 +163,15 @@ function Setup({
     try {
       router.replace(await persist(setup));
     } catch (e) {
-      setFailed(confirmFailure(e));
+      const failure = confirmFailure(e);
+      if (failure === 'already_saved' && alreadySaved) {
+        const next = await alreadySaved();
+        if (next) {
+          router.replace(next);
+          return;
+        }
+      }
+      setFailed(failure);
     } finally {
       inFlight.current = false;
     }
@@ -161,6 +182,8 @@ function Setup({
       initial={blank(speciesName)}
       saving={saving}
       error={failed ? FAILURE_COPY[failed] : null}
+      blocked={failed === 'already_saved'}
+      onScanAgain={scanAgain && failed === 'rejected' ? () => router.replace('/camera') : undefined}
       onSave={save}
       onCancel={() => (router.canGoBack() ? router.back() : router.replace('/today'))}
     />

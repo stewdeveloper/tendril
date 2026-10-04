@@ -268,9 +268,41 @@ describe('Log a find', () => {
     expect(routerMock.replace).not.toHaveBeenCalled();
   });
 
-  it('an already-saved find says so and offers no retry', async () => {
+  it('an already-saved find is a success: it goes where a save goes', async () => {
     const api = new FixtureApi();
     jest.spyOn(api, 'confirmScan').mockRejectedValue(new ApiError(409, 'already_confirmed'));
+    await renderRoute(<ScanResultRoute />, api);
+    await openSheet();
+    await fireEvent.press(screen.getByRole('radio', { name: 'Shop' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save find' }));
+    await waitFor(() =>
+      expect(routerMock.replace).toHaveBeenCalledWith('/scan/obs-foxglove-find/new-species'),
+    );
+    expect(screen.queryByText("This one's already saved.")).toBeNull();
+  });
+
+  it('an already-saved find that is not new goes to the Collection', async () => {
+    const api = new FixtureApi();
+    jest.spyOn(api, 'confirmScan').mockRejectedValue(new ApiError(409, 'already_confirmed'));
+    jest.spyOn(api, 'getOutcome').mockResolvedValue({
+      pointsStatus: 'awarded',
+      points: 10,
+      noPointsReason: null,
+      newToPlantdex: false,
+      plantdexCount: 37,
+      sets: [],
+    });
+    await renderRoute(<ScanResultRoute />, api);
+    await openSheet();
+    await fireEvent.press(screen.getByRole('radio', { name: 'Shop' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save find' }));
+    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith('/collection?saved=1'));
+  });
+
+  it('an already-saved find whose outcome cannot be read says so and offers no retry', async () => {
+    const api = new FixtureApi();
+    jest.spyOn(api, 'confirmScan').mockRejectedValue(new ApiError(409, 'already_confirmed'));
+    jest.spyOn(api, 'getOutcome').mockRejectedValue(new Error('network'));
     await renderRoute(<ScanResultRoute />, api);
     await openSheet();
     await fireEvent.press(screen.getByRole('radio', { name: 'Shop' }));
@@ -279,7 +311,7 @@ describe('Log a find', () => {
     expect(screen.getByRole('button', { name: 'Save find' })).toBeDisabled();
   });
 
-  it('a rejected result says to scan again and offers no retry', async () => {
+  it('a rejected result says to scan again, and the button scans again', async () => {
     const api = new FixtureApi();
     jest.spyOn(api, 'confirmScan').mockRejectedValue(new ApiError(400, 'not_identified'));
     await renderRoute(<ScanResultRoute />, api);
@@ -287,7 +319,9 @@ describe('Log a find', () => {
     await fireEvent.press(screen.getByRole('radio', { name: 'Shop' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Save find' }));
     expect(await screen.findByText("We can't save this result. Try scanning again.")).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Save find' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Save find' })).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Scan again' }));
+    expect(routerMock.replace).toHaveBeenCalledWith('/camera');
   });
 
   it('Turn on location asks the system, and opens settings once it cannot ask again', async () => {
@@ -339,7 +373,7 @@ describe('Setup route, from a scan', () => {
     await fireEvent.press(await screen.findByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(routerMock.replace).toHaveBeenCalledWith(
-        '/scan/obs-peace-lily-very-likely/new-species',
+        expect.stringMatching(/^\/scan\/obs-peace-lily-very-likely\/new-species\?plantId=.+/),
       ),
     );
   });
@@ -382,20 +416,62 @@ describe('Setup route, from a scan', () => {
     release();
   });
 
-  it('an already-saved scan says so', async () => {
+  it('an already-saved scan is a success: a new species goes to its moment', async () => {
     const api = new FixtureApi();
     jest.spyOn(api, 'confirmScan').mockRejectedValue(new ApiError(409, 'already_confirmed'));
+    jest.spyOn(api, 'getOutcome').mockResolvedValue({
+      pointsStatus: 'awarded',
+      points: 40,
+      noPointsReason: null,
+      newToPlantdex: true,
+      plantdexCount: 38,
+      sets: [],
+    });
+    await renderRoute(<SetupRoute />, api);
+    await fireEvent.press(await screen.findByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(routerMock.replace).toHaveBeenCalledWith(
+        '/scan/obs-peace-lily-very-likely/new-species',
+      ),
+    );
+    expect(screen.queryByText("This one's already saved.")).toBeNull();
+  });
+
+  it('an already-saved scan that is not new goes to My Plants', async () => {
+    const api = new FixtureApi();
+    jest.spyOn(api, 'confirmScan').mockRejectedValue(new ApiError(409, 'already_confirmed'));
+    jest.spyOn(api, 'getOutcome').mockResolvedValue({
+      pointsStatus: 'awarded',
+      points: 10,
+      noPointsReason: null,
+      newToPlantdex: false,
+      plantdexCount: 37,
+      sets: [],
+    });
+    await renderRoute(<SetupRoute />, api);
+    await fireEvent.press(await screen.findByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith('/plants'));
+  });
+
+  it('an already-saved scan whose outcome cannot be read says so, and Save is visibly off', async () => {
+    const api = new FixtureApi();
+    jest.spyOn(api, 'confirmScan').mockRejectedValue(new ApiError(409, 'already_confirmed'));
+    jest.spyOn(api, 'getOutcome').mockRejectedValue(new Error('network'));
     await renderRoute(<SetupRoute />, api);
     await fireEvent.press(await screen.findByRole('button', { name: 'Save' }));
     expect(await screen.findByText("This one's already saved.")).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
   });
 
-  it('a rejected scan says to scan again', async () => {
+  it('a rejected scan says to scan again, and the button scans again', async () => {
     const api = new FixtureApi();
     jest.spyOn(api, 'confirmScan').mockRejectedValue(new ApiError(400, 'invalid_species'));
     await renderRoute(<SetupRoute />, api);
     await fireEvent.press(await screen.findByRole('button', { name: 'Save' }));
     expect(await screen.findByText("We can't save this result. Try scanning again.")).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Scan again' }));
+    expect(routerMock.replace).toHaveBeenCalledWith('/camera');
   });
 
   it('a save that fails stays on the form', async () => {

@@ -2,6 +2,7 @@ import {
   isValidNickname,
   NICKNAME_MAX,
   plantsCopy,
+  resultCopy,
   setupTitle,
   type Drainage,
   type LightLevel,
@@ -20,6 +21,10 @@ export interface PlantSetupScreenProps {
   /** A line under the save button when saving failed. */
   error?: string | null;
   saving?: boolean;
+  /** Saving cannot work (already saved): Save is visibly off. */
+  blocked?: boolean;
+  /** Replaces Save with Scan again, for a result the server rejected. */
+  onScanAgain?: () => void;
   onSave: (setup: PlantSetup) => void;
   onCancel: () => void;
 }
@@ -48,6 +53,8 @@ export function PlantSetupScreen({
   initial,
   error,
   saving,
+  blocked = false,
+  onScanAgain,
   onSave,
   onCancel,
 }: PlantSetupScreenProps) {
@@ -110,12 +117,16 @@ export function PlantSetupScreen({
         {unsure ? <Note text={plantsCopy.notSureNote} /> : null}
         <View style={styles.spacer} />
         <View style={styles.save}>
-          <Button
-            label={plantsCopy.save}
-            loading={saving}
-            disabled={!valid}
-            onPress={() => valid && onSave({ ...setup, nickname })}
-          />
+          {onScanAgain ? (
+            <Button label={resultCopy.scanAgain} onPress={onScanAgain} />
+          ) : (
+            <Button
+              label={plantsCopy.save}
+              loading={saving}
+              disabled={!valid || blocked}
+              onPress={() => valid && onSave({ ...setup, nickname })}
+            />
+          )}
         </View>
         {error ? (
           <AppText variant="sub" color="danger" accessibilityRole="alert">
