@@ -973,6 +973,8 @@ git commit -m "feat(mobile): Supabase session with Apple, Google and email-link 
     - `IdentifyResponse`, to `ScanResult`
     - a `quota_exceeded` error body, to a typed `QuotaExceededError` carrying a `QuotaState`, which the camera container catches to open the Limit sheet
 
+**Retry contract.** When `identify` returns a `provider_unavailable` 503, the server has already released the quota and deleted the half-made observation, so the photo paths are reusable. `SupabaseApi` therefore retries `identify` with the SAME photo paths. It never re-uploads to an existing path: users have no storage update policy, so an upsert would fail. Add a `SupabaseApi.test.ts` case for this: a 503 then a 200 makes two `identify` calls with identical paths and exactly one upload per photo.
+
 - [ ] **Step 1: Write the failing tests**
 
 `mappers.test.ts` covers:

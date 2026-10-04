@@ -110,6 +110,45 @@ Deno.test('provider failure releases the quota and deletes the observation', asy
   assertEquals(db.usage[`${UID}:identification:2026-10`], 0);
 });
 
+const withHeader = (scenario: string) =>
+  new Request('http://x/functions/v1/identify', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-firebase-appcheck': 'dev-ok',
+      'x-tendril-fake': scenario,
+    },
+    body: JSON.stringify(body()),
+  });
+
+Deno.test(
+  'x-tendril-fake picks the fake scenario; the same paths then work without it',
+  async () => {
+    const { db, handle } = setup();
+    assertEquals((await handle(withHeader('error'))).status, 503);
+    assertEquals(db.tables.observations.length, 0);
+    assertEquals(db.usage[`${UID}:identification:2026-10`], 0);
+    assertEquals((await handle(req(body()))).status, 200);
+    assertEquals(db.usage[`${UID}:identification:2026-10`], 1);
+  },
+);
+
+Deno.test('x-tendril-fake is ignored unless the selected provider is fake', async () => {
+  const db = fakeDb({
+    profiles: [{ id: UID, timezone: 'Europe/Dublin', country_code: 'IE' }],
+    storage: { [`${UID}/obs/1.jpg`]: jpeg },
+  });
+  const handle = createHandler({
+    db,
+    verifier,
+    provider: fakeIdentificationProvider(),
+    appCheck: appCheckVerifier('dev', {}),
+    providerName: 'plantid',
+    now: () => new Date('2026-10-03T10:00:00Z'),
+  });
+  assertEquals((await handle(withHeader('error'))).status, 200);
+});
+
 Deno.test('a retry with the same paths works after a provider failure (same db)', async () => {
   let fail = true;
   const inner = fakeIdentificationProvider();

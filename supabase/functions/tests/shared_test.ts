@@ -183,3 +183,61 @@ Deno.test('requireUser verifies the Bearer token and throws unauthenticated', as
     assertEquals(err.code, 'unauthenticated');
   }
 });
+
+function app0(payload: number[] | Uint8Array): Uint8Array {
+  const len = payload.length + 2;
+  return new Uint8Array([0xff, 0xe0, len >> 8, len & 0xff, ...payload]);
+}
+const ascii = (s: string) => [...s].map((c) => c.charCodeAt(0));
+/** `jpeg` with its own APP0 (the 18 bytes after SOI) replaced by `segments`. */
+function withApp0(jpeg: Uint8Array, ...segments: Uint8Array[]): Uint8Array {
+  return new Uint8Array([
+    ...jpeg.subarray(0, 2),
+    ...segments.flatMap((s) => [...s]),
+    ...jpeg.subarray(20),
+  ]);
+}
+const parses = async (out: Uint8Array) => {
+  assertEquals([out[0], out[1]], [0xff, 0xd8]);
+  assertEquals([out[out.length - 2], out[out.length - 1]], [0xff, 0xd9]);
+  await assertNoGps(out); // walks every segment up to SOS
+};
+
+Deno.test('stripExif drops a JFXX APP0 with an embedded GPS thumbnail', async () => {
+  const plain = await fixture('plain.jpg');
+  const gps = await fixture('gps.jpg');
+  const jfxx = app0([...ascii('JFXX'), 0, 0x10, ...gps]);
+  const jfif = plain.subarray(2, 20);
+  const dirty = withApp0(plain, new Uint8Array(jfif), jfxx);
+  await assertRejects(() => assertNoGps(dirty), ApiError);
+  const out = stripExif(dirty);
+  assertEquals(new TextDecoder('latin1').decode(out).includes('JFXX'), false);
+  assertEquals(out, plain);
+  await parses(out);
+});
+
+Deno.test('stripExif truncates a JFIF APP0 thumbnail to the 16-byte header', async () => {
+  const plain = await fixture('plain.jpg');
+  const gps = await fixture('gps.jpg');
+  const jfif = [...ascii('JFIF'), 0, 1, 1, 1, 0, 0x48, 0, 0x48, 2, 2, ...gps]; // thumbnail 2x2 plus Exif bytes
+  const dirty = withApp0(plain, app0(jfif));
+  await assertRejects(() => assertNoGps(dirty), ApiError);
+  const out = stripExif(dirty);
+  assertEquals([out[2], out[3], out[4], out[5]], [0xff, 0xe0, 0x00, 0x10]);
+  assertEquals([out[20], out[21]], [0xff, 0xdb]); // next segment starts right after the 18-byte APP0
+  assertEquals([out[18], out[19]], [0, 0]); // thumbnail width and height
+  assertEquals(out, plain);
+  await parses(out);
+});
+
+Deno.test('stripExif drops an unknown APP0', async () => {
+  const plain = await fixture('plain.jpg');
+  const dirty = withApp0(
+    plain,
+    new Uint8Array(plain.subarray(2, 20)),
+    app0(ascii('hidden location notes')),
+  );
+  const out = stripExif(dirty);
+  assertEquals(new TextDecoder('latin1').decode(out).includes('hidden'), false);
+  await parses(out);
+});

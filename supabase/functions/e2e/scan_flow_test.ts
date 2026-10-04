@@ -60,20 +60,12 @@ async function call(
 
 const DEV = { 'x-firebase-appcheck': 'dev-ok' };
 
-/** Inserts an APP0 segment that carries the fake provider's scenario marker; APP0 survives metadata stripping. */
-function withMarker(jpeg: Uint8Array, marker: string): Uint8Array {
-  const payload = new TextEncoder().encode(`TENDRIL_E2E ${marker}\0`);
-  const len = payload.length + 2;
-  const seg = new Uint8Array([0xff, 0xe0, len >> 8, len & 0xff, ...payload]);
-  return new Uint8Array([...jpeg.subarray(0, 2), ...seg, ...jpeg.subarray(2)]);
-}
-
 let photoPaths: string[] = [];
-async function uploadAs(user: TestUser | null, bytes: Uint8Array, path?: string): Promise<string> {
-  const p = path ?? `${user!.id}/${crypto.randomUUID()}.jpg`;
-  const res = await (user ? user.client : admin).storage
+async function uploadAs(user: TestUser, bytes: Uint8Array): Promise<string> {
+  const p = `${user.id}/${crypto.randomUUID()}.jpg`;
+  const res = await user.client.storage
     .from(BUCKET)
-    .upload(p, bytes, { contentType: 'image/jpeg', upsert: user === null });
+    .upload(p, bytes, { contentType: 'image/jpeg' });
   if (res.error) throw res.error;
   photoPaths.push(p);
   return p;
@@ -275,31 +267,32 @@ Deno.test('scan to check-in flow against the local stack', async (t) => {
     });
 
     await t.step('provider failure: no 409/500, retry works, quota used once', async () => {
-      const original = await fixture('plain.jpg');
-      const p1 = await uploadAs(a, withMarker(original, 'TENDRIL_FAKE:error'));
+      const p1 = await uploadAs(a, await fixture('plain.jpg'));
       const before = await used(a.id);
-      const failed = await call(a, 'POST', 'identify', identifyBody([p1]), DEV);
+      const failed = await call(a, 'POST', 'identify', identifyBody([p1]), {
+        ...DEV,
+        'x-tendril-fake': 'error',
+      });
       assertEquals(failed.status, 503, JSON.stringify(failed.json));
       assertEquals(failed.json.error.code, 'provider_unavailable');
       assertEquals(await used(a.id), before, 'the reservation was released');
       const left = await admin.from('observation_photos').select('id').eq('storage_path', p1);
       assertEquals(left.data, [], 'no half-made observation is left behind');
 
-      // The photo still carries the failing marker, so put a clean copy on the same path, as a re-take would.
-      await uploadAs(null, original, p1);
+      // Same paths, no header: nothing was left behind, so the retry needs no re-upload.
       const retry = await call(a, 'POST', 'identify', identifyBody([p1]), DEV);
       assertEquals(retry.status, 200, JSON.stringify(retry.json));
       assertEquals(await used(a.id), before + 1, 'quota is used exactly once');
     });
 
     await t.step('orchid: a sensitive species gets no public cell', async () => {
-      const p = await uploadAs(a, withMarker(await fixture('plain.jpg'), 'TENDRIL_FAKE:orchid'));
+      const p = await uploadAs(a, await fixture('plain.jpg'));
       const res = await call(
         a,
         'POST',
         'identify',
         identifyBody([p], { location: { lat: 53.5, lng: -6.3, accuracyM: 10, mocked: false } }),
-        DEV,
+        { ...DEV, 'x-tendril-fake': 'orchid' },
       );
       assertEquals(res.status, 200, JSON.stringify(res.json));
       const sp = res.json.suggestions[0].species;

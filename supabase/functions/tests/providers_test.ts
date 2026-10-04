@@ -47,16 +47,6 @@ function withEnv(vars: Record<string, string | undefined>, fn: () => Promise<voi
   };
 }
 
-/** A tiny JPEG (SOI, COM with the marker, EOI) as base64. */
-function markedJpeg(text: string): string {
-  const body = new TextEncoder().encode(text);
-  const len = body.length + 2;
-  const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xfe, len >> 8, len & 0xff, ...body, 0xff, 0xd9]);
-  let bin = '';
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin);
-}
-
 Deno.test('maps a Plant.id identification', async () => {
   const r = mapPlantIdResponse(await load('plantid-peace-lily.json'));
   assertEquals(r.isPlant, true);
@@ -194,8 +184,8 @@ Deno.test('feedback posts the comment to the token path', async () => {
 });
 
 Deno.test('fake provider scenarios', async () => {
-  const run = (scenario?: Parameters<typeof fakeIdentificationProvider>[0], img?: string) =>
-    fakeIdentificationProvider(scenario).identify(input(img ? { imagesBase64: [img] } : {}));
+  const run = (scenario?: Parameters<typeof fakeIdentificationProvider>[0], requested?: string) =>
+    fakeIdentificationProvider(scenario).identify(input(requested ? { scenario: requested } : {}));
 
   const vl = await run();
   assertEquals(vl.isPlant, true);
@@ -204,38 +194,43 @@ Deno.test('fake provider scenarios', async () => {
   assertEquals(vl.suggestions[1]?.probability, 0.03);
   assertEquals(vl.suggestions[1]?.commonNames, ['flamingo flower']);
 
-  const likely = await run(undefined, markedJpeg('TENDRIL_FAKE:likely'));
+  const likely = await run(undefined, 'likely');
   assertEquals(
     [0, 1].map((i) => likely.suggestions[i]?.probability),
     [0.71, 0.22],
   );
 
-  const ns = await run(undefined, markedJpeg('x TENDRIL_FAKE:not_sure'));
+  const ns = await run(undefined, 'not_sure');
   assertEquals(
     [0, 1].map((i) => ns.suggestions[i]?.probability),
     [0.41, 0.32],
   );
 
-  const nap = await run(undefined, markedJpeg('TENDRIL_FAKE:not_a_plant'));
+  const nap = await run(undefined, 'not_a_plant');
   assertEquals(nap.isPlant, false);
   assertEquals(nap.suggestions, []);
 
-  const orchid = await run(undefined, markedJpeg('TENDRIL_FAKE:orchid'));
+  const orchid = await run(undefined, 'orchid');
   assertEquals(orchid.suggestions.length, 1);
   assertEquals(orchid.suggestions[0]?.family, 'Orchidaceae');
   assertEquals(orchid.suggestions[0]?.scientificName, 'Orchis mascula');
 
-  const e = await assertRejects(() => run(undefined, markedJpeg('TENDRIL_FAKE:error')), ApiError);
+  const e = await assertRejects(() => run(undefined, 'error'), ApiError);
   assertEquals(e.code, 'provider_unavailable');
 
   // Constructor scenario applies when no marker is present; unknown markers fall back.
   assertEquals((await run('likely')).suggestions[0]?.probability, 0.71);
+  assertEquals((await run(undefined, 'bogus')).suggestions[0]?.probability, 0.94);
+  // Image bytes never choose a scenario any more.
+  assertEquals((await run(undefined, undefined)).suggestions[0]?.probability, 0.94);
   assertEquals(
-    (await run(undefined, markedJpeg('TENDRIL_FAKE:bogus'))).suggestions[0]?.probability,
+    (
+      await fakeIdentificationProvider().identify(
+        input({ imagesBase64: [btoa('TENDRIL_FAKE:likely')] }),
+      )
+    ).suggestions[0]?.probability,
     0.94,
   );
-  // A marker in the base64 text itself is not a marker.
-  assertEquals((await run(undefined, 'TENDRIL_FAKE:likely')).suggestions[0]?.probability, 0.94);
 
   await fakeIdentificationProvider().feedback('tok', 'c');
 });

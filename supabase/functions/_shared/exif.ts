@@ -38,9 +38,31 @@ function walk(jpeg: Uint8Array): { segments: Segment[]; dataStart: number } {
 
 const isMetadata = (m: number) => (m >= 0xe1 && m <= 0xef) || m === 0xfe;
 
+const JFIF = [0x4a, 0x46, 0x49, 0x46, 0x00]; // "JFIF\0"
+/** Marker (2) + length (2) + 14 payload bytes: the minimal JFIF header, with no thumbnail. */
+const JFIF_SEGMENT_LENGTH = 18;
+
+function isJfifApp0(jpeg: Uint8Array, s: Segment): boolean {
+  return (
+    s.marker === 0xe0 &&
+    s.end - s.start >= JFIF_SEGMENT_LENGTH &&
+    JFIF.every((b, i) => jpeg[s.start + 4 + i] === b)
+  );
+}
+
+/** True for an APP0 that is exactly the minimal JFIF header (thumbnail size 0x0). */
+function isMinimalJfif(jpeg: Uint8Array, s: Segment): boolean {
+  return (
+    isJfifApp0(jpeg, s) &&
+    s.end - s.start === JFIF_SEGMENT_LENGTH &&
+    jpeg[s.start + 16] === 0 &&
+    jpeg[s.start + 17] === 0
+  );
+}
+
 /**
- * Keeps SOI, APP0 (JFIF), the table/frame segments, SOS and the entropy-coded data through EOI.
- * Drops every APP1-APP15 segment (Exif, XMP, IPTC, ICC...) and every COM segment, plus anything after EOI.
+ * Keeps SOI, a minimal JFIF APP0 (thumbnail removed), the table/frame segments, SOS and the entropy-coded data through EOI.
+ * Drops JFXX and unknown APP0, and every APP1-APP15 segment (Exif, XMP, IPTC, ICC...) and every COM segment, plus anything after EOI.
  */
 export function stripExif(jpeg: Uint8Array): Uint8Array {
   const { segments, dataStart } = walk(jpeg);
@@ -53,7 +75,21 @@ export function stripExif(jpeg: Uint8Array): Uint8Array {
   }
   if (eoi < 0) throw bad('Photo is truncated.');
   const parts: Uint8Array[] = [new Uint8Array([0xff, 0xd8])];
-  for (const s of segments) if (!isMetadata(s.marker)) parts.push(jpeg.subarray(s.start, s.end));
+  for (const s of segments) {
+    if (s.marker === 0xe0) {
+      // Only a JFIF APP0 survives, rewritten without its thumbnail; JFXX (embedded thumbnails) and unknown APP0 go.
+      if (isJfifApp0(jpeg, s)) {
+        const head = jpeg.slice(s.start, s.start + JFIF_SEGMENT_LENGTH);
+        head[2] = 0x00;
+        head[3] = 0x10;
+        head[16] = 0;
+        head[17] = 0;
+        parts.push(head);
+      }
+    } else if (!isMetadata(s.marker)) {
+      parts.push(jpeg.subarray(s.start, s.end));
+    }
+  }
   parts.push(jpeg.subarray(dataStart, eoi));
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
   let o = 0;
@@ -69,7 +105,9 @@ const LOCATION_KEY = /gps|latitude|longitude|location|city|country|sublocation/i
 /** Throws `invalid_input` if any metadata segment or GPS/location tag survives in the JPEG. */
 export async function assertNoGps(jpeg: Uint8Array): Promise<void> {
   const { segments } = walk(jpeg);
-  if (segments.some((s) => isMetadata(s.marker))) {
+  if (
+    segments.some((s) => isMetadata(s.marker) || (s.marker === 0xe0 && !isMinimalJfif(jpeg, s)))
+  ) {
     throw new ApiError('invalid_input', 'Photo still contains metadata.');
   }
   const parsed = (await exifr.parse(jpeg, { gps: true, xmp: true, iptc: true })) as

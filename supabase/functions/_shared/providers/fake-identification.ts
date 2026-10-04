@@ -16,7 +16,6 @@ const SCENARIOS: readonly FakeScenario[] = [
   'orchid',
   'error',
 ];
-const MARKER = new TextEncoder().encode('TENDRIL_FAKE:');
 
 function suggestion(
   id: string,
@@ -42,28 +41,9 @@ function suggestion(
   };
 }
 
-function indexOf(hay: Uint8Array, needle: Uint8Array): number {
-  outer: for (let i = 0; i + needle.length <= hay.length; i++) {
-    for (let j = 0; j < needle.length; j++) if (hay[i + j] !== needle[j]) continue outer;
-    return i;
-  }
-  return -1;
-}
-
-/** Decodes the first image and looks for the ASCII marker `TENDRIL_FAKE:<scenario>` in its bytes. */
-function scenarioFromImage(b64: string | undefined): FakeScenario | null {
-  if (!b64) return null;
-  let bytes: Uint8Array;
-  try {
-    bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-  } catch {
-    return null;
-  }
-  const at = indexOf(bytes, MARKER);
-  if (at < 0) return null;
-  const rest = new TextDecoder('ascii').decode(bytes.subarray(at + MARKER.length, at + 64));
-  const word = /^[a-z_]+/.exec(rest)?.[0];
-  return SCENARIOS.find((s) => s === word) ?? null;
+/** The scenario named by the caller, if it is one we know. */
+function scenarioFrom(name: string | undefined): FakeScenario | null {
+  return SCENARIOS.find((s) => s === name) ?? null;
 }
 
 const PROBS: Record<'very_likely' | 'likely' | 'not_sure' | 'orchid', [number, number]> = {
@@ -73,13 +53,13 @@ const PROBS: Record<'very_likely' | 'likely' | 'not_sure' | 'orchid', [number, n
   orchid: [0.93, 0.04],
 };
 
-/** Deterministic provider for local work; the scenario can be chosen by a marker in the image. */
+/** Deterministic provider for local work; the scenario can be chosen per request via `IdentifyInput.scenario`. */
 export function fakeIdentificationProvider(
   scenario: FakeScenario = 'very_likely',
 ): IdentificationProvider {
   return {
     identify(input: IdentifyInput): Promise<IdentificationResult> {
-      const s = scenarioFromImage(input.imagesBase64[0]) ?? scenario;
+      const s = scenarioFrom(input.scenario) ?? scenario;
       if (s === 'error') {
         return Promise.reject(
           new ApiError('provider_unavailable', 'Identification is unavailable.'),

@@ -35,6 +35,8 @@ export interface IdentifyInput {
   lng: number | null;
   datetime: string;
   health: boolean;
+  /** Local-only scenario for the fake provider (from the `x-tendril-fake` header); real providers ignore it. */
+  scenario?: string;
 }
 
 export interface IdentificationProvider {

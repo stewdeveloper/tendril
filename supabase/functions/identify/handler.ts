@@ -92,6 +92,7 @@ export function createHandler(deps: IdentifyDeps): (req: Request) => Promise<Res
 
   async function identify(req: Request): Promise<Response> {
     const uid = await requireUser(verifier, req);
+    const providerName = deps.providerName ?? selectedProviderName();
     const body = parseIdentify(await readJson(req), uid, now());
     const paths = body.photos.map((p) => p.path);
     const appCheck = await (deps.appCheck ?? selectAppCheck()).verify(
@@ -221,6 +222,9 @@ export function createHandler(deps: IdentifyDeps): (req: Request) => Promise<Res
           datetime: body.deviceTime,
           // Phase 3 turns health assessment on, together with the diagnosis quota; 2B never asks the provider.
           health: false,
+          // Only the fake provider (local stack only) honours a per-request scenario; otherwise the header is ignored.
+          scenario:
+            providerName === 'fake' ? (req.headers.get('x-tendril-fake') ?? undefined) : undefined,
         });
       } catch (e) {
         log('error', 'identification provider failed', { error: String(e) });
@@ -275,7 +279,7 @@ export function createHandler(deps: IdentifyDeps): (req: Request) => Promise<Res
       await callPrivate(db, 'srv_store_provider', {
         p_uid: uid,
         p_observation_id: observationId,
-        p_provider: deps.providerName ?? selectedProviderName(),
+        p_provider: providerName,
         p_access_token: result.accessToken,
         p_raw: result.raw as never,
       });
