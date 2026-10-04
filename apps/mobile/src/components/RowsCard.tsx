@@ -1,7 +1,8 @@
 import { radius } from '@tendril/core';
-import type { ReactNode } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText, useTheme } from '../theme';
+import type { IconProps } from './icons';
 
 export interface Row {
   key: string;
@@ -13,6 +14,8 @@ export interface Row {
   rightColor?: 'textSecondary' | 'primary' | 'streak';
   /** A rank or index in a 28 pt column before the title. */
   lead?: string;
+  /** A 24 pt primary-coloured icon before the title (the care plan rows in 2d). */
+  icon?: ComponentType<IconProps>;
   highlight?: boolean;
   onPress?: () => void;
 }
@@ -38,8 +41,18 @@ export function RowsCard({ rows = [], children }: RowsCardProps) {
 
 function RowView({ row }: { row: Row }) {
   const { c } = useTheme();
+  const Icon = row.icon;
   const body: ReactNode = (
     <>
+      {Icon ? (
+        <View
+          aria-hidden
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          <Icon size={24} color={c.primary} strokeWidth={2} />
+        </View>
+      ) : null}
       {row.lead != null ? (
         <AppText variant="bodyStrong" color="textSecondary" style={styles.lead}>
           {row.lead}

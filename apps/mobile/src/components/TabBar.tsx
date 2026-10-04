@@ -1,9 +1,10 @@
-import { typeScale } from '@tendril/core';
+import { shadows, typeScale } from '@tendril/core';
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import { useRouter } from 'expo-router';
 import type { ComponentType } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText, fontFamilyFor, useTheme } from '../theme';
+import { useInsets } from './useInsets';
 import {
   CalendarIcon,
   CollectionIcon,
@@ -37,27 +38,32 @@ export interface TabBarViewProps {
 }
 
 /**
- * The design's tab bar (2e): a 90 pt bar on the surface colour with a hairline above it, five equal
+ * The design's tab bar (2e): a bar of 56 pt plus the bottom safe-area inset (90 on an iPhone 16)
+ * on the surface colour with a hairline above it, five equal
  * columns with labels always showing, and Scan as a raised 60 pt circle with a surface-coloured
  * ring.
  *
  * Android only delivers touches inside a parent's bounds, so the raised circle can't hang out of
- * the 90 pt bar. The outer container is 118 pt tall (a 28 pt transparent strip above the bar) and
+ * the bar. The outer container is the bar's height plus a 28 pt transparent strip above it and
  * holds every item; the bar's background is a sibling drawn behind them. A -28 pt top margin gives
- * the container a 90 pt layout footprint, so the screens keep their full height and the strip
+ * the container the bar's height as its layout footprint, so the screens keep their full height and the strip
  * overlaps their last 28 pt. `box-none` on the container lets touches in the strip, outside the
  * circle, fall through to the screen.
  */
 export function TabBarView({ active, onTab, onScan }: TabBarViewProps) {
   const { c } = useTheme();
+  const barHeight = BAR_BASE + useInsets().bottom;
   return (
     <View
       testID="tab-bar"
       accessibilityRole="tablist"
       pointerEvents="box-none"
-      style={styles.outer}
+      style={[styles.outer, { height: barHeight + RAISE }]}
     >
-      <View style={[styles.bar, { backgroundColor: c.surface }]} pointerEvents="none">
+      <View
+        style={[styles.bar, { backgroundColor: c.surface, height: barHeight }]}
+        pointerEvents="none"
+      >
         <View style={[styles.hairline, { backgroundColor: c.hairline }]} />
       </View>
       <View pointerEvents="box-none" style={styles.row}>
@@ -77,7 +83,7 @@ export function TabBarView({ active, onTab, onScan }: TabBarViewProps) {
                     styles.scanCircle,
                     {
                       backgroundColor: c.primary,
-                      boxShadow: `0 0 0 5px ${c.surface}, 0 4px 12px rgba(29, 36, 32, 0.18)`,
+                      boxShadow: `0 0 0 5px ${c.surface}, ${shadows.raised}`,
                     },
                   ]}
                 >
@@ -86,6 +92,7 @@ export function TabBarView({ active, onTab, onScan }: TabBarViewProps) {
                 <AppText
                   variant="caption"
                   color="primary"
+                  maxFontSizeMultiplier={LABEL_MAX_SCALE}
                   style={[styles.label, styles.scanLabel, { fontFamily: LABEL_FONT.inactive }]}
                 >
                   {label}
@@ -110,6 +117,7 @@ export function TabBarView({ active, onTab, onScan }: TabBarViewProps) {
               <AppText
                 variant="caption"
                 color={color}
+                maxFontSizeMultiplier={LABEL_MAX_SCALE}
                 style={[
                   styles.label,
                   { fontFamily: selected ? LABEL_FONT.active : LABEL_FONT.inactive },
@@ -154,12 +162,16 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
 }
 
 const RAISE = 28;
-const BAR_HEIGHT = 90;
+/** The bar above the safe-area inset: 56 + 34 = 90 on an iPhone 16. */
+const BAR_BASE = 56;
+/** Layout-critical labels cap text scaling (spec 6.2): five equal columns have no room to grow. */
+const LABEL_MAX_SCALE = 1.3;
 
 const styles = StyleSheet.create({
-  // 118 pt tall, but only the bar's 90 pt counts in the layout: the strip overlaps the screen above.
-  outer: { height: BAR_HEIGHT + RAISE, marginTop: -RAISE },
-  bar: { position: 'absolute', left: 0, right: 0, bottom: 0, height: BAR_HEIGHT },
+  // Height is set in the component (bar + 28 pt strip); only the bar counts in the layout: the
+  // strip overlaps the screen above.
+  outer: { marginTop: -RAISE },
+  bar: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   hairline: { position: 'absolute', top: -1, left: 0, right: 0, height: 1 },
   row: { flexDirection: 'row', alignItems: 'flex-start' },
   item: { flex: 1, alignItems: 'center', gap: 2 },

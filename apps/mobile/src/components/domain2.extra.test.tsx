@@ -118,6 +118,24 @@ describe('PlantCard next check', () => {
     expect(screen.getByText('Monday')).toBeTruthy();
     expect(screen.queryByText('Tomorrow')).toBeNull();
   });
+  it('names the weekday only 2 to 6 days ahead, otherwise the date', async () => {
+    const at = async (today: string) => {
+      const view = await wrap(<PlantCard plant={lily} today={today} onPress={noop} />);
+      return view;
+    };
+    // lily is next checked on 2026-10-05 (a Monday).
+    let view = await at('2026-10-03');
+    expect(screen.getByText('Monday')).toBeTruthy();
+    await view.unmount();
+    view = await at('2026-09-29');
+    expect(screen.getByText('Monday')).toBeTruthy();
+    await view.unmount();
+    view = await at('2026-09-28');
+    expect(screen.getByText('5 Oct')).toBeTruthy();
+    await view.unmount();
+    view = await at('2026-09-20');
+    expect(screen.getByText('5 Oct')).toBeTruthy();
+  });
   it('takes a plain summary: the closing date comes from statusOn', async () => {
     const dead: PlantSummary = {
       ...monty,
@@ -360,6 +378,13 @@ describe('FindMarker', () => {
 });
 
 describe('PlanCard states', () => {
+  it('wraps, so the price can drop under the title at large text', async () => {
+    await wrap(
+      <PlanCard title="Yearly" subtitle="s" price="$24.99" per="a year" selected onPress={noop} />,
+    );
+    const card = screen.getByRole('radio', { name: /Yearly/ });
+    expect(StyleSheet.flatten(card.props.style)).toMatchObject({ flexWrap: 'wrap' });
+  });
   it('unselected is a radio that is not checked, and a press chooses it', async () => {
     const onPress = jest.fn();
     await wrap(

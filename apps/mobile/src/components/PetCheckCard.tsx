@@ -12,7 +12,7 @@ import Cat from 'lucide-react-native/icons/cat';
 import Dog from 'lucide-react-native/icons/dog';
 import PawPrint from 'lucide-react-native/icons/paw-print';
 import Phone from 'lucide-react-native/icons/phone';
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppText, useTheme } from '../theme';
 import { Button } from './Button';
@@ -27,7 +27,8 @@ export interface PetCheckCardProps {
   /** The identification's probability; null where there is no match to depend on (plant detail). */
   matchProbability: number | null;
   speciesName: string;
-  onPetAte: () => void;
+  /** Called with the pet that ate it; with several pets the card asks which one first. */
+  onPetAte: (petId: string) => void;
   onSourcePress?: (url: string) => void;
 }
 
@@ -55,6 +56,7 @@ export function PetCheckCard({
   onSourcePress,
 }: PetCheckCardProps) {
   const { c } = useTheme();
+  const [choosing, setChoosing] = useState(false);
   if (pets.length === 0) return null;
   const band = matchProbability == null ? null : bandFor(matchProbability);
   const note = band == null ? null : likelyMatchNote(band);
@@ -77,7 +79,11 @@ export function PetCheckCard({
           <PetRow
             pet={pet}
             entry={
-              pet.animal === 'other' ? undefined : toxicity.find((t) => t.animal === pet.animal)
+              // Not sure of the match: nothing is stated about the plant, so every row is Unknown
+              // (2c). Never present data for a plant that may be the wrong one.
+              band === 'not_sure' || pet.animal === 'other'
+                ? undefined
+                : toxicity.find((t) => t.animal === pet.animal)
             }
             onSourcePress={onSourcePress}
           />
@@ -99,16 +105,36 @@ export function PetCheckCard({
         variant="secondary"
         icon={Phone}
         compact
-        onPress={onPetAte}
+        onPress={() => {
+          const only = pets.length === 1 ? pets[0] : undefined;
+          if (only) onPetAte(only.id);
+          else setChoosing(true);
+        }}
         accessibilityHint={`Gets help if a pet has eaten ${speciesName}`}
       />
+      {choosing ? (
+        <View style={styles.choose}>
+          <AppText variant="caption" color="textSecondary" accessibilityRole="header">
+            Which pet?
+          </AppText>
+          {pets.map((pet) => (
+            <Button
+              key={pet.id}
+              label={pet.name?.trim() || YOUR[pet.animal]}
+              variant="secondary"
+              compact
+              onPress={() => onPetAte(pet.id)}
+            />
+          ))}
+        </View>
+      ) : null}
     </Card>
   );
 }
 
 function PetRow({
   pet,
-  entry,
+  entry: rawEntry,
   onSourcePress,
 }: {
   pet: Pet;
@@ -117,6 +143,9 @@ function PetRow({
 }) {
   const { c } = useTheme();
   const Icon = pet.animal === 'cat' ? Cat : pet.animal === 'dog' ? Dog : PawPrint;
+  // "No known toxicity" is a claim that needs a source behind it: without one the row is Unknown.
+  const entry =
+    rawEntry && rawEntry.severity === 'none' && !rawEntry.sourceName ? undefined : rawEntry;
   const line = petCheckLine({
     animal: pet.animal,
     severity: entry?.severity ?? 'unknown',
@@ -218,7 +247,14 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 },
   names: { flexShrink: 1, textAlign: 'right' },
   pet: { gap: 10 },
-  petTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  // Wraps at large text: the chip drops below the name instead of overflowing.
+  petTop: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    rowGap: 8,
+    columnGap: 12,
+  },
   avatar: {
     width: 40,
     height: 40,
@@ -226,7 +262,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  who: { flex: 1, minWidth: 0 },
+  who: { flex: 1, minWidth: 120 },
+  choose: { gap: 8 },
   divider: { height: 1 },
   match: { gap: 10 },
   footer: {

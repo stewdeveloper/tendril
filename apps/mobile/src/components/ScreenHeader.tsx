@@ -30,7 +30,7 @@ export function ScreenHeader({ title, avatarLetter, onAvatarPress, subtitle }: S
         onPress={onAvatarPress}
         style={[styles.avatar, { backgroundColor: c.primaryTint }]}
       >
-        <AppText variant="bodyStrong" color="primary">
+        <AppText variant="bodyStrong" color="primary" maxFontSizeMultiplier={1.3}>
           {avatarLetter}
         </AppText>
       </Pressable>

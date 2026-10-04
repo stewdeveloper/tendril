@@ -1,4 +1,4 @@
-import type { CareTask, IsoDate } from '@tendril/core';
+import { taskDueTitle, type CareTask, type IsoDate } from '@tendril/core';
 import ChevronRight from 'lucide-react-native/icons/chevron-right';
 import CircleCheck from 'lucide-react-native/icons/circle-check';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -25,7 +25,7 @@ const PHOTO = 52;
 export function taskTitle(task: CareTask): string {
   if (task.kind === 'water') return `Water ${task.plantNickname}`;
   return task.status === 'due'
-    ? `Time to check ${task.plantNickname}'s soil.`
+    ? taskDueTitle(task.plantNickname)
     : `Check ${task.plantNickname}'s soil`;
 }
 

@@ -70,10 +70,13 @@ export function PlanCard({ title, tag, subtitle, price, per, selected, onPress }
 }
 
 const styles = StyleSheet.create({
+  // The price wraps under the title when large text leaves no room beside it.
   card: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 12,
+    columnGap: 12,
+    rowGap: 8,
     borderRadius: radius.card,
   },
   radio: {
@@ -85,7 +88,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   radioDot: { width: 12, height: 12, borderRadius: 6 },
-  text: { flex: 1, minWidth: 0 },
+  text: { flex: 1, minWidth: 140 },
   titleRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8 },
   price: { alignItems: 'flex-end', flexShrink: 0 },
   per: { textAlign: 'right' },

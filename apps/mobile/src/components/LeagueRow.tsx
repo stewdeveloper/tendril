@@ -1,4 +1,4 @@
-import type { BoardRow } from '@tendril/core';
+import { pointsPendingReview, type BoardRow } from '@tendril/core';
 import { StyleSheet, View } from 'react-native';
 import { AppText, useTheme } from '../theme';
 
@@ -22,7 +22,7 @@ export function LeagueRow({ row }: LeagueRowProps) {
         `Rank ${row.rank}`,
         row.isYou ? `You, @${row.handle}` : `@${row.handle}`,
         `${row.points} points`,
-        row.pending ? 'Points pending review' : null,
+        row.pending ? pointsPendingReview : null,
       ]
         .filter(Boolean)
         .join('. ')}
@@ -41,7 +41,7 @@ export function LeagueRow({ row }: LeagueRowProps) {
         <AppText variant="body">{name}</AppText>
         {row.pending ? (
           <AppText variant="sub" color="textSecondary" style={styles.subtitle}>
-            Points pending review
+            {pointsPendingReview}
           </AppText>
         ) : null}
       </View>

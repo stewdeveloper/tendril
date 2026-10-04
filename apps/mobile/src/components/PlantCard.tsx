@@ -39,11 +39,15 @@ export function nextCheckText(
       return { text: plant.pausedNote ?? 'Paused', emphasis: false };
     case 'ok': {
       if (!plant.nextCheckOn) return { text: '', emphasis: false };
-      const tomorrow = daysBetween(today, plant.nextCheckOn) === 1;
-      return {
-        text: tomorrow ? 'Tomorrow' : (weekdayName(plant.nextCheckOn) ?? ''),
-        emphasis: false,
-      };
+      // Tomorrow, then the weekday for the rest of this week, then the date.
+      const ahead = daysBetween(today, plant.nextCheckOn);
+      const text =
+        ahead === 1
+          ? 'Tomorrow'
+          : ahead != null && ahead >= 2 && ahead <= 6
+            ? (weekdayName(plant.nextCheckOn) ?? '')
+            : (dayMonth(plant.nextCheckOn) ?? '');
+      return { text, emphasis: false };
     }
     case 'closed':
       return { text: '', emphasis: false };
@@ -122,7 +126,7 @@ export function PlantCard({ plant, onPress, variant = 'card', today }: PlantCard
                 style={StyleSheet.absoluteFill}
               />
             ) : (
-              <AppText variant="bodyStrong" color="primary" aria-hidden>
+              <AppText variant="bodyStrong" color="primary" maxFontSizeMultiplier={1.3} aria-hidden>
                 {initial}
               </AppText>
             )}

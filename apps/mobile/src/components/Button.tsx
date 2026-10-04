@@ -4,7 +4,7 @@ import { Animated, Easing, Platform, Pressable, StyleSheet, View } from 'react-n
 import { AppText, useTheme } from '../theme';
 import type { IconProps } from './icons';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'text' | 'danger';
+export type ButtonVariant = 'primary' | 'secondary' | 'text' | 'danger' | 'ink';
 
 export interface ButtonProps {
   label: string;
@@ -48,6 +48,8 @@ export function Button({
     secondary: { bg: 'transparent', fg: c.primary, ring: c.primary },
     text: { bg: 'transparent', fg: c.primary, ring: 'transparent' },
     danger: { bg: c.danger, fg: c.onChip, ring: 'transparent' },
+    // "Continue with Apple" (3d): the page's ink with surface-coloured text, white in light mode.
+    ink: { bg: c.textPrimary, fg: c.surface, ring: 'transparent' },
   }[variant];
   const inert = disabled || loading;
   const baseLabel = accessibilityLabel ?? label;

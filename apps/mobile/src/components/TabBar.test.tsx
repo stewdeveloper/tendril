@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { ThemeProvider } from '../theme';
 import { TabBar, TabBarView } from './TabBar';
 
@@ -26,7 +27,26 @@ describe('TabBar', () => {
   });
 });
 
+const flatStyle = (el: { props: { style?: unknown } }) =>
+  StyleSheet.flatten(el.props.style as StyleProp<ViewStyle>) ?? {};
+
 describe('TabBar geometry', () => {
+  it('is 56 pt plus the bottom inset, with a 28 pt raised strip, and caps label scaling', async () => {
+    for (const bottom of [0, 48]) {
+      const view = await render(
+        <ThemeProvider scheme="light">
+          <SafeAreaInsetsContext.Provider value={{ top: 0, left: 0, right: 0, bottom }}>
+            <TabBarView active="today" onTab={jest.fn()} onScan={jest.fn()} />
+          </SafeAreaInsetsContext.Provider>
+        </ThemeProvider>,
+      );
+      expect(flatStyle(screen.getByTestId('tab-bar')).height).toBe(56 + bottom + 28);
+      expect(flatStyle(screen.getByTestId('tab-bar')).marginTop).toBe(-28);
+      expect(screen.getByText('Today').props.maxFontSizeMultiplier).toBe(1.3);
+      expect(screen.getByText('Scan').props.maxFontSizeMultiplier).toBe(1.3);
+      await view.unmount();
+    }
+  });
   it('keeps the raised Scan button inside its parent, for Android touch delivery', async () => {
     await render(
       <ThemeProvider scheme="light">
@@ -39,8 +59,9 @@ describe('TabBar geometry', () => {
     // The circle's top sits in the container (no negative offset), as do its 60 pt and its label.
     expect(scan.marginTop ?? 0).toBeGreaterThanOrEqual(0);
     const outer = flat(screen.getByTestId('tab-bar'));
-    expect(outer.height).toBe(118);
-    // Layout footprint is the 90 pt bar: the 28 pt raise is a negative margin on the container.
+    // 56 pt of bar (no safe-area provider here) plus the 28 pt strip.
+    expect(outer.height).toBe(84);
+    // Layout footprint is the bar: the 28 pt raise is a negative margin on the container.
     expect(outer.marginTop).toBe(-28);
     expect(Number(scan.marginTop ?? 0) + 60 + 2 + 16).toBeLessThanOrEqual(outer.height as number);
     // The container and its row let touches outside the items through.

@@ -9,6 +9,12 @@ describe('catalog registry', () => {
     expect(getFrame('zz-test')?.title).toBe('Test frame');
     expect(listFrames().map((f) => f.id)).toContain('zz-test');
   });
+  it('throws on a duplicate id in development', () => {
+    registerFrame({ id: 'zz-dup', title: 'One', render: () => <Text>one</Text> });
+    expect(() =>
+      registerFrame({ id: 'zz-dup', title: 'Two', render: () => <Text>two</Text> }),
+    ).toThrow(/zz-dup/);
+  });
   it('renders an unknown id as a helpful message, not a crash', async () => {
     await render(<CatalogScreen frameId="nope" />);
     expect(screen.getByText(/No frame nope/)).toBeTruthy();

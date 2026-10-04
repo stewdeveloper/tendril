@@ -45,4 +45,12 @@ describe('Button', () => {
       screen.getByText('Call ASPCA Poison Control (888) 426-4435').props.numberOfLines,
     ).toBeUndefined();
   });
+  it('ink is the page ink with surface-coloured text, for Continue with Apple (3d)', async () => {
+    await wrap(<Button label="Continue with Apple" onPress={() => {}} variant="ink" />);
+    const btn = screen.getByRole('button', { name: 'Continue with Apple' });
+    expect(StyleSheet.flatten(btn.props.style)).toMatchObject({ backgroundColor: '#1D2420' });
+    expect(StyleSheet.flatten(screen.getByText('Continue with Apple').props.style)).toMatchObject({
+      color: '#FFFFFF',
+    });
+  });
 });

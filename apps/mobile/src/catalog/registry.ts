@@ -13,6 +13,9 @@ export interface FrameEntry {
 const frames = new Map<string, FrameEntry>();
 
 export function registerFrame(entry: FrameEntry): void {
+  // A second frame with the same id would silently replace the first; catch the typo in development.
+  if (__DEV__ && frames.has(entry.id))
+    throw new Error(`Catalog frame ${entry.id} is registered twice`);
   frames.set(entry.id, entry);
 }
 export function getFrame(id: string): FrameEntry | undefined {

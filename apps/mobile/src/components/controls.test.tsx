@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { ThemeProvider } from '../theme';
 import {
   EmptyState,
@@ -83,6 +84,11 @@ describe('controls', () => {
       backgroundColor: '#E6F0EA',
     });
   });
+  it('RowsCard rows can lead with a primary-coloured icon (2d)', async () => {
+    const Icon = jest.fn(() => null);
+    await wrap(<RowsCard rows={[{ key: 'a', title: 'Bright, indirect light', icon: Icon }]} />);
+    expect(Icon.mock.calls[0]?.[0]).toMatchObject({ size: 24, color: '#2E6B4E', strokeWidth: 2 });
+  });
   it('TextField shows its label and value', async () => {
     await wrap(<TextField label="Handle" value="@siobhanplants" onChangeText={() => {}} focused />);
     expect(screen.getByText('Handle')).toBeTruthy();
@@ -90,9 +96,22 @@ describe('controls', () => {
   });
   it('Snackbar offers Undo', async () => {
     const onUndo = jest.fn();
-    await wrap(<Snackbar text="Check-in saved." onUndo={onUndo} bottomOffset={106} />);
+    await wrap(<Snackbar text="Check-in saved." onUndo={onUndo} withTabBar />);
     await fireEvent.press(screen.getByRole('button', { name: 'Undo' }));
     expect(onUndo).toHaveBeenCalled();
+  });
+  it('Snackbar sits 16 pt above the in-flow tab bar, or above the bottom safe area without one', async () => {
+    const inset = (ui: React.ReactElement) => (
+      <SafeAreaInsetsContext.Provider value={{ top: 0, left: 0, right: 0, bottom: 34 }}>
+        {ui}
+      </SafeAreaInsetsContext.Provider>
+    );
+    const bottomOf = (name: string) =>
+      (StyleSheet.flatten(screen.getByText(name).parent?.props.style) as { bottom: number }).bottom;
+    await wrap(inset(<Snackbar text="With bar" withTabBar />));
+    expect(bottomOf('With bar')).toBe(16);
+    await wrap(inset(<Snackbar text="No bar" />));
+    expect(bottomOf('No bar')).toBe(50);
   });
   it('Note and EmptyState render their sentence', async () => {
     await wrap(

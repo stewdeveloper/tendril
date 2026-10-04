@@ -69,7 +69,75 @@ describe('PetCheckCard', () => {
       screen.queryByText('This depends on the match. Confirm the plant to be sure.'),
     ).toBeNull();
     await fireEvent.press(screen.getByRole('button', { name: 'My pet ate this' }));
-    expect(onPetAte).toHaveBeenCalled();
+    // Two pets: the button asks which one first.
+    expect(onPetAte).not.toHaveBeenCalled();
+    expect(screen.getByText('Which pet?')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Bran' }));
+    expect(onPetAte).toHaveBeenCalledWith(pets[1]!.id);
+  });
+  it('calls through at once with a single pet', async () => {
+    const onPetAte = jest.fn();
+    await wrap(
+      <PetCheckCard
+        pets={[pets[0]!]}
+        toxicity={lilyTox}
+        matchProbability={0.94}
+        speciesName="Peace lily"
+        onPetAte={onPetAte}
+      />,
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'My pet ate this' }));
+    expect(onPetAte).toHaveBeenCalledWith(pets[0]!.id);
+    expect(screen.queryByText('Which pet?')).toBeNull();
+  });
+  it('shows Unknown everywhere when the match is not sure (2c)', async () => {
+    await wrap(
+      <PetCheckCard
+        pets={pets}
+        toxicity={lilyTox}
+        matchProbability={0.3}
+        speciesName="Peace lily"
+        onPetAte={() => {}}
+      />,
+    );
+    expect(screen.getByText('Cats: Unknown')).toBeTruthy();
+    expect(screen.getByText('Dogs: Unknown')).toBeTruthy();
+    expect(screen.queryByText(/Moderate/)).toBeNull();
+  });
+  it('reads a none entry without a source as Unknown', async () => {
+    await wrap(
+      <PetCheckCard
+        pets={[pets[0]!]}
+        toxicity={[
+          {
+            animal: 'cat',
+            severity: 'none',
+            summary: null,
+            symptoms: null,
+            sourceName: null,
+            sourceUrl: null,
+          },
+        ]}
+        matchProbability={null}
+        speciesName="Peace lily"
+        onPetAte={() => {}}
+      />,
+    );
+    expect(screen.getByText('Cats: Unknown')).toBeTruthy();
+    expect(screen.queryByText(/No known toxicity/)).toBeNull();
+  });
+  it('lets the pet row wrap at large text', async () => {
+    await wrap(
+      <PetCheckCard
+        pets={[pets[0]!]}
+        toxicity={lilyTox}
+        matchProbability={0.94}
+        speciesName="Peace lily"
+        onPetAte={() => {}}
+      />,
+    );
+    const row = screen.getAllByText('Miso').at(-1)?.parent?.parent;
+    expect(StyleSheet.flatten(row?.props.style)).toMatchObject({ flexWrap: 'wrap' });
   });
   it('adds the likely-match note when the match is only likely', async () => {
     await wrap(
