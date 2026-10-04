@@ -9,15 +9,26 @@ export interface PhotoSlotProps {
   label: string;
   height: number;
   radius?: number;
+  /** A fixed width in pt for the small lead slots (44 to 52 pt). Defaults to the parent's width. */
+  width?: number;
+  /** Draw `label` on the placeholder (default). The small slots show the icon alone, as in 2e. */
+  showLabel?: boolean;
 }
 
 /**
  * A photo, or the design's `image-slot` placeholder when there is none: a faint grey fill, a
  * dashed ring and an image icon over the label (design/claude-design/image-slot.js).
  */
-export function PhotoSlot({ uri, label, height, radius = 0 }: PhotoSlotProps) {
+export function PhotoSlot({
+  uri,
+  label,
+  height,
+  radius = 0,
+  width,
+  showLabel = true,
+}: PhotoSlotProps) {
   const { c } = useTheme();
-  const frame = { height, borderRadius: radius };
+  const frame = { height, borderRadius: radius, ...(width != null ? { width } : null) };
   if (uri) {
     return (
       <View style={[styles.frame, frame]}>
@@ -47,11 +58,13 @@ export function PhotoSlot({ uri, label, height, radius = 0 }: PhotoSlotProps) {
       />
       <View style={styles.center}>
         <View style={styles.glyph}>
-          <ImageGlyph size={28} color={c.textPrimary} strokeWidth={1.6} />
+          <ImageGlyph size={showLabel ? 28 : 24} color={c.textPrimary} strokeWidth={1.6} />
         </View>
-        <AppText variant="caption" style={styles.caption}>
-          {label}
-        </AppText>
+        {showLabel ? (
+          <AppText variant="caption" style={styles.caption}>
+            {label}
+          </AppText>
+        ) : null}
       </View>
     </View>
   );

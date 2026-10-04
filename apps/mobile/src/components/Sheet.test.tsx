@@ -169,4 +169,30 @@ describe('SheetPanel and SheetOverlay', () => {
       height: 522,
     });
   });
+
+  it('a minHeight is a floor for an auto-height sheet, and does not fix the height', async () => {
+    await render(
+      withInsets(
+        <SheetPanel title="Check-in" onClose={() => {}} minHeight={382}>
+          <Text>x</Text>
+        </SheetPanel>,
+      ),
+    );
+    const style = StyleSheet.flatten(screen.getByTestId('sheet-panel').props.style);
+    expect(style.minHeight).toBe(382);
+    expect(style.height).toBeUndefined();
+  });
+
+  it('ignores minHeight when the height is fixed', async () => {
+    await render(
+      withInsets(
+        <SheetPanel title="Check-in" onClose={() => {}} height={300} minHeight={382}>
+          <Text>x</Text>
+        </SheetPanel>,
+      ),
+    );
+    const style = StyleSheet.flatten(screen.getByTestId('sheet-panel').props.style);
+    expect(style.height).toBe(300);
+    expect(style.minHeight).toBeUndefined();
+  });
 });

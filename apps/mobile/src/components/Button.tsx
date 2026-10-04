@@ -16,6 +16,8 @@ export interface ButtonProps {
   icon?: ComponentType<IconProps>;
   /** 48 pt tall instead of 52: the buttons inside cards (the pet check in 2a, "Check in" in 2e). */
   compact?: boolean;
+  /** Draws the pressed state without a touch, for the component sheet (5o). */
+  previewPressed?: boolean;
   accessibilityLabel?: string;
   accessibilityHint?: string;
 }
@@ -36,6 +38,7 @@ export function Button({
   loading = false,
   icon: Icon,
   compact = false,
+  previewPressed = false,
   accessibilityLabel,
   accessibilityHint,
 }: ButtonProps) {
@@ -68,7 +71,7 @@ export function Button({
     >
       {({ pressed }) => (
         <>
-          {pressed && !inert ? (
+          {(pressed || previewPressed) && !inert ? (
             <View style={[styles.overlay, { backgroundColor: c.pressedOverlay }]} />
           ) : null}
           <View style={[styles.content, loading && styles.hidden]}>

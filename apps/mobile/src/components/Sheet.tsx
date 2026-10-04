@@ -22,6 +22,11 @@ export interface SheetPanelProps {
   children: ReactNode;
   /** A fixed height in pt, or 'auto' (the default) to fit the content. Either is capped to the screen. */
   height?: number | 'auto';
+  /**
+   * With `height: 'auto'`, a floor in pt: the sheet is at least this tall, and grows when the
+   * content (or a larger text size) needs more, so the actions are never pushed out of reach.
+   */
+  minHeight?: number;
 }
 
 export interface SheetProps extends SheetPanelProps {
@@ -39,7 +44,13 @@ const TOP_GAP = 8;
  * each present it their own way. Never taller than the window minus the top inset, so a long body
  * scrolls under a title that stays in view.
  */
-export function SheetPanel({ title, onClose, children, height = 'auto' }: SheetPanelProps) {
+export function SheetPanel({
+  title,
+  onClose,
+  children,
+  height = 'auto',
+  minHeight,
+}: SheetPanelProps) {
   const { c } = useTheme();
   const insets = useInsets();
   const { height: windowHeight } = useWindowDimensions();
@@ -53,6 +64,7 @@ export function SheetPanel({ title, onClose, children, height = 'auto' }: SheetP
           // 42 pt on an iPhone 16: the 34 pt home-indicator inset plus 8.
           paddingBottom: Math.max(42, insets.bottom + 8),
           height: height === 'auto' ? undefined : height,
+          minHeight: height === 'auto' ? minHeight : undefined,
           maxHeight: Math.max(0, windowHeight - insets.top - TOP_GAP),
         },
       ]}

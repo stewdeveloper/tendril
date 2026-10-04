@@ -1,2 +1,1 @@
-// Later tasks register their design frames here.
-export {};
+import './componentSheet';
