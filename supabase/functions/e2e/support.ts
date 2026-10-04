@@ -56,20 +56,25 @@ export async function call(
 
 /**
  * Deletes everything the users made, so `pnpm db:test` passes after an e2e run. Households outlive their creator
- * (`created_by` is set null), so they go first, taking plants, tasks, events, diagnoses, members, pets and vets
- * with them; deleting the users then removes profiles, zones, observations, Plantdex rows, quotas and entitlements.
- * Storage objects and weather-cache rows are removed by the caller and the e2e script.
+ * (`created_by` is set null), so the ones the users created or own go first, taking plants, tasks, events,
+ * diagnoses, members, pets and vets with them. A household a test user merely joined is never touched. Deleting the
+ * users then removes profiles, zones, observations, Plantdex rows, quotas and entitlements. Storage objects and
+ * weather-cache rows are removed by the caller and the e2e script.
  */
 export async function deleteUsers(ids: string[]): Promise<void> {
   if (ids.length === 0) return;
-  const members = await admin.from('household_members').select('household_id').in('user_id', ids);
-  if (members.error) throw members.error;
   const created = await admin.from('households').select('id').in('created_by', ids);
   if (created.error) throw created.error;
+  const owned = await admin
+    .from('household_members')
+    .select('household_id')
+    .in('user_id', ids)
+    .eq('role', 'owner');
+  if (owned.error) throw owned.error;
   const households = [
     ...new Set([
-      ...(members.data ?? []).map((m) => m.household_id as string),
       ...(created.data ?? []).map((h) => h.id as string),
+      ...(owned.data ?? []).map((m) => m.household_id as string),
     ]),
   ];
   if (households.length > 0) {

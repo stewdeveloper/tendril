@@ -111,6 +111,12 @@ export interface NightlyOptions {
   budgetMs: number;
   clock?: () => number;
   pageSize?: number;
+  /**
+   * The plant id the run starts after (a random UUID by default). The run pages to the last plant, then wraps round
+   * from the first plant up to and including `start`, so a complete run visits every plant once and a run cut short
+   * by the budget does not always leave the same plants out.
+   */
+  start?: string;
 }
 
 export interface NightlyCounts {
@@ -123,8 +129,7 @@ export interface NightlyCounts {
   failed: number;
   /** Plants looked at. */
   done: number;
-  /** Plants already read but not looked at when the budget ran out. */
-  remaining: number;
+  /** The budget ran out before every plant was looked at. */
   exhausted: boolean;
 }
 
@@ -132,14 +137,15 @@ export const NIGHTLY_PAGE_SIZE = 200;
 const STATUSES = ['updated', 'unchanged', 'conflict', 'closed'] as const;
 
 /**
- * Recomputes every alive plant's open check, a page at a time in plant id order, within the time budget. A conflict
- * (the state changed since the page was read) is skipped; it is picked up again tomorrow. A failure on one plant is
- * logged and skipped.
+ * Recomputes every alive plant's open check within the time budget, a page at a time in plant id order from a random
+ * start, wrapping round. A conflict (the state changed since the page was read) is skipped; it is picked up again
+ * tomorrow. A failure on one plant is logged and skipped; a failed page logs the counts so far and fails the run.
  */
 export async function runNightly(db: Db, opts: NightlyOptions): Promise<NightlyCounts> {
   const clock = opts.clock ?? Date.now;
   const deadline = clock() + opts.budgetMs;
   const pageSize = opts.pageSize ?? NIGHTLY_PAGE_SIZE;
+  const start = (opts.start ?? crypto.randomUUID()).toLowerCase();
   const counts: NightlyCounts = {
     updated: 0,
     unchanged: 0,
@@ -148,55 +154,64 @@ export async function runNightly(db: Db, opts: NightlyOptions): Promise<NightlyC
     skipped: 0,
     failed: 0,
     done: 0,
-    remaining: 0,
     exhausted: false,
   };
-  let after: string | null = null;
-  pages: for (;;) {
-    if (clock() >= deadline) {
-      counts.exhausted = true;
-      break;
-    }
-    const rows = (await callPrivate(db, 'srv_recompute_batch', {
-      p_after: after,
-      p_limit: pageSize,
-    })) as unknown as RecomputeRow[];
-    for (let i = 0; i < rows.length; i++) {
-      if (clock() >= deadline) {
-        counts.exhausted = true;
-        counts.remaining = rows.length - i;
-        break pages;
+
+  async function visit(row: RecomputeRow): Promise<void> {
+    counts.done += 1;
+    try {
+      const call = recomputeRow(row, opts.now);
+      if (!call) {
+        counts.skipped += 1;
+        return;
       }
-      const row = rows[i]!;
-      counts.done += 1;
-      try {
-        const call = recomputeRow(row, opts.now);
-        if (!call) {
-          counts.skipped += 1;
-          continue;
+      const status = await callPrivate(db, 'srv_recompute_plant', call);
+      const known = STATUSES.find((s) => s === status);
+      if (known) counts[known] += 1;
+      else throw new Error(`unexpected status ${String(status)}`);
+    } catch (e) {
+      counts.failed += 1;
+      log('error', 'nightly_plant_failed', {
+        plantId: row.plant_id,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
+  // Pass 1: the plants after `start`. Pass 2: from the first plant up to and including `start`.
+  const passes: { after: string | null; upTo: string | null }[] = [
+    { after: start, upTo: null },
+    { after: null, upTo: start },
+  ];
+  try {
+    run: for (const pass of passes) {
+      let after = pass.after;
+      for (;;) {
+        if (clock() >= deadline) {
+          counts.exhausted = true;
+          break run;
         }
-        const status = await callPrivate(db, 'srv_recompute_plant', call);
-        const known = STATUSES.find((s) => s === status);
-        if (known) counts[known] += 1;
-        else throw new Error(`unexpected status ${String(status)}`);
-      } catch (e) {
-        counts.failed += 1;
-        log('error', 'nightly_plant_failed', {
-          plantId: row.plant_id,
-          error: e instanceof Error ? e.message : String(e),
-        });
+        const rows = (await callPrivate(db, 'srv_recompute_batch', {
+          p_after: after,
+          p_limit: pageSize,
+        })) as unknown as RecomputeRow[];
+        for (const row of rows) {
+          if (pass.upTo !== null && row.plant_id > pass.upTo) break run;
+          if (clock() >= deadline) {
+            counts.exhausted = true;
+            break run;
+          }
+          await visit(row);
+        }
+        if (rows.length < pageSize) break;
+        after = rows[rows.length - 1]!.plant_id;
       }
     }
-    if (rows.length < pageSize) break;
-    after = rows[rows.length - 1]!.plant_id;
+  } catch (e) {
+    log('error', 'nightly_run', { ...counts, aborted: true });
+    throw e;
   }
-  if (counts.exhausted) {
-    log('warn', 'worker_budget_exhausted', {
-      route: 'nightly',
-      done: counts.done,
-      remaining: counts.remaining,
-    });
-  }
+  if (counts.exhausted) log('warn', 'worker_budget_exhausted', { route: 'nightly', ...counts });
   log('info', 'nightly_run', { ...counts });
   return counts;
 }

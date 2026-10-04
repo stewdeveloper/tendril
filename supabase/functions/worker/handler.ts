@@ -9,7 +9,11 @@ import type { WeatherProvider } from '../_shared/providers/weather.ts';
 /** About 100 s of work per call: well inside the edge runtime's wall clock, with room to stop cleanly. */
 export const WORKER_BUDGET_MS = 100_000;
 const MISSING_CELL_PAGE = 200;
-const WEATHER_MAX_AGE = '6 hours';
+/**
+ * Under the 6-hour cron interval: `fetched_at` is stamped after the due query, so a cell fetched one run ago is a
+ * little under 6 hours old at the next run, and a 6-hour max age would skip it every other run.
+ */
+const WEATHER_MAX_AGE = '5 hours';
 const WEATHER_CELLS_PER_RUN = 500;
 const WEATHER_CONCURRENCY = 4;
 
@@ -50,21 +54,25 @@ const unauthorised = () =>
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 export interface WeatherCounts {
+  /** Plants given a cell. */
   cellsFilled: number;
+  /** Zone centres h3 could not place. */
   badZones: number;
+  /** Cells due for a refresh. */
   due: number;
-  stored: number;
+  /** Cells fetched and cached. */
+  cellsStored: number;
+  /** Cells whose fetch or store failed. */
   failed: number;
-  /** Due cells not fetched when the budget ran out. */
-  remaining: number;
   exhausted: boolean;
 }
 
 /**
  * 1. Gives every outdoor plant whose creator has a home area its resolution-7 cell (from the zone's randomised
- *    centre), a page at a time until none are missing.
- * 2. Refreshes the cache for premium cells older than 6 hours, at most 500 a run, 4 at a time. Each fetch is at the
- *    cell centre in the cell's tz; a failed cell is logged and skipped. Skipped entirely without a provider.
+ *    centre), a page at a time until none are missing. A database failure here is logged and the refresh still runs.
+ * 2. Refreshes the cache for premium cells older than 5 hours, at most 500 a run, 4 at a time. Each fetch is at the
+ *    cell centre in the cell's tz; a failed cell is logged and skipped. Skipped entirely without a provider. A failed
+ *    due query logs the counts so far and fails the run.
  * Logs carry counts and cell ids only, never coordinates.
  */
 export async function runWeather(
@@ -79,44 +87,53 @@ export async function runWeather(
     cellsFilled: 0,
     badZones: 0,
     due: 0,
-    stored: 0,
+    cellsStored: 0,
     failed: 0,
-    remaining: 0,
     exhausted: false,
   };
 
-  for (;;) {
-    if (!timeLeft()) {
-      out.exhausted = true;
-      break;
-    }
-    const rows = (await callPrivate(db, 'srv_plants_missing_cell', {
-      p_limit: MISSING_CELL_PAGE,
-    })) as { plant_id: string; zone_lat: number; zone_lng: number }[];
-    if (rows.length === 0) break;
-    const cells: { plantId: string; cell: string }[] = [];
-    for (const r of rows) {
-      try {
-        cells.push({ plantId: r.plant_id, cell: cellR7Text(r.zone_lat, r.zone_lng) });
-      } catch {
-        out.badZones += 1;
+  try {
+    for (;;) {
+      if (!timeLeft()) {
+        out.exhausted = true;
+        break;
       }
+      const rows = (await callPrivate(db, 'srv_plants_missing_cell', {
+        p_limit: MISSING_CELL_PAGE,
+      })) as { plant_id: string; zone_lat: number; zone_lng: number }[];
+      if (rows.length === 0) break;
+      const cells: { plantId: string; cell: string }[] = [];
+      for (const r of rows) {
+        try {
+          cells.push({ plantId: r.plant_id, cell: cellR7Text(r.zone_lat, r.zone_lng) });
+        } catch {
+          out.badZones += 1;
+        }
+      }
+      const set =
+        cells.length === 0 ? 0 : await callPrivate(db, 'srv_set_plant_cells', { p_cells: cells });
+      out.cellsFilled += set;
+      // A short page is the last; a page that wrote nothing would only come back the same.
+      if (set === 0 || rows.length < MISSING_CELL_PAGE) break;
     }
-    const set =
-      cells.length === 0 ? 0 : await callPrivate(db, 'srv_set_plant_cells', { p_cells: cells });
-    out.cellsFilled += set;
-    // A short page is the last; a page that wrote nothing would only come back the same.
-    if (set === 0 || rows.length < MISSING_CELL_PAGE) break;
+  } catch (e) {
+    log('error', 'weather_fill_failed', { error: message(e), cellsFilled: out.cellsFilled });
   }
 
   if (weather && !out.exhausted) {
     if (!timeLeft()) {
       out.exhausted = true;
     } else {
-      const due = (await callPrivate(db, 'srv_weather_cells_due', {
-        p_older_than: WEATHER_MAX_AGE,
-        p_limit: WEATHER_CELLS_PER_RUN,
-      })) as { cell: string; tz: string }[];
+      let due: { cell: string; tz: string }[];
+      try {
+        due = (await callPrivate(db, 'srv_weather_cells_due', {
+          p_older_than: WEATHER_MAX_AGE,
+          p_limit: WEATHER_CELLS_PER_RUN,
+        })) as { cell: string; tz: string }[];
+      } catch (e) {
+        log('error', 'weather_run', { ...out, provider: 'on', aborted: true });
+        throw e;
+      }
       out.due = due.length;
       let next = 0;
       const lane = async () => {
@@ -137,7 +154,7 @@ export async function runWeather(
               p_tz: tz,
               p_summary: { rainNext48hMm: f.rainNext48hMm, maxTempNext48hC: f.maxTempNext48hC },
             });
-            out.stored += 1;
+            out.cellsStored += 1;
           } catch (e) {
             out.failed += 1;
             log('warn', 'weather_cell_failed', { cell, error: message(e) });
@@ -145,17 +162,10 @@ export async function runWeather(
         }
       };
       await Promise.all(Array.from({ length: Math.min(WEATHER_CONCURRENCY, due.length) }, lane));
-      out.remaining = due.length - next;
     }
   }
 
-  if (out.exhausted) {
-    log('warn', 'worker_budget_exhausted', {
-      route: 'weather',
-      done: out.cellsFilled + out.stored + out.failed,
-      remaining: out.remaining,
-    });
-  }
+  if (out.exhausted) log('warn', 'worker_budget_exhausted', { route: 'weather', ...out });
   log('info', 'weather_run', { ...out, provider: weather ? 'on' : 'off' });
   return out;
 }
@@ -164,6 +174,8 @@ const pattern = (pathname: string) => new URLPattern({ pathname });
 
 /** The cron-driven worker: `POST /weather` and `POST /nightly`, each answered 202 before the work. */
 export function createHandler(deps: WorkerDeps): (req: Request) => Promise<Response> {
+  // index.ts builds one handler per isolate, so this is logged once per isolate.
+  if (!deps.workerKey) log('error', 'worker_key_missing', { reason: 'WORKER_KEY is not set' });
   const budgetMs = deps.budgetMs ?? WORKER_BUDGET_MS;
   const now = deps.now ?? (() => new Date());
 

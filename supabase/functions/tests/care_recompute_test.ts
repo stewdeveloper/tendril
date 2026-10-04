@@ -1,9 +1,10 @@
-import { assert, assertEquals, assertNotEquals } from '@std/assert';
+import { assert, assertEquals, assertNotEquals, assertRejects } from '@std/assert';
 import { recomputeNextCheck, type RecomputeInput } from '@core/care/engine.ts';
 import { addDays } from '@core/period.ts';
 import { recomputeRow, type RecomputeRow, runNightly } from '../_shared/care-recompute.ts';
 import { cellR7Text } from '../_shared/h3.ts';
 import { fakeDb } from '../_shared/testing/fake-db.ts';
+import { captureLogs } from '../_shared/testing/logs.ts';
 
 const NOW = new Date('2026-10-10T09:00:00Z');
 const BASIS = { from: '2026-10-10', kind: 'interval' } as const;
@@ -236,6 +237,9 @@ function seed(n: number, over: (i: number) => Record<string, unknown> = () => ({
   });
 }
 
+const NIL = '00000000-0000-0000-0000-000000000000';
+const id = (i: number) => `00000000-0000-4000-8000-00000000010${i}`;
+
 const openChecks = (db: ReturnType<typeof fakeDb>, plantId: string) =>
   db.tables.care_tasks!.filter(
     (t) => t.plant_id === plantId && t.kind === 'check' && t.status === 'due',
@@ -253,15 +257,16 @@ Deno.test(
       due_on: '2026-10-17',
       status: 'due',
     });
-    const counts = await runNightly(db, { now: NOW, budgetMs: 60_000, pageSize: 2 });
+    const counts = await runNightly(db, { now: NOW, budgetMs: 60_000, pageSize: 2, start: NIL });
     const batches = db.rpcCalls.filter((c) => c.fn === 'srv_recompute_batch');
+    // From the start to the end, then from the first plant back round to the start.
     assertEquals(
       batches.map((c) => c.args.p_after),
-      [null, '00000000-0000-4000-8000-000000000101', '00000000-0000-4000-8000-000000000103'],
+      [NIL, '00000000-0000-4000-8000-000000000101', '00000000-0000-4000-8000-000000000103', null],
     );
     assertEquals(
       batches.map((c) => c.args.p_limit),
-      [2, 2, 2],
+      [2, 2, 2, 2],
     );
     for (let i = 0; i < 4; i++) {
       assertEquals(
@@ -311,14 +316,72 @@ Deno.test(
   },
 );
 
-Deno.test('runNightly: stops at a clean point when the budget runs out', async () => {
+Deno.test('runNightly: stops at a clean point when the budget runs out, and says so', async () => {
   const db = seed(4);
   let t = 0;
   // Each read of the clock moves time on 10 ms, so the budget runs out part-way through the first page.
-  const counts = await runNightly(db, { now: NOW, budgetMs: 25, clock: () => (t += 10) });
+  const { result: counts, logs } = await captureLogs(() =>
+    runNightly(db, { now: NOW, budgetMs: 25, clock: () => (t += 10), start: NIL }),
+  );
   assertEquals(counts.exhausted, true);
-  assert(counts.done < 4, JSON.stringify(counts));
-  assertEquals(counts.done + counts.remaining, 4);
+  assert(counts.done > 0 && counts.done < 4, JSON.stringify(counts));
+  const stop = logs.find((l) => l.message === 'worker_budget_exhausted');
+  assertEquals([stop?.route, stop?.done, stop?.updated], ['nightly', counts.done, counts.updated]);
+  assert(!('remaining' in counts), 'no count that only covers the current page');
   const none = await runNightly(seed(2), { now: NOW, budgetMs: 0 });
   assertEquals({ done: none.done, exhausted: none.exhausted }, { done: 0, exhausted: true });
+});
+
+Deno.test('runNightly: a full run covers every plant exactly once, from any start', async () => {
+  // Plants 0-6 with 5 dead: before them all, the first, one in the middle, the dead one (so between two alive
+  // plants), the last, after them all, and anywhere.
+  const starts = [
+    NIL,
+    id(0),
+    id(2),
+    id(5),
+    id(6),
+    'ffffffff-ffff-4fff-bfff-ffffffffffff',
+    crypto.randomUUID(),
+  ];
+  for (const start of starts) {
+    for (const pageSize of [1, 2, 3, 200]) {
+      const db = seed(7, (i) => (i === 5 ? { status: 'dead' } : {}));
+      const visits: string[] = [];
+      // Writes nothing, so every visit to a plant would ask to write again: a double visit would show.
+      db.rpcImpl.srv_recompute_plant = (a) => {
+        visits.push(a.p_plant_id);
+        return { data: 'unchanged', error: null };
+      };
+      const counts = await runNightly(db, { now: NOW, budgetMs: 60_000, pageSize, start });
+      const label = `start ${start}, page ${pageSize}`;
+      assertEquals(visits.sort(), [0, 1, 2, 3, 4, 6].map(id), label);
+      assertEquals(counts.done, 6, label);
+    }
+  }
+});
+
+Deno.test('runNightly: starts at a random plant id by default', async () => {
+  const db = seed(3);
+  await runNightly(db, { now: NOW, budgetMs: 60_000 });
+  const first = db.rpcCalls.find((c) => c.fn === 'srv_recompute_batch')!;
+  assert(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
+      first.args.p_after,
+    ),
+  );
+  assertEquals(db.tables.care_tasks!.length, 3, 'and still reaches every plant');
+});
+
+Deno.test('runNightly: a failed page logs the counts so far, then fails', async () => {
+  const db = seed(5);
+  const real = db.rpcImpl.srv_recompute_batch!;
+  let pages = 0;
+  db.rpcImpl.srv_recompute_batch = (a) =>
+    ++pages === 2 ? { data: null, error: { code: 'XX000', message: 'down' } } : real(a);
+  const { logs } = await captureLogs(() =>
+    assertRejects(() => runNightly(db, { now: NOW, budgetMs: 60_000, pageSize: 2, start: NIL })),
+  );
+  const run = logs.find((l) => l.message === 'nightly_run');
+  assertEquals([run?.aborted, run?.done, run?.updated], [true, 2, 2]);
 });

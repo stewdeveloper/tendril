@@ -1,6 +1,7 @@
 import { assert, assertEquals, assertNotEquals } from '@std/assert';
 import { cellCentre, cellR7Text } from '../_shared/h3.ts';
 import { fakeDb, type FakeDb } from '../_shared/testing/fake-db.ts';
+import { captureLogs } from '../_shared/testing/logs.ts';
 import type { WeatherForecast, WeatherProvider } from '../_shared/providers/weather.ts';
 import { createHandler, type WorkerDeps } from '../worker/handler.ts';
 
@@ -119,27 +120,6 @@ const post = (path: string, headers: Record<string, string> = {}) =>
   });
 const withKey = (path: string, key = KEY) => post(path, { authorization: `Bearer ${key}` });
 
-/** Captures log lines while `fn` runs. */
-async function captureLogs<T>(
-  fn: () => Promise<T>,
-): Promise<{ result: T; logs: Record<string, unknown>[] }> {
-  const logs: Record<string, unknown>[] = [];
-  const { log, warn, error } = console;
-  const keep = (...a: unknown[]) => {
-    try {
-      logs.push(JSON.parse(String(a[0])));
-    } catch {
-      logs.push({ raw: a.join(' ') });
-    }
-  };
-  console.log = console.warn = console.error = keep;
-  try {
-    return { result: await fn(), logs };
-  } finally {
-    Object.assign(console, { log, warn, error });
-  }
-}
-
 // Auth ----------------------------------------------------------------------------------------------------------
 
 Deno.test('worker: no bearer is 401 and touches nothing', async () => {
@@ -183,6 +163,21 @@ Deno.test(
   },
 );
 
+Deno.test('worker: a missing WORKER_KEY is logged once, by name only', async () => {
+  for (const workerKey of [undefined, '']) {
+    const { logs } = await captureLogs(async () => {
+      const h = handler(seed(), { workerKey });
+      for (let i = 0; i < 3; i++) assertEquals((await h(withKey('/nightly'))).status, 401);
+    });
+    assertEquals(logs.filter((l) => l.message === 'worker_key_missing').length, 1);
+    assert(!JSON.stringify(logs).includes(KEY));
+  }
+  const { logs } = await captureLogs(async () => {
+    await handler(seed())(withKey('/nightly'));
+  });
+  assertEquals(logs.filter((l) => l.message === 'worker_key_missing').length, 0, 'not when set');
+});
+
 Deno.test('worker: unknown paths and methods are 404 with the key', async () => {
   const h = handler(seed());
   assertEquals((await h(withKey('/unknown'))).status, 404);
@@ -224,7 +219,7 @@ Deno.test(
   },
 );
 
-Deno.test('worker /weather: a fresh cell is not fetched again within 6 hours', async () => {
+Deno.test('worker /weather: a fresh cell is not fetched again on the next call', async () => {
   const db = seed();
   const { provider, calls } = recordingWeather();
   const h = handler(db, { weather: provider });
@@ -232,7 +227,7 @@ Deno.test('worker /weather: a fresh cell is not fetched again within 6 hours', a
   await h(withKey('/weather'));
   assertEquals(calls.length, 1);
   const due = db.rpcCalls.filter((c) => c.fn === 'srv_weather_cells_due');
-  assertEquals(due[0]!.args, { p_older_than: '6 hours', p_limit: 500 });
+  assertEquals(due[0]!.args, { p_older_than: '5 hours', p_limit: 500 });
 });
 
 Deno.test('worker /weather: one failing cell is logged and skipped', async () => {
@@ -261,7 +256,7 @@ Deno.test('worker /weather: one failing cell is logged and skipped', async () =>
   const failed = logs.find((l) => l.message === 'weather_cell_failed');
   assertEquals(failed?.cell, cellR7Text(DUBLIN.lat, DUBLIN.lng));
   const run = logs.find((l) => l.message === 'weather_run');
-  assertEquals([run?.due, run?.stored, run?.failed], [2, 1, 1]);
+  assertEquals([run?.due, run?.cellsStored, run?.failed], [2, 1, 1]);
   const text = JSON.stringify(logs);
   for (const n of [DUBLIN.lat, DUBLIN.lng, CORK.lat, CORK.lng, dublin.lat, dublin.lng]) {
     assert(!text.includes(String(n)), `no coordinates in logs (${n})`);
@@ -312,7 +307,113 @@ Deno.test('worker /weather: a run past its budget stops cleanly and says so', as
   assertEquals(result.status, 202);
   assertEquals(db.rpcCalls, []);
   const stop = logs.find((l) => l.message === 'worker_budget_exhausted');
-  assertEquals([stop?.route, stop?.done, stop?.remaining], ['weather', 0, 0]);
+  assertEquals([stop?.route, stop?.cellsFilled, stop?.cellsStored], ['weather', 0, 0]);
+});
+
+Deno.test('worker /weather: a cell fetched just under 6 hours ago is due again', async () => {
+  // The cron runs every 6 hours and fetched_at is stamped after the due query, so a 6-hour max age would skip it.
+  const db = seed();
+  const dublin = cellR7Text(DUBLIN.lat, DUBLIN.lng);
+  for (const p of db.tables.plants!) if (p.created_by === A && !p.indoor) p.cell_r7 = dublin;
+  db.tables.weather_cache!.push({
+    cell_r7: dublin,
+    tz: 'Europe/Dublin',
+    summary: { rainNext48hMm: 0, maxTempNext48hC: 10 },
+    fetched_at: new Date(Date.now() - (6 * 3600 - 5) * 1000).toISOString(),
+  });
+  const { provider, calls } = recordingWeather();
+  await handler(db, { weather: provider })(withKey('/weather'));
+  assertEquals(calls.length, 1);
+  const due = db.rpcCalls.find((c) => c.fn === 'srv_weather_cells_due')!;
+  assertEquals(due.args.p_older_than, '5 hours');
+});
+
+Deno.test('worker /weather: filling stops at a page that writes nothing', async () => {
+  const db = seed();
+  db.tables.plants!.push(
+    ...Array.from({ length: 450 }, (_, i) =>
+      plant(`00000000-0000-4000-8000-${String(i).padStart(12, '0')}`, HA, A),
+    ),
+  );
+  // Every plant raced away (went indoor, died) between the read and the write.
+  db.rpcImpl.srv_set_plant_cells = () => ({ data: 0, error: null });
+  const { result } = await captureLogs(() => handler(db)(withKey('/weather')));
+  assertEquals(result.status, 202);
+  assertEquals(db.rpcCalls.filter((c) => c.fn === 'srv_plants_missing_cell').length, 1);
+  assert(
+    db.rpcCalls.some((c) => c.fn === 'srv_weather_cells_due'),
+    'the refresh still runs',
+  );
+});
+
+Deno.test('worker /weather: filling stops between pages when the budget runs out', async () => {
+  const db = seed();
+  db.tables.plants!.push(
+    ...Array.from({ length: 450 }, (_, i) =>
+      plant(`00000000-0000-4000-8000-${String(i).padStart(12, '0')}`, HA, A),
+    ),
+  );
+  let t = 0;
+  // Each read of the clock moves time on 10 ms: room for a page or two of the three.
+  const { logs } = await captureLogs(() =>
+    handler(db, { budgetMs: 25, clock: () => (t += 10) })(withKey('/weather')),
+  );
+  const pages = db.rpcCalls.filter((c) => c.fn === 'srv_plants_missing_cell').length;
+  assert(pages >= 1 && pages < 3, `${pages} pages`);
+  assert(
+    db.tables.plants!.some(
+      (p) => p.status === 'alive' && !p.indoor && p.created_by === A && p.cell_r7 == null,
+    ),
+  );
+  assertEquals(
+    db.rpcCalls.some((c) => c.fn === 'srv_weather_cells_due'),
+    false,
+    'no refresh after',
+  );
+  const stop = logs.find((l) => l.message === 'worker_budget_exhausted');
+  assertEquals([stop?.route, stop?.cellsFilled], ['weather', pages * 200]);
+});
+
+Deno.test(
+  'worker /weather: a failure while filling cells is logged and the refresh still runs',
+  async () => {
+    const db = seed();
+    const dublin = cellR7Text(DUBLIN.lat, DUBLIN.lng);
+    db.tables.plants!.find((p) => p.id === P.a1)!.cell_r7 = dublin;
+    db.rpcImpl.srv_plants_missing_cell = () => ({
+      data: null,
+      error: { code: 'XX000', message: 'down' },
+    });
+    const { provider, calls } = recordingWeather();
+    const { result, logs } = await captureLogs(() =>
+      handler(db, { weather: provider })(withKey('/weather')),
+    );
+    assertEquals(result.status, 202);
+    assert(
+      logs.some((l) => l.message === 'weather_fill_failed'),
+      JSON.stringify(logs),
+    );
+    assertEquals(calls.length, 1);
+    assertEquals(
+      db.tables.weather_cache!.map((w) => w.cell_r7),
+      [dublin],
+    );
+    const run = logs.find((l) => l.message === 'weather_run');
+    assertEquals([run?.cellsFilled, run?.cellsStored], [0, 1]);
+  },
+);
+
+Deno.test('worker /weather: a failed refresh logs the counts so far', async () => {
+  const db = seed();
+  db.rpcImpl.srv_weather_cells_due = () => ({
+    data: null,
+    error: { code: 'XX000', message: 'down' },
+  });
+  const { result, logs } = await captureLogs(() => handler(db)(withKey('/weather')));
+  assertEquals(result.status, 202);
+  const run = logs.find((l) => l.message === 'weather_run');
+  assertEquals([run?.aborted, run?.cellsFilled], [true, 3]);
+  assert(logs.some((l) => l.message === 'worker_run_failed' && l.route === 'weather'));
 });
 
 // /nightly ------------------------------------------------------------------------------------------------------
