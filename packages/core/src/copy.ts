@@ -1,3 +1,4 @@
+import { soilCheckRange } from './care/basic.ts';
 /** Fixed lines from the UX brief's Copy table. Never use the word "safe". */
 export const copy = {
   galleryNote: "Gallery photos get identified but don't earn points.",
@@ -63,3 +64,9 @@ export const veryLikelyResultLine = (name: string, percent: number) =>
   `Very likely ${indefiniteArticle(name)} ${midSentenceName(name)}, ${percent}% match.`;
 export const likelyResultLine = (name: string, percent: number) =>
   `Likely ${indefiniteArticle(name)} ${midSentenceName(name)}, ${percent}%. Compare these two before you add it.`;
+
+/** "Check the soil every 5 to 7 days". Shared by server labels and the app. */
+export function soilCheckLine(intervalDays: number): string {
+  const { min, max } = soilCheckRange(intervalDays);
+  return `Check the soil every ${min} to ${max} days`;
+}

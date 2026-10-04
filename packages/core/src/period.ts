@@ -41,3 +41,12 @@ export function weekdayName(iso: IsoDate): string {
     new Date(Date.UTC(y, m - 1, d)),
   );
 }
+
+export function isValidTimeZone(tz: string): boolean {
+  try {
+    new Intl.DateTimeFormat(undefined, { timeZone: tz });
+    return tz.length > 0;
+  } catch {
+    return false;
+  }
+}

@@ -3,6 +3,7 @@ import {
   checkInAnsweredNo,
   checkInQuestion,
   copy,
+  soilCheckLine,
   freezeUsed,
   indefiniteArticle,
   midSentenceName,
@@ -74,5 +75,11 @@ describe('previewDaysLeft', () => {
     expect(previewDaysLeft(1)).toBe(
       'Premium preview: 1 day left. It ends on its own, and nothing is charged.',
     );
+  });
+});
+
+describe('soilCheckLine', () => {
+  it('words the soil check range', () => {
+    expect(soilCheckLine(6)).toBe('Check the soil every 5 to 7 days');
   });
 });

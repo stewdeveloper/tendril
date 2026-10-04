@@ -21,6 +21,10 @@ export function randomizeZone(
   radiusM: number,
   rand: () => number,
 ): { center: LatLng; radiusM: number } {
+  if (!Number.isFinite(radiusM) || radiusM <= 0) throw new RangeError('radiusM must be positive');
+  if (!(Math.abs(home.lat) <= 90) || !(Math.abs(home.lng) <= 180)) {
+    throw new RangeError('home is out of range');
+  }
   const maxOffset = radiusM / 2;
   const d = maxOffset * Math.sqrt(rand());
   const bearing = 2 * Math.PI * rand();
@@ -36,7 +40,10 @@ export function randomizeZone(
       Math.sin(bearing) * Math.sin(ang) * Math.cos(lat1),
       Math.cos(ang) - Math.sin(lat1) * Math.sin(lat2),
     );
-  return { center: { lat: deg(lat2), lng: deg(lng2) }, radiusM: Math.round(radiusM * 1.5) };
+  return {
+    center: { lat: deg(lat2), lng: ((deg(lng2) + 540) % 360) - 180 },
+    radiusM: Math.round(radiusM * 1.5),
+  };
 }
 
 export function isInsideZone(point: LatLng, zone: { center: LatLng; radiusM: number }): boolean {

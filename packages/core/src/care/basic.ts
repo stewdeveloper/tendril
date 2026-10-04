@@ -6,7 +6,7 @@ export function baseIntervalDays(
   watering: { min: number | null; max: number | null },
   override: number | null,
 ): number {
-  if (override !== null) return override;
+  if (override !== null && Number.isFinite(override) && override > 0) return override;
   const values = [watering.min, watering.max].filter((v): v is number => v !== null);
   if (values.length === 0) return 7;
   const avg = values.reduce((a, b) => a + b, 0) / values.length;
@@ -22,4 +22,9 @@ export function basicCheckIn(input: { today: IsoDate; soilDry: boolean; baseDays
   return input.soilDry
     ? { waterTaskOn: input.today, nextCheckOn: addDays(input.today, input.baseDays) }
     : { waterTaskOn: null, nextCheckOn: addDays(input.today, 2) };
+}
+
+/** The window a soil check should fall in: the interval give or take a day, never below 1. */
+export function soilCheckRange(intervalDays: number): { min: number; max: number } {
+  return { min: Math.max(1, intervalDays - 1), max: intervalDays + 1 };
 }

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, localDate, monthKey, nextMonthStart, weekdayName } from './period.ts';
+import {
+  addDays,
+  isValidTimeZone,
+  localDate,
+  monthKey,
+  nextMonthStart,
+  weekdayName,
+} from './period.ts';
 
 describe('period', () => {
   it('uses the user timezone for the calendar day and month', () => {
@@ -18,5 +25,15 @@ describe('period', () => {
     expect(nextMonthStart(new Date('2026-12-15T12:00:00Z'), 'UTC')).toBe('2027-01-01');
     expect(weekdayName('2026-10-09')).toBe('Friday');
     expect(addDays('2026-10-30', 3)).toBe('2026-11-02');
+  });
+  it('finds next month start in a non-UTC zone around DST', () => {
+    expect(nextMonthStart(new Date('2026-10-31T23:30:00Z'), 'Europe/Dublin')).toBe('2026-11-01');
+    expect(nextMonthStart(new Date('2026-09-30T23:30:00Z'), 'Europe/Dublin')).toBe('2026-11-01');
+    expect(nextMonthStart(new Date('2026-10-31T23:30:00Z'), 'Pacific/Auckland')).toBe('2026-12-01');
+  });
+  it('validates timezones', () => {
+    expect(isValidTimeZone('Europe/Dublin')).toBe(true);
+    expect(isValidTimeZone('Not/AZone')).toBe(false);
+    expect(isValidTimeZone('')).toBe(false);
   });
 });
