@@ -1,4 +1,7 @@
-// The seed catalogue: the source data that `build.ts` turns into `supabase/seed.sql`.
+// The seed catalogue: the source data that `build.ts` turns into the reference migration and `supabase/seed.sql`.
+//
+// After the initial reference migration, catalogue corrections (severity, review status, new taxa) ship as new
+// migrations; editing catalogue.ts alone changes nothing in an existing database.
 //
 // Plain data only. Names and rarity for the plants in the UX brief come from the `aoife` fixture, so the seeded
 // database and the design frames cannot drift apart without `build.ts` noticing.
