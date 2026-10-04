@@ -11,6 +11,7 @@ import type {
   VetRequest,
 } from '@core/api.ts';
 import type { LeafState, PlantSetup } from '@core/domain.ts';
+import { isValidNickname, NICKNAME_MAX } from '@core/copy.ts';
 import { isValidTimeZone } from '@core/period.ts';
 import { ApiError } from './errors.ts';
 
@@ -32,6 +33,12 @@ function str(v: unknown, field: string, min: number, max: number): string {
   const s = v.trim();
   if (s.length < min || s.length > max) throw bad(`${field} must be ${min} to ${max} characters.`);
   return s;
+}
+function nickname(v: unknown, field: string): string {
+  if (typeof v !== 'string' || !isValidNickname(v)) {
+    throw bad(`${field} must be 1 to ${NICKNAME_MAX} characters.`);
+  }
+  return v.trim();
 }
 function optStr(v: unknown, field: string, max: number): string | null {
   if (v === undefined || v === null) return null;
@@ -249,7 +256,7 @@ export function parseSetup(v: unknown): PlantSetup {
     if (!Number.isInteger(potSizeCm)) throw bad('setup.potSizeCm must be a whole number.');
   }
   return {
-    nickname: str(o.nickname, 'setup.nickname', 1, 40),
+    nickname: nickname(o.nickname, 'setup.nickname'),
     room: optStr(o.room, 'setup.room', 40),
     light: oneOf(o.light, 'setup.light', ['bright', 'medium', 'low', 'unknown']),
     potMaterial: oneOf(o.potMaterial, 'setup.potMaterial', [
@@ -349,7 +356,7 @@ export function parsePlantPatch(body: unknown): PlantPatch {
     if (!PATCH_FIELDS.includes(k)) throw bad(`${k} cannot be changed.`);
   const out: PlantPatch = {};
   // Same rule as core's isValidNickname: 1 to 40 characters once trimmed.
-  if (o.nickname !== undefined) out.nickname = str(o.nickname, 'nickname', 1, 40);
+  if (o.nickname !== undefined) out.nickname = nickname(o.nickname, 'nickname');
   if (o.room !== undefined) out.room = optStr(o.room, 'room', 40);
   if (o.light !== undefined) {
     out.light = oneOf(o.light, 'light', ['bright', 'medium', 'low', 'unknown'] as const);
