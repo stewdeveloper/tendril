@@ -574,6 +574,8 @@ export interface PlantSummary {
   /** e.g. "1 of 2 dry checks" while watering is paused by a diagnosis. */
   pausedNote: string | null;
   photoUrl: string | null;
+  /** Date the plant died or was given away; null while active. */
+  statusOn: IsoDate | null;
 }
 
 export interface CarePlanLine { icon: 'sprout' | 'sun' | 'droplet' | 'thermometer'; title: string; detail: string }
@@ -585,7 +587,6 @@ export interface PlantDetail extends PlantSummary {
   carePlan: CarePlanLine[];
   toxicity: ToxicityEntry[];
   history: HistoryEntry[];
-  statusOn: IsoDate | null;
   deathCause: string | null;
 }
 
