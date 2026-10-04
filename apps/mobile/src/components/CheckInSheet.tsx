@@ -140,9 +140,7 @@ export function CheckInSheet(props: CheckInSheetProps) {
             <AppText variant="sub" color="textSecondary">
               We&apos;ve added a watering task for today.
             </AppText>
-            {props.offline ? (
-              <Note tone="dark" text={offlineSaved} />
-            ) : null}
+            {props.offline ? <Note tone="dark" text={offlineSaved} /> : null}
           </>
         ) : (
           <>
