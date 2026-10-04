@@ -1,4 +1,4 @@
-import type { IsoDate } from './domain.ts';
+import type { IsoDate, PlaceType } from './domain.ts';
 import { bandFor, bandWord, confidenceLabel, toPercent } from './confidence.ts';
 import { longDate } from './dates.ts';
 import { nonBreakingPhone } from './emergency.ts';
@@ -295,3 +295,49 @@ export const cameraCopy = {
 } as const;
 /** "2 of 5" under the camera's photo tray. */
 export const trayCount = (n: number) => `${n} of 5`;
+
+/** The scan result (2a, 2c, 4v to 4y), its health check card and the "Log a find" sheet (4z, 4aa). */
+export const resultCopy = {
+  notSureTitle: 'Not sure yet',
+  closestMatches: 'Closest matches',
+  careBasics: 'Care basics',
+  careLight: 'Light',
+  careSoil: 'Soil check',
+  careWarmth: 'Warmth',
+  otherPossibilities: 'Other possibilities',
+  petCheck: 'Pet check',
+  logFind: 'Log a find',
+  addToMyPlants: 'Add to My Plants',
+  takeClosePhoto: 'Take a close photo',
+  tryAgain: 'Try again',
+  close: 'Close',
+  ok: 'OK',
+  notAPlantTitle: 'No plant found',
+  noIdentificationUsed: "This didn't use an identification.",
+  offlineTitle: "You're offline",
+  offlineBody: "Your photos are saved. We'll identify them when you're back online.",
+  errorTitle: 'Something went wrong',
+  errorBody: "We couldn't identify this one. It didn't use an identification.",
+  healthCheckTitle: 'Health check',
+  healthCheckLine: 'Once you add this plant, the advice appears on its page.',
+  whereWasIt: 'Where was it?',
+  pointsNote:
+    'Points come from in-app camera finds. No picking, no trespassing, and others only ever see an area.',
+  locationOffNote: 'Location is off. This find goes in your Plantdex without points.',
+  turnOnLocation: 'Turn on location',
+  saveFind: 'Save find',
+  saveFindFailed: "Couldn't save your find. Try again.",
+  findSaved: 'Find saved',
+  allowLocation: 'Allow location',
+} as const;
+/** "3 photos", "1 photo": the count over a result's photo strip. */
+export const resultPhotoCount = (n: number) => `${n} ${n === 1 ? 'photo' : 'photos'}`;
+/** "This is a peace lily": confirming a likely match (4v). */
+export const thisIsLine = (name: string) =>
+  `This is ${indefiniteArticle(name)} ${midSentenceName(name)}`;
+/** The places a find can be, as the pills show them, in the order the sheet lists them (4z). */
+export const placeTypeOptions: readonly { value: PlaceType; label: string }[] = [
+  { value: 'shop', label: 'Shop' },
+  { value: 'garden_park', label: 'Garden or park' },
+  { value: 'wild', label: 'Wild' },
+];

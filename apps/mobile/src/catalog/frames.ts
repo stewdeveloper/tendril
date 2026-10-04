@@ -7,3 +7,4 @@ import './areas/today';
 import './areas/plants';
 import './areas/care';
 import './areas/scan';
+import './areas/result';

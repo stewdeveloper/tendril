@@ -1,7 +1,13 @@
 import { plantsCopy, type PlantSetup } from '@tendril/core';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { useAddPlant, useLabel, useScanResult } from '../../api/hooks';
+import {
+  useAddPlant,
+  useConfirmScan,
+  useFetchOutcome,
+  useLabel,
+  useScanResult,
+} from '../../api/hooks';
 import { PlantSetupScreen } from '../../screens/plants/PlantSetupScreen';
 
 type Source = { source: 'label_qr'; labelCode: string } | { source: 'scan'; observationId: string };
@@ -35,25 +41,89 @@ function FromLabel({ source }: { source: Source & { source: 'label_qr' } }) {
   if (label.data === undefined) return null;
   // A code we do not know, or one that was retired: the label page explains it (4p).
   if (label.data === null) return <Redirect href={`/l/${source.labelCode}`} />;
-  return <Setup source={source} speciesName={label.data.species.commonName} />;
+  return <LabelSetup source={source} speciesName={label.data.species.commonName} />;
 }
 
 function FromScan({ source }: { source: Source & { source: 'scan' } }) {
   const scan = useScanResult(source.observationId);
   const top = scan.data?.suggestions[0];
   if (!top) return null;
-  return <Setup source={source} speciesName={top.species.commonName} />;
+  return (
+    <ScanSetup source={source} speciesId={top.species.id} speciesName={top.species.commonName} />
+  );
 }
 
-function Setup({ source, speciesName }: { source: Source; speciesName: string }) {
-  const router = useRouter();
+function LabelSetup({
+  source,
+  speciesName,
+}: {
+  source: Source & { source: 'label_qr' };
+  speciesName: string;
+}) {
   const addPlant = useAddPlant();
+  return (
+    <Setup
+      speciesName={speciesName}
+      saving={addPlant.isPending}
+      save={async (setup) => {
+        const { plantId } = await addPlant.mutateAsync({ ...source, setup });
+        return `/plants/${plantId}`;
+      }}
+    />
+  );
+}
+
+/**
+ * A scan's plant is confirmed through the scan (so the identification has its outcome), with no
+ * place type: the server makes it a home plant. A species new to the Plantdex gets its moment first.
+ */
+function ScanSetup({
+  source,
+  speciesId,
+  speciesName,
+}: {
+  source: Source & { source: 'scan' };
+  speciesId: string;
+  speciesName: string;
+}) {
+  const confirm = useConfirmScan();
+  const fetchOutcome = useFetchOutcome();
+  return (
+    <Setup
+      speciesName={speciesName}
+      saving={confirm.isPending}
+      save={async (setup) => {
+        const { plantId } = await confirm.mutateAsync({
+          observationId: source.observationId,
+          speciesId,
+          action: 'add_plant',
+          setup,
+        });
+        const outcome = await fetchOutcome(source.observationId).catch(() => null);
+        return outcome?.newToPlantdex
+          ? `/scan/${source.observationId}/new-species`
+          : `/plants/${plantId}`;
+      }}
+    />
+  );
+}
+
+function Setup({
+  speciesName,
+  saving,
+  save: persist,
+}: {
+  speciesName: string;
+  saving: boolean;
+  /** Saves the plant and says where to go next. */
+  save: (setup: PlantSetup) => Promise<string>;
+}) {
+  const router = useRouter();
   const [failed, setFailed] = useState(false);
   const save = async (setup: PlantSetup) => {
     setFailed(false);
     try {
-      const { plantId } = await addPlant.mutateAsync({ ...source, setup });
-      router.replace(`/plants/${plantId}`);
+      router.replace(await persist(setup));
     } catch {
       setFailed(true);
     }
@@ -62,7 +132,7 @@ function Setup({ source, speciesName }: { source: Source; speciesName: string })
     <PlantSetupScreen
       speciesName={speciesName}
       initial={blank(speciesName)}
-      saving={addPlant.isPending}
+      saving={saving}
       error={failed ? plantsCopy.saveFailed : null}
       onSave={save}
       onCancel={() => (router.canGoBack() ? router.back() : router.replace('/today'))}

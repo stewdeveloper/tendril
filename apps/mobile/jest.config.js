@@ -18,6 +18,7 @@ module.exports = {
     '^react-native-maps$': '<rootDir>/src/testing/reactNativeMapsMock.tsx',
     '^expo-camera$': '<rootDir>/src/testing/expoCameraMock.tsx',
     '^expo-image-picker$': '<rootDir>/src/testing/expoImagePickerMock.ts',
+    '^expo-location$': '<rootDir>/src/testing/expoLocationMock.ts',
     '^lucide-react-native$': join(lucideCjs, 'lucide-react-native.js'),
     '^lucide-react-native/icons/(.*)$': join(lucideCjs, 'icons', '$1.js'),
   },

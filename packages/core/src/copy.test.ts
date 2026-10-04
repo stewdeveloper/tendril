@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  placeTypeOptions,
+  resultCopy,
+  resultPhotoCount,
+  thisIsLine,
   allDoneToday,
   checkInAnsweredNo,
   checkInOn,
@@ -195,5 +199,26 @@ describe('camera copy', () => {
       'Point the camera at the QR code on your Tendril plant label.',
     );
     expect(cameraCopy.notTendrilLabel).toBe("That's not a Tendril label.");
+  });
+});
+
+describe('scan result copy', () => {
+  it('counts photos, singular and plural', () => {
+    expect(resultPhotoCount(3)).toBe('3 photos');
+    expect(resultPhotoCount(1)).toBe('1 photo');
+  });
+  it('confirms a likely match with the right article', () => {
+    expect(thisIsLine('Peace lily')).toBe('This is a peace lily');
+    expect(thisIsLine('African violet')).toBe('This is an African violet');
+  });
+  it('lists the places a find can be, in the order the sheet shows them', () => {
+    expect(placeTypeOptions.map((o) => [o.value, o.label])).toEqual([
+      ['shop', 'Shop'],
+      ['garden_park', 'Garden or park'],
+      ['wild', 'Wild'],
+    ]);
+  });
+  it('never says safe', () => {
+    expect(JSON.stringify(resultCopy)).not.toMatch(/\bsafe\b/i);
   });
 });
