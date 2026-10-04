@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { ThemeProvider } from '../theme';
+import type { IconProps } from './icons';
 import {
   EmptyState,
   Note,
@@ -85,7 +86,7 @@ describe('controls', () => {
     });
   });
   it('RowsCard rows can lead with a primary-coloured icon (2d)', async () => {
-    const Icon = jest.fn(() => null);
+    const Icon = jest.fn((_: IconProps) => null);
     await wrap(<RowsCard rows={[{ key: 'a', title: 'Bright, indirect light', icon: Icon }]} />);
     expect(Icon.mock.calls[0]?.[0]).toMatchObject({ size: 24, color: '#2E6B4E', strokeWidth: 2 });
   });
