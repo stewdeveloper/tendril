@@ -1,5 +1,6 @@
 import Bell from 'lucide-react-native/icons/bell';
 import MapPin from 'lucide-react-native/icons/map-pin';
+import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppText, useTheme } from '../theme';
 import { Button } from './Button';
@@ -29,15 +30,34 @@ export interface PermissionPrimerProps {
   onContinue: () => void;
   /** "Not now" is always there. */
   onNotNow: () => void;
+  /** Replaces the kind's title (for example "Your first scan"). */
+  title?: string;
+  /** Replaces the kind's one line. */
+  body?: string;
+  /** Replaces "Continue". */
+  continueLabel?: string;
+  /** Replaces "Not now". */
+  notNowLabel?: string;
+  /** Extra content between the line and the buttons, such as a short list of what happens next. */
+  children?: ReactNode;
 }
 
 /**
  * Says why Tendril asks, before the system prompt (3k): a 72 pt tint circle with the permission's
  * icon, a Fraunces title, one line, then Continue and a text "Not now".
  */
-export function PermissionPrimer({ kind, onContinue, onNotNow }: PermissionPrimerProps) {
+export function PermissionPrimer({
+  kind,
+  onContinue,
+  onNotNow,
+  title,
+  body,
+  continueLabel = 'Continue',
+  notNowLabel = 'Not now',
+  children,
+}: PermissionPrimerProps) {
   const { c } = useTheme();
-  const { title, line } = COPY[kind];
+  const defaults = COPY[kind];
   return (
     <View style={styles.root}>
       <View style={[styles.circle, { backgroundColor: c.primaryTint }]}>
@@ -50,14 +70,15 @@ export function PermissionPrimer({ kind, onContinue, onNotNow }: PermissionPrime
         )}
       </View>
       <AppText variant="title" accessibilityRole="header">
-        {title}
+        {title ?? defaults.title}
       </AppText>
       <AppText variant="body" lines="body-24">
-        {line}
+        {body ?? defaults.line}
       </AppText>
+      {children}
       <View style={styles.actions}>
-        <Button label="Continue" onPress={onContinue} />
-        <Button label="Not now" variant="text" onPress={onNotNow} />
+        <Button label={continueLabel} onPress={onContinue} />
+        <Button label={notNowLabel} variant="text" onPress={onNotNow} />
       </View>
     </View>
   );

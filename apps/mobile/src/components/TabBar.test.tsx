@@ -1,11 +1,18 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
+import { ApiProvider } from '../api/ApiProvider';
+import { FixtureApi } from '../api/fixture/FixtureApi';
 import { ThemeProvider } from '../theme';
 import { TabBar, TabBarView } from './TabBar';
+import { TabBarVisibilityProvider, useHideTabBar } from './TabBarVisibility';
 
 const mockPush = jest.fn();
-jest.mock('expo-router', () => ({ useRouter: () => ({ push: mockPush }) }));
+const mockNavigate = jest.fn();
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ push: mockPush, navigate: mockNavigate }),
+}));
 
 describe('TabBar', () => {
   it('always shows all five labels and marks the active tab', async () => {
@@ -73,7 +80,16 @@ describe('TabBar (router state)', () => {
   const routes = ['today/index', 'plants', 'scan', 'collection/index', 'leagues/index'].map(
     (name) => ({ key: `${name}-key`, name }),
   );
-  const setup = (focused: string, defaultPrevented = false) => {
+  function Hider({ hidden }: { hidden: boolean }) {
+    useHideTabBar(hidden);
+    return null;
+  }
+  const setup = (
+    focused: string,
+    defaultPrevented = false,
+    scenario?: 'limit_free',
+    hidden?: boolean,
+  ) => {
     const navigation = {
       emit: jest.fn(() => ({ defaultPrevented })),
       navigate: jest.fn(),
@@ -84,13 +100,27 @@ describe('TabBar (router state)', () => {
       navigation,
       view: render(
         <ThemeProvider scheme="light">
-          <TabBar {...props} />
+          <QueryClientProvider
+            client={
+              new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } })
+            }
+          >
+            <ApiProvider api={new FixtureApi({ scenario })}>
+              <TabBarVisibilityProvider>
+                {hidden === undefined ? null : <Hider hidden={hidden} />}
+                <TabBar {...props} />
+              </TabBarVisibilityProvider>
+            </ApiProvider>
+          </QueryClientProvider>
         </ThemeProvider>,
       ),
     };
   };
 
-  beforeEach(() => mockPush.mockClear());
+  beforeEach(() => {
+    mockPush.mockClear();
+    mockNavigate.mockClear();
+  });
 
   it('files a plant page under My Plants: the tab is the nested stack', async () => {
     await setup('plants').view;
@@ -120,7 +150,26 @@ describe('TabBar (router state)', () => {
     const { navigation, view } = setup('today/index');
     await view;
     await fireEvent.press(screen.getByRole('tab', { name: 'Scan' }));
-    expect(mockPush).toHaveBeenCalledWith('/camera');
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/camera'));
+    expect(mockNavigate).not.toHaveBeenCalled();
     expect(navigation.navigate).not.toHaveBeenCalled();
+  });
+
+  it('opens the Scan screen, not the camera, at the identification cap', async () => {
+    const { view } = setup('today/index', false, 'limit_free');
+    await view;
+    await fireEvent.press(screen.getByRole('tab', { name: 'Scan' }));
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/(tabs)/scan'));
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('draws nothing while a screen has asked for the bar to be hidden, and again after', async () => {
+    const { view } = setup('plants', false, undefined, true);
+    const mounted = await view;
+    expect(screen.queryByTestId('tab-bar')).toBeNull();
+    expect(screen.queryByRole('tab', { name: 'Today' })).toBeNull();
+    await mounted.unmount();
+    await setup('plants', false, undefined, false).view;
+    expect(screen.getByTestId('tab-bar')).toBeTruthy();
   });
 });

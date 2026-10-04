@@ -145,6 +145,35 @@ describe('controls', () => {
       borderColor: '#9B1C1C',
     });
   });
+  it('TextField shows a title and a body for a structured error, announced together', async () => {
+    await wrap(
+      <TextField
+        label="Town"
+        value="Ballynahinchh"
+        onChangeText={() => {}}
+        focused
+        error={{
+          title: "We couldn't find that town",
+          body: 'Check the spelling, or move the area on the map instead.',
+        }}
+      />,
+    );
+    expect(screen.getByText("We couldn't find that town")).toBeTruthy();
+    expect(
+      screen.getByText('Check the spelling, or move the area on the map instead.'),
+    ).toBeTruthy();
+    const alert = screen.getByRole('alert');
+    expect(alert.props.accessibilityLiveRegion).toBe('polite');
+    expect(screen.getByDisplayValue('Ballynahinchh').props.accessibilityHint).toBe(
+      "We couldn't find that town. Check the spelling, or move the area on the map instead.",
+    );
+    // A town that is not found is not a validation failure: the ring stays the focused primary.
+    expect(StyleSheet.flatten(screen.getByDisplayValue('Ballynahinchh').props.style)).toMatchObject(
+      {
+        borderColor: '#2E6B4E',
+      },
+    );
+  });
   it('TextField without an error has no alert', async () => {
     await wrap(<TextField label="Handle" value="@free" onChangeText={() => {}} />);
     expect(screen.queryByRole('alert')).toBeNull();

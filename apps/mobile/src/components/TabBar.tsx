@@ -1,10 +1,11 @@
 import { shadows, typeScale } from '@tendril/core';
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
-import { useRouter } from 'expo-router';
 import type { ComponentType } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText, fontFamilyFor, useTheme } from '../theme';
 import { useInsets } from './useInsets';
+import { useTabBarHidden } from './TabBarVisibility';
+import { useStartScan } from './useStartScan';
 import {
   CalendarIcon,
   CollectionIcon,
@@ -139,9 +140,14 @@ function tabForRoute(routeName: string | undefined): TabKey | null {
   return TABS.find((t) => t.key === first)?.key ?? null;
 }
 
-/** Maps the router's tab state onto `TabBarView`. Used as the `tabBar` of the (tabs) layout. */
+/**
+ * Maps the router's tab state onto `TabBarView`. Used as the `tabBar` of the (tabs) layout. It
+ * draws nothing, and takes no space, while a screen has asked for the bar to be hidden.
+ */
 export function TabBar({ state, navigation }: BottomTabBarProps) {
-  const router = useRouter();
+  const startScan = useStartScan();
+  const hidden = useTabBarHidden();
+  if (hidden) return null;
   const active = tabForRoute(state.routes[state.index]?.name) ?? 'today';
   return (
     <TabBarView
@@ -156,7 +162,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
         });
         if (!event.defaultPrevented) navigation.navigate(route.name, route.params);
       }}
-      onScan={() => router.push('/camera')}
+      onScan={() => void startScan()}
     />
   );
 }

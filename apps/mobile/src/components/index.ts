@@ -29,3 +29,5 @@ export * from './PlantdexTile';
 export * from './FindMarker';
 export * from './PlanCard';
 export * from './CheckInSheet';
+export * from './TabBarVisibility';
+export * from './useStartScan';

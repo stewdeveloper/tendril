@@ -1,6 +1,6 @@
 import { aoife } from '@tendril/core';
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { ThemeProvider } from '../theme';
 import {
   ConfidenceLabel,
@@ -224,5 +224,40 @@ describe('progress components', () => {
     ).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Not now' }));
     expect(onNotNow).toHaveBeenCalled();
+  });
+  it('PermissionPrimer takes its own title, body, button labels and extra content', async () => {
+    const onContinue = jest.fn();
+    const onNotNow = jest.fn();
+    await wrap(
+      <PermissionPrimer
+        kind="camera"
+        title="Your first scan"
+        body="Point the camera at any plant."
+        continueLabel="Allow camera"
+        notNowLabel="Maybe later"
+        onContinue={onContinue}
+        onNotNow={onNotNow}
+      >
+        <Text>Three tips</Text>
+      </PermissionPrimer>,
+    );
+    expect(screen.getByRole('header')).toHaveTextContent('Your first scan');
+    expect(screen.getByText('Point the camera at any plant.')).toBeTruthy();
+    expect(screen.getByText('Three tips')).toBeTruthy();
+    expect(screen.queryByText('Use the camera')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Allow camera' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Maybe later' }));
+    expect(onContinue).toHaveBeenCalled();
+    expect(onNotNow).toHaveBeenCalled();
+  });
+  it('PermissionPrimer keeps its default copy and labels when none are given', async () => {
+    await wrap(<PermissionPrimer kind="camera" onContinue={() => {}} onNotNow={() => {}} />);
+    expect(screen.getByText('Use the camera')).toBeTruthy();
+    expect(
+      screen.getByText('To photograph plants. Photos stay private unless you share one.'),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Not now' })).toBeTruthy();
   });
 });
