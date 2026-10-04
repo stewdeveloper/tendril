@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { colors, motion, radius, rarityColors, typeScale, verdictColors } from './tokens.ts';
+import {
+  colors,
+  motion,
+  radius,
+  rarityColors,
+  shadows,
+  typeScale,
+  verdictColors,
+} from './tokens.ts';
 
 describe('tokens', () => {
   it('match the UX brief exactly', () => {
@@ -130,5 +138,9 @@ describe('tokens', () => {
   });
   it('motion timing', () => {
     expect(motion).toEqual({ fast: 200, base: 250, slow: 300 });
+  });
+  it('shadow effects', () => {
+    expect(shadows.floating).toBe('0 8px 24px rgba(29, 36, 32, 0.25)');
+    expect(shadows.raised).toBe('0 4px 12px rgba(29, 36, 32, 0.18)');
   });
 });

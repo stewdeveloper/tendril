@@ -19,7 +19,45 @@ export const streakContinues = (days: number) => `Your ${days}-day streak contin
 export const freezeUsed = (days: number) => `A freeze kept your ${days}-day streak going.`;
 export const previewEnding = () =>
   "Your Premium preview ends tomorrow. You'll go back to Free, and nothing is charged.";
+export const pointsPendingReview = 'Points pending review';
+export const taskDueTitle = (nickname: string) => `Time to check ${nickname}'s soil.`;
+
+/** Proper adjectives and names that keep their capital when a plant name sits mid-sentence. */
+export const PROPER_FIRST_WORDS: readonly string[] = [
+  'Easter',
+  'Swiss',
+  'English',
+  'African',
+  'Boston',
+  'Christmas',
+  'Irish',
+  'Chinese',
+  'Japanese',
+  'Persian',
+  'Venus',
+  'Moses',
+];
+
+/** "a" or "an" for a name, by whether its first letter is a vowel. */
+export const indefiniteArticle = (name: string): 'a' | 'an' =>
+  /^[aeiou]/i.test(name.trim()) ? 'an' : 'a';
+
+/** A plant name for the middle of a sentence: "Peace lily" becomes "peace lily". */
+export const midSentenceName = (name: string): string => {
+  const trimmed = name.trim();
+  const first = trimmed.split(/\s+/)[0] ?? '';
+  if (PROPER_FIRST_WORDS.includes(first)) return trimmed;
+  return trimmed.charAt(0).toLowerCase() + trimmed.slice(1);
+};
+
+/** What to call a pet in copy: its name, or "your cat", "your dog" or "your pet". */
+export const petNameOrFallback = (name: string | null | undefined, animal: string): string => {
+  const trimmed = name?.trim();
+  if (trimmed) return trimmed;
+  return animal === 'cat' || animal === 'dog' ? `your ${animal}` : 'your pet';
+};
+
 export const veryLikelyResultLine = (name: string, percent: number) =>
-  `Very likely a ${name}, ${percent}% match.`;
+  `Very likely ${indefiniteArticle(name)} ${midSentenceName(name)}, ${percent}% match.`;
 export const likelyResultLine = (name: string, percent: number) =>
-  `Likely a ${name}, ${percent}%. Compare these two before you add it.`;
+  `Likely ${indefiniteArticle(name)} ${midSentenceName(name)}, ${percent}%. Compare these two before you add it.`;
