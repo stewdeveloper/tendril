@@ -25,6 +25,13 @@ const renderRoute = (node: React.ReactElement, api = new FixtureApi()) =>
 
 beforeEach(() => resetRouterMock());
 
+// The fixture has no outcome for the likely scan, so give it the foxglove one.
+const apiWithOutcome = async () => {
+  const api = new FixtureApi();
+  jest.spyOn(api, 'getOutcome').mockResolvedValue(await api.getOutcome('obs-foxglove-find'));
+  return api;
+};
+
 describe('New species route', () => {
   it('shows what the find earned, and Continue goes to the Collection', async () => {
     paramsMock.current = { id: 'obs-foxglove-find' };
@@ -57,6 +64,39 @@ describe('New species route', () => {
     );
   });
 
+  it('names the species that was confirmed, not always the top match', async () => {
+    paramsMock.current = { id: 'obs-peace-lily-likely', speciesId: 'flamingo-flower' };
+    await renderRoute(<NewSpeciesRoute />, await apiWithOutcome());
+    expect(await screen.findByText('Flamingo flower')).toBeTruthy();
+    expect(screen.queryByText('Peace lily')).toBeNull();
+  });
+
+  it('falls back to the top match when the species is missing or not among the matches', async () => {
+    paramsMock.current = { id: 'obs-peace-lily-likely', speciesId: 'not-a-species' };
+    await renderRoute(<NewSpeciesRoute />, await apiWithOutcome());
+    expect(await screen.findByText('Peace lily')).toBeTruthy();
+  });
+
+  it('a scan that cannot be loaded shows the saved fallback, not a blank screen', async () => {
+    paramsMock.current = { id: 'obs-foxglove-find' };
+    const api = new FixtureApi();
+    jest.spyOn(api, 'getScanResult').mockRejectedValue(new Error('network'));
+    await renderRoute(<NewSpeciesRoute />, api);
+    expect(await screen.findByText('Find saved')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    expect(routerMock.replace).toHaveBeenCalledWith('/collection');
+  });
+
+  it('the fallback keeps the plant: Continue opens it', async () => {
+    paramsMock.current = { id: 'obs-foxglove-find', plantId: 'plant-9' };
+    const api = new FixtureApi();
+    jest.spyOn(api, 'getOutcome').mockRejectedValue(new Error('network'));
+    await renderRoute(<NewSpeciesRoute />, api);
+    expect(await screen.findByText('Find saved')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    expect(routerMock.replace).toHaveBeenCalledWith('/plants/plant-9');
+  });
+
   it('an outcome that cannot be loaded still shows something, and Continue works', async () => {
     paramsMock.current = { id: 'obs-foxglove-find' };
     const api = new FixtureApi();
@@ -82,6 +122,18 @@ describe('Set complete route', () => {
     expect(routerMock.replace).toHaveBeenCalledWith('/collection');
     await fireEvent.press(screen.getByRole('button', { name: 'Back to Sets' }));
     await waitFor(() => expect(routerMock.back).toHaveBeenCalled());
+  });
+
+  it('dismissing the share sheet is not an error', async () => {
+    paramsMock.current = { id: 'easy-care-houseplants' };
+    const unhandled = jest.fn();
+    process.on('unhandledRejection', unhandled);
+    jest.spyOn(Share, 'share').mockRejectedValue(new Error('dismissed'));
+    await renderRoute(<SetCompleteRoute />);
+    await fireEvent.press(await screen.findByRole('button', { name: 'Share' }));
+    await new Promise((r) => setTimeout(r, 20));
+    process.off('unhandledRejection', unhandled);
+    expect(unhandled).not.toHaveBeenCalled();
   });
 
   it('a set that is not found goes to the Collection', async () => {

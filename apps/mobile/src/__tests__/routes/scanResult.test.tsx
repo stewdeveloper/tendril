@@ -236,7 +236,9 @@ describe('Log a find', () => {
       }),
     );
     await waitFor(() =>
-      expect(routerMock.replace).toHaveBeenCalledWith('/scan/obs-foxglove-find/new-species'),
+      expect(routerMock.replace).toHaveBeenCalledWith(
+        '/scan/obs-foxglove-find/new-species?speciesId=foxglove',
+      ),
     );
   });
 
@@ -276,7 +278,9 @@ describe('Log a find', () => {
     await fireEvent.press(screen.getByRole('radio', { name: 'Shop' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Save find' }));
     await waitFor(() =>
-      expect(routerMock.replace).toHaveBeenCalledWith('/scan/obs-foxglove-find/new-species'),
+      expect(routerMock.replace).toHaveBeenCalledWith(
+        '/scan/obs-foxglove-find/new-species?speciesId=foxglove',
+      ),
     );
     expect(screen.queryByText("This one's already saved.")).toBeNull();
   });
@@ -373,7 +377,9 @@ describe('Setup route, from a scan', () => {
     await fireEvent.press(await screen.findByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(routerMock.replace).toHaveBeenCalledWith(
-        expect.stringMatching(/^\/scan\/obs-peace-lily-very-likely\/new-species\?plantId=.+/),
+        expect.stringMatching(
+          /^\/scan\/obs-peace-lily-very-likely\/new-species\?speciesId=peace-lily&plantId=.+/,
+        ),
       ),
     );
   });
@@ -392,6 +398,21 @@ describe('Setup route, from a scan', () => {
     await waitFor(() =>
       expect(spy).toHaveBeenCalledWith(
         expect.objectContaining({ speciesId: 'flamingo-flower', action: 'add_plant' }),
+      ),
+    );
+  });
+
+  it('the second match chosen on a likely result carries that species to the moment', async () => {
+    paramsMock.current = {
+      source: 'scan',
+      observationId: 'obs-peace-lily-likely',
+      speciesId: 'flamingo-flower',
+    };
+    await renderRoute(<SetupRoute />);
+    await fireEvent.press(await screen.findByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(routerMock.replace).toHaveBeenCalledWith(
+        expect.stringMatching(/new-species\?speciesId=flamingo-flower&plantId=.+/),
       ),
     );
   });
@@ -431,7 +452,7 @@ describe('Setup route, from a scan', () => {
     await fireEvent.press(await screen.findByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(routerMock.replace).toHaveBeenCalledWith(
-        '/scan/obs-peace-lily-very-likely/new-species',
+        '/scan/obs-peace-lily-very-likely/new-species?speciesId=peace-lily',
       ),
     );
     expect(screen.queryByText("This one's already saved.")).toBeNull();

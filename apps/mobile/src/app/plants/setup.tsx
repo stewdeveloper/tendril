@@ -123,13 +123,18 @@ function ScanSetup({
         const outcome = await fetchOutcome(source.observationId).catch(() => null);
         return saveDestination(
           outcome,
-          source.observationId,
+          { observationId: source.observationId, speciesId, plantId: plantId ?? undefined },
           `/plants/${plantId}`,
-          plantId ?? undefined,
         );
       }}
       // Already saved is a success. The plant's id is not known here, so the fallback is My Plants.
-      alreadySaved={() => savedDestination(fetchOutcome, source.observationId, '/plants')}
+      alreadySaved={() =>
+        savedDestination(
+          fetchOutcome,
+          { observationId: source.observationId, speciesId },
+          '/plants',
+        )
+      }
       scanAgain
     />
   );
@@ -182,7 +187,8 @@ function Setup({
       initial={blank(speciesName)}
       saving={saving}
       error={failed ? FAILURE_COPY[failed] : null}
-      blocked={failed === 'already_saved'}
+      // A save the server will not take stays visibly off; a scan's rejected result offers Scan again.
+      blocked={failed === 'already_saved' || (failed === 'rejected' && !scanAgain)}
       onScanAgain={scanAgain && failed === 'rejected' ? () => router.replace('/camera') : undefined}
       onSave={save}
       onCancel={() => (router.canGoBack() ? router.back() : router.replace('/today'))}

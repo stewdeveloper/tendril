@@ -354,7 +354,6 @@ export const momentCopy = {
   continue: 'Continue',
   share: 'Share',
   setsBack: 'Sets',
-  setCompleteBadge: 'Legendary',
 } as const;
 export const plantdexSpecies = (n: number) => `${n} species`;
 export const setProgressValue = (found: number, total: number) => `${found} of ${total}`;

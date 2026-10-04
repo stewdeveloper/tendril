@@ -100,6 +100,7 @@ export default function ScanResultRoute() {
     if (!top || !logFind?.placeType || saving.current) return;
     saving.current = true;
     setFailed(null);
+    const find = { observationId: result.observationId, speciesId: top.species.id };
     try {
       await confirm.mutateAsync({
         observationId: result.observationId,
@@ -109,12 +110,12 @@ export default function ScanResultRoute() {
       });
       // A species new to the Plantdex gets its moment; any other find goes to the Collection.
       const outcome = await fetchOutcome(result.observationId).catch(() => null);
-      router.replace(saveDestination(outcome, result.observationId, COLLECTION_SAVED));
+      router.replace(saveDestination(outcome, find, COLLECTION_SAVED));
     } catch (e) {
       const failure = confirmFailure(e);
       if (failure === 'already_saved') {
         // Already saved is a success: go where a save goes, unless its outcome cannot be read.
-        const next = await savedDestination(fetchOutcome, result.observationId, COLLECTION_SAVED);
+        const next = await savedDestination(fetchOutcome, find, COLLECTION_SAVED);
         if (next) {
           router.replace(next);
           return;

@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-
 import { useState } from 'react';
 import { ActionSheetIOS, Platform, Text } from 'react-native';
 import { ApiProvider } from '../../api/ApiProvider';
+import { ApiError } from '../../api/errors';
 import { FixtureApi } from '../../api/fixture/FixtureApi';
 import LabelRoute from '../../app/l/[code]';
 import PlantDetailRoute from '../../app/(tabs)/plants/[id]/index';
@@ -345,6 +346,19 @@ describe('Setup route', () => {
     await fireEvent.press(await screen.findByRole('button', { name: 'Save' }));
     expect(await screen.findByText("Couldn't save your plant. Try again.")).toBeTruthy();
     expect(routerMock.replace).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [409, "This one's already saved."],
+    [400, "We can't save this result. Try scanning again."],
+  ])('a label save the server refuses (%i) leaves Save visibly off', async (status, text) => {
+    paramsMock.current = { source: 'label_qr', labelCode: 'PL-0001' };
+    const api = new FixtureApi();
+    jest.spyOn(api, 'addPlant').mockRejectedValue(new ApiError(status, 'refused'));
+    await renderRoute(<SetupRoute />, api);
+    await fireEvent.press(await screen.findByRole('button', { name: 'Save' }));
+    expect(await screen.findByText(text)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
   });
 
   it('cancel goes back', async () => {

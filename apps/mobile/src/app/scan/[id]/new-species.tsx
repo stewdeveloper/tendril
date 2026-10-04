@@ -11,7 +11,11 @@ import { useTheme } from '../../../theme';
 
 /** A species new to the Plantdex (4ab to 4ae): what the find earned, then on to the next step. */
 export default function NewSpeciesRoute() {
-  const { id, plantId } = useLocalSearchParams<{ id: string; plantId?: string }>();
+  const { id, plantId, speciesId } = useLocalSearchParams<{
+    id: string;
+    plantId?: string;
+    speciesId?: string;
+  }>();
   const router = useRouter();
   const { c } = useTheme();
   const insets = useInsets();
@@ -19,17 +23,22 @@ export default function NewSpeciesRoute() {
   const outcome = useOutcome(id);
   const scan = useScanResult(id);
 
-  if (outcome.isError)
+  if (outcome.isError || scan.isError)
     // The save worked but its outcome cannot be read: say so and carry on, never a blank screen.
     return (
       <View style={[styles.fallback, { backgroundColor: c.background, paddingTop: insets.top }]}>
         <StatusBar style="dark" />
         <EmptyState text={resultCopy.findSaved}>
-          <Button label="Continue" onPress={() => router.replace('/collection')} />
+          <Button
+            label="Continue"
+            onPress={() => router.replace(plantId ? `/plants/${plantId}` : '/collection')}
+          />
         </EmptyState>
       </View>
     );
-  const top = scan.data?.suggestions[0];
+  // The species that was confirmed, else the top match.
+  const suggestions = scan.data?.suggestions ?? [];
+  const top = suggestions.find((s) => s.species.id === speciesId) ?? suggestions[0];
   if (!outcome.data || !top) return null;
 
   const completed = outcome.data.sets.find((s) => s.total > 0 && s.found >= s.total);

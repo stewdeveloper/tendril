@@ -20,7 +20,10 @@ export default function SetCompleteRoute() {
       <SetCompleteScreen
         setName={set.name}
         total={set.total}
-        onShare={() => void Share.share({ message: setShareMessage(set.name, set.total) })}
+        // Dismissing the share sheet can reject; that is not an error worth showing.
+        onShare={() =>
+          void Share.share({ message: setShareMessage(set.name, set.total) }).catch(() => {})
+        }
         onContinue={() => router.replace('/collection')}
         onBack={() => (router.canGoBack() ? router.back() : router.replace('/collection'))}
       />
