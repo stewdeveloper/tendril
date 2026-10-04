@@ -468,6 +468,9 @@ isOneToOne: false
 "srv_check_in":
 { Args: { "p_client_id": string,"p_create_water": boolean,"p_leaf_states": (string)[],"p_next_check_on": string,"p_occurred_at": string,"p_photo_path": string,"p_plant_id": string,"p_soil_dry": boolean,"p_today": string,"p_uid": string }; Returns: Json
                            },
+"srv_complete_task":
+{ Args: { "p_client_id": string,"p_occurred_at": string,"p_task_id": string,"p_uid": string }; Returns: Json
+                           },
 "srv_confirm_observation":
 { Args: { "p_action": string,"p_first_check_on": string,"p_household_id": string,"p_now": string,"p_observation_id": string,"p_place_type": string,"p_setup": Json,"p_species_id": string,"p_uid": string }; Returns: Json
                            },
@@ -494,6 +497,9 @@ isOneToOne: false
                            },
 "srv_reserve_usage":
 { Args: { "p_kind": string,"p_limit": number,"p_period_key": string,"p_uid": string }; Returns: Json
+                           },
+"srv_set_plant_status":
+{ Args: { "p_base_days": number,"p_death_cause": string,"p_now": string,"p_plant_id": string,"p_status": string,"p_today": string,"p_uid": string }; Returns: Json
                            },
 "srv_store_provider":
 { Args: { "p_access_token": string,"p_observation_id": string,"p_provider": string,"p_raw": Json,"p_uid": string }; Returns: undefined
