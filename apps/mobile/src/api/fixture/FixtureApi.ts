@@ -36,6 +36,7 @@ import {
   type WeekResult,
 } from '@tendril/core';
 import { weekdayName } from '../../components/dates';
+import { ApiError } from '../errors';
 import { FIXTURE_TODAY } from '../fixtureDate';
 import type {
   CheckInResult,
@@ -483,9 +484,13 @@ export class FixtureApi implements TendrilApi {
     return this.run(() => {
       const w = this.world;
       const scan = this.scanFor(input.observationId);
+      // The server refuses what it cannot confirm: a scan that found no plant, or a species that
+      // does not exist (400), and one that was confirmed already (409).
+      if (scan.state !== 'identified') throw new ApiError(400, 'not_identified');
+      if (w.outcomes[scan.observationId]) throw new ApiError(409, 'already_confirmed');
       const suggestion = scan.suggestions.find((s) => s.species.id === input.speciesId);
       const species = suggestion?.species ?? aoife.species[input.speciesId];
-      if (!species) throw notFound(`species ${input.speciesId}`);
+      if (!species) throw new ApiError(400, 'invalid_species');
 
       const adding = input.action === 'add_plant';
       const entry = w.plantdex.find((e) => e.species.id === species.id);
@@ -714,6 +719,7 @@ export class FixtureApi implements TendrilApi {
     plantId?: string;
     speciesId?: string;
     petId: string;
+    matchProbability?: number;
   }): Promise<EmergencyInfo> {
     return this.run(() => {
       const w = this.world;
@@ -732,7 +738,7 @@ export class FixtureApi implements TendrilApi {
         // Toxicity data covers cats and dogs only; other animals stay unknown.
         toxicity:
           pet.animal === 'other' ? null : (entries.find((e) => e.animal === pet.animal) ?? null),
-        matchProbability: detail?.matchProbability ?? null,
+        matchProbability: detail?.matchProbability ?? input.matchProbability ?? null,
         vet: w.household.vet,
         // Ireland has no confirmed poison line yet, so the vet is the only number (frame 4bi). The
         // 'us' scenario is the United States, so frame 4bh's ASPCA line is reachable.

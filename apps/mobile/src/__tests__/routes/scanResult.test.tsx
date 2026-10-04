@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { Linking } from 'react-native';
 import { ApiProvider } from '../../api/ApiProvider';
+import { ApiError } from '../../api/errors';
 import { FixtureApi } from '../../api/fixture/FixtureApi';
 import ScanResultRoute from '../../app/scan/[id]/index';
 import SetupRoute from '../../app/plants/setup';
@@ -67,17 +68,27 @@ describe('Scan result route', () => {
     await fireEvent.press(await screen.findByRole('button', { name: 'Add to My Plants' }));
     expect(routerMock.push).toHaveBeenCalledWith({
       pathname: '/plants/setup',
-      params: { source: 'scan', observationId: 'obs-peace-lily-very-likely' },
+      params: {
+        source: 'scan',
+        observationId: 'obs-peace-lily-very-likely',
+        speciesId: 'peace-lily',
+      },
     });
   });
 
   it('"This is a peace lily" on a likely match also opens setup', async () => {
     open('obs-peace-lily-likely');
     await renderRoute(<ScanResultRoute />);
-    await fireEvent.press(await screen.findByRole('button', { name: 'This is a peace lily' }));
+    await fireEvent.press(
+      (await screen.findAllByRole('button', { name: 'This is a peace lily' })).at(-1)!,
+    );
     expect(routerMock.push).toHaveBeenCalledWith({
       pathname: '/plants/setup',
-      params: { source: 'scan', observationId: 'obs-peace-lily-likely' },
+      params: {
+        source: 'scan',
+        observationId: 'obs-peace-lily-likely',
+        speciesId: 'peace-lily',
+      },
     });
   });
 
@@ -88,8 +99,56 @@ describe('Scan result route', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Miso' }));
     expect(routerMock.push).toHaveBeenCalledWith({
       pathname: '/pet-emergency',
-      params: { petId: 'pet-miso', speciesId: 'peace-lily' },
+      params: { petId: 'pet-miso', speciesId: 'peace-lily', match: 0.94 },
     });
+  });
+
+  it('"My pet ate this" on a likely match carries the match, so the emergency screen hedges', async () => {
+    open('obs-peace-lily-likely');
+    await renderRoute(<ScanResultRoute />);
+    await fireEvent.press(await screen.findByRole('button', { name: 'My pet ate this' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Miso' }));
+    expect(routerMock.push).toHaveBeenCalledWith({
+      pathname: '/pet-emergency',
+      params: { petId: 'pet-miso', speciesId: 'peace-lily', match: 0.71 },
+    });
+  });
+
+  it('"My pet ate this" on a not sure match names no species: the vet-first fallback', async () => {
+    open('obs-not-sure');
+    await renderRoute(<ScanResultRoute />);
+    await fireEvent.press(await screen.findByRole('button', { name: 'My pet ate this' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Miso' }));
+    expect(routerMock.push).toHaveBeenCalledWith({
+      pathname: '/pet-emergency',
+      params: { petId: 'pet-miso' },
+    });
+  });
+
+  it('choosing the other match on a likely result sets up that species', async () => {
+    open('obs-peace-lily-likely');
+    await renderRoute(<ScanResultRoute />);
+    await fireEvent.press(await screen.findByRole('button', { name: 'This is a flamingo flower' }));
+    expect(routerMock.push).toHaveBeenCalledWith({
+      pathname: '/plants/setup',
+      params: {
+        source: 'scan',
+        observationId: 'obs-peace-lily-likely',
+        speciesId: 'flamingo-flower',
+      },
+    });
+  });
+
+  it('a result that cannot be loaded shows the error state, not a blank screen', async () => {
+    open('obs-peace-lily-very-likely');
+    const api = new FixtureApi();
+    const spy = jest.spyOn(api, 'getScanResult').mockRejectedValue(new Error('network'));
+    await renderRoute(<ScanResultRoute />, api);
+    expect(await screen.findByText('Something went wrong')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(2));
+    await fireEvent.press(screen.getByRole('button', { name: 'Close' }));
+    expect(routerMock.back).toHaveBeenCalled();
   });
 
   it('not a plant: Try again goes back to the camera', async () => {
@@ -209,6 +268,28 @@ describe('Log a find', () => {
     expect(routerMock.replace).not.toHaveBeenCalled();
   });
 
+  it('an already-saved find says so and offers no retry', async () => {
+    const api = new FixtureApi();
+    jest.spyOn(api, 'confirmScan').mockRejectedValue(new ApiError(409, 'already_confirmed'));
+    await renderRoute(<ScanResultRoute />, api);
+    await openSheet();
+    await fireEvent.press(screen.getByRole('radio', { name: 'Shop' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save find' }));
+    expect(await screen.findByText("This one's already saved.")).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Save find' })).toBeDisabled();
+  });
+
+  it('a rejected result says to scan again and offers no retry', async () => {
+    const api = new FixtureApi();
+    jest.spyOn(api, 'confirmScan').mockRejectedValue(new ApiError(400, 'not_identified'));
+    await renderRoute(<ScanResultRoute />, api);
+    await openSheet();
+    await fireEvent.press(screen.getByRole('radio', { name: 'Shop' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save find' }));
+    expect(await screen.findByText("We can't save this result. Try scanning again.")).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Save find' })).toBeDisabled();
+  });
+
   it('Turn on location asks the system, and opens settings once it cannot ask again', async () => {
     const openSettings = jest.spyOn(Linking, 'openSettings').mockResolvedValue();
     getForegroundPermissionsAsync.mockResolvedValue({
@@ -261,6 +342,60 @@ describe('Setup route, from a scan', () => {
         '/scan/obs-peace-lily-very-likely/new-species',
       ),
     );
+  });
+
+  it('sets up the species chosen, not always the top match', async () => {
+    paramsMock.current = {
+      source: 'scan',
+      observationId: 'obs-peace-lily-likely',
+      speciesId: 'flamingo-flower',
+    };
+    const api = new FixtureApi();
+    const spy = jest.spyOn(api, 'confirmScan');
+    await renderRoute(<SetupRoute />, api);
+    expect(await screen.findByText('Set up Flamingo flower')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(spy).toHaveBeenCalledWith(
+        expect.objectContaining({ speciesId: 'flamingo-flower', action: 'add_plant' }),
+      ),
+    );
+  });
+
+  it('a second press while the outcome is still being read saves nothing twice', async () => {
+    const api = new FixtureApi();
+    const spy = jest.spyOn(api, 'confirmScan');
+    const outcome = await api.getOutcome('obs-foxglove-find');
+    let release: () => void = () => {};
+    jest
+      .spyOn(api, 'getOutcome')
+      .mockImplementation(() => new Promise((resolve) => (release = () => resolve(outcome))));
+    await renderRoute(<SetupRoute />, api);
+    const save = await screen.findByRole('button', { name: 'Save' });
+    // Not awaited: the press only settles once the outcome arrives.
+    void fireEvent.press(save);
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(api.getOutcome).toHaveBeenCalled());
+    void fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(spy).toHaveBeenCalledTimes(1);
+    release();
+  });
+
+  it('an already-saved scan says so', async () => {
+    const api = new FixtureApi();
+    jest.spyOn(api, 'confirmScan').mockRejectedValue(new ApiError(409, 'already_confirmed'));
+    await renderRoute(<SetupRoute />, api);
+    await fireEvent.press(await screen.findByRole('button', { name: 'Save' }));
+    expect(await screen.findByText("This one's already saved.")).toBeTruthy();
+  });
+
+  it('a rejected scan says to scan again', async () => {
+    const api = new FixtureApi();
+    jest.spyOn(api, 'confirmScan').mockRejectedValue(new ApiError(400, 'invalid_species'));
+    await renderRoute(<SetupRoute />, api);
+    await fireEvent.press(await screen.findByRole('button', { name: 'Save' }));
+    expect(await screen.findByText("We can't save this result. Try scanning again.")).toBeTruthy();
   });
 
   it('a save that fails stays on the form', async () => {

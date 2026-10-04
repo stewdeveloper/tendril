@@ -122,6 +122,8 @@ export interface TendrilApi {
     plantId?: string;
     speciesId?: string;
     petId: string;
+    /** How sure the scan was of the species (0..1); the emergency screen hedges below very likely. */
+    matchProbability?: number;
   }): Promise<EmergencyInfo>;
   deleteAccount(): Promise<void>;
   getSettings(): Promise<Settings>;

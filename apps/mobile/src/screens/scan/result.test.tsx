@@ -116,7 +116,7 @@ describe('ResultScreen', () => {
     expect(onPetAte).toHaveBeenCalledWith(pets[0]!.id);
   });
 
-  it('likely: compares two, never settles a verdict, and adds the match note', async () => {
+  it('likely: compares two, picks either, and adds the match note', async () => {
     const onChoose = jest.fn();
     await wrap(
       <ResultScreen
@@ -136,8 +136,24 @@ describe('ResultScreen', () => {
       screen.getByText('This depends on the match. Confirm the plant to be sure.'),
     ).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Add to My Plants' })).toBeNull();
-    await fireEvent.press(screen.getByRole('button', { name: 'This is a peace lily' }));
-    expect(onChoose).toHaveBeenCalledWith('peace-lily');
+    await fireEvent.press(screen.getByRole('button', { name: 'This is a flamingo flower' }));
+    expect(onChoose).toHaveBeenLastCalledWith('flamingo-flower');
+    await fireEvent.press(screen.getAllByRole('button', { name: 'This is a peace lily' })[0]!);
+    expect(onChoose).toHaveBeenLastCalledWith('peace-lily');
+  });
+
+  it('likely: a no-known-toxicity entry reads Unknown, a toxic one stays', async () => {
+    const likely = scan('peace-lily-likely');
+    const result = {
+      ...likely,
+      toxicity: likely.toxicity.map((t) =>
+        t.animal === 'dog' ? { ...t, severity: 'none' as const } : t,
+      ),
+    };
+    await wrap(<ResultScreen result={result} pets={pets} logFind={null} {...h} />);
+    expect(screen.getByText('Cats: Moderate')).toBeTruthy();
+    expect(screen.getByText('Dogs: Unknown')).toBeTruthy();
+    expect(screen.queryByText(/No known toxicity/)).toBeNull();
   });
 
   it('not sure asks for a better photo instead of guessing', async () => {

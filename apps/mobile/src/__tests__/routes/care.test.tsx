@@ -189,6 +189,31 @@ describe('Pet emergency route', () => {
     expect(screen.getByRole('button', { name: 'Back to Peace lily' })).toBeTruthy();
   });
 
+  it("carries the scan's match through, so the screen hedges a likely match", async () => {
+    paramsMock.current = { petId: 'pet-miso', speciesId: 'peace-lily', match: '0.71' };
+    const api = new FixtureApi();
+    const spy = jest.spyOn(api, 'getEmergency');
+    await renderRoute(<PetEmergencyRoute />, api);
+    expect(await screen.findByText('If Miso ate peace lily')).toBeTruthy();
+    expect(spy).toHaveBeenCalledWith({
+      petId: 'pet-miso',
+      speciesId: 'peace-lily',
+      matchProbability: 0.71,
+    });
+    expect(
+      screen.getByText('This depends on the match. Confirm the plant to be sure.'),
+    ).toBeTruthy();
+  });
+
+  it('ignores a match that is not a number between 0 and 1', async () => {
+    paramsMock.current = { petId: 'pet-miso', speciesId: 'peace-lily', match: 'lots' };
+    const api = new FixtureApi();
+    const spy = jest.spyOn(api, 'getEmergency');
+    await renderRoute(<PetEmergencyRoute />, api);
+    await screen.findByText('If Miso ate peace lily');
+    expect(spy).toHaveBeenCalledWith({ petId: 'pet-miso', speciesId: 'peace-lily' });
+  });
+
   it('Ireland has no poison line; no vet saved says what to do, and the buttons act', async () => {
     paramsMock.current = { petId: 'pet-miso', plantId: 'lily' };
     await renderRoute(<PetEmergencyRoute />);

@@ -19,15 +19,25 @@ const open = (url: string | null) => {
  */
 export default function PetEmergencyRoute() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ petId: string; plantId?: string; speciesId?: string }>();
+  const params = useLocalSearchParams<{
+    petId: string;
+    plantId?: string;
+    speciesId?: string;
+    match?: string;
+  }>();
   const petId = first(params.petId);
   const plantId = first(params.plantId);
   const speciesId = first(params.speciesId);
+  // How sure the scan was (0..1). Anything else is dropped, so a bad link cannot invent a verdict.
+  const match = Number(first(params.match));
+  const matchProbability =
+    Number.isFinite(match) && match >= 0 && match <= 1 && first(params.match) ? match : undefined;
   const emergency = useEmergency(
     {
       petId: petId ?? '',
       ...(plantId ? { plantId } : null),
       ...(speciesId ? { speciesId } : null),
+      ...(matchProbability != null ? { matchProbability } : null),
     },
     petId != null,
   );

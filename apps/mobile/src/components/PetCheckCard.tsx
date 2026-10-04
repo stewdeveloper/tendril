@@ -5,6 +5,7 @@ import {
   likelyMatchNote,
   petCheckLine,
   type Animal,
+  type ConfidenceBand,
   type Pet,
   type ToxicityEntry,
 } from '@tendril/core';
@@ -37,6 +38,13 @@ export interface PetCheckCardProps {
    */
   variant?: 'full' | 'compact';
 }
+
+/**
+ * On a match that is only likely, "no known toxicity" is not shown: it would reassure about a plant
+ * that may be the wrong one. A toxic verdict still shows as it is.
+ */
+const hedge = (entry: ToxicityEntry | undefined, band: ConfidenceBand | null) =>
+  entry && entry.severity === 'none' && band === 'likely' ? undefined : entry;
 
 const KIND: Record<Animal, string> = { cat: 'Cat', dog: 'Dog', other: 'Other pet' };
 const YOUR: Record<Animal, string> = { cat: 'Your cat', dog: 'Your dog', other: 'Your pet' };
@@ -90,7 +98,10 @@ export function PetCheckCard({
               // (2c). Never present data for a plant that may be the wrong one.
               band === 'not_sure' || pet.animal === 'other'
                 ? undefined
-                : toxicity.find((t) => t.animal === pet.animal)
+                : hedge(
+                    toxicity.find((t) => t.animal === pet.animal),
+                    band,
+                  )
             }
             onSourcePress={onSourcePress}
             compact={compact}

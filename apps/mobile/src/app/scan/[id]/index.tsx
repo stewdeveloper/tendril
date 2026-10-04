@@ -1,8 +1,9 @@
-import { resultCopy, type PlaceType } from '@tendril/core';
+import { bandFor, resultCopy, type PlaceType, type ScanResult } from '@tendril/core';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useRef, useState } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
+import { confirmFailure, type ConfirmFailure } from '../../../api/errors';
 import { useConfirmScan, useFetchOutcome, useHousehold, useScanResult } from '../../../api/hooks';
 import { PermissionPrimer } from '../../../components';
 import { useInsets } from '../../../components/useInsets';
@@ -14,6 +15,12 @@ import {
 } from '../../../lib/useLocationAccess';
 import { ResultScreen } from '../../../screens/scan/ResultScreen';
 import { useTheme } from '../../../theme';
+
+const FAILURE_COPY: Record<ConfirmFailure, string> = {
+  already_saved: resultCopy.alreadySaved,
+  rejected: resultCopy.cannotSave,
+  retry: resultCopy.saveFindFailed,
+};
 
 interface LogFindState {
   placeType: PlaceType | null;
@@ -33,16 +40,30 @@ export default function ScanResultRoute() {
   const saving = useRef(false);
   const [logFind, setLogFind] = useState<LogFindState | null>(null);
   const [primer, setPrimer] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<ConfirmFailure | null>(null);
 
-  const result = scan.data;
+  // A result that cannot be loaded reads as the error state (4y), never a blank screen.
+  const result: ScanResult | undefined =
+    scan.data ??
+    (scan.isError
+      ? {
+          observationId: id,
+          state: 'error',
+          photoUrls: [],
+          suggestions: [],
+          captureSource: 'camera',
+          care: null,
+          toxicity: [],
+          diagnosis: null,
+        }
+      : undefined);
   if (!result) return null;
   const top = result.suggestions[0];
 
   const leave = () => (router.canGoBack() ? router.back() : router.replace('/today'));
   const toCamera = () => router.replace('/camera');
   const openSheet = (locationOn: boolean) => {
-    setFailed(false);
+    setFailed(null);
     setLogFind({ placeType: null, locationOn });
   };
 
@@ -75,7 +96,7 @@ export default function ScanResultRoute() {
   const saveFind = async () => {
     if (!top || !logFind?.placeType || saving.current) return;
     saving.current = true;
-    setFailed(false);
+    setFailed(null);
     try {
       await confirm.mutateAsync({
         observationId: result.observationId,
@@ -87,17 +108,28 @@ export default function ScanResultRoute() {
       const outcome = await fetchOutcome(result.observationId).catch(() => null);
       if (outcome?.newToPlantdex) router.replace(`/scan/${result.observationId}/new-species`);
       else router.replace('/collection?saved=1');
-    } catch {
-      setFailed(true);
+    } catch (e) {
+      setFailed(confirmFailure(e));
     } finally {
       saving.current = false;
     }
   };
 
-  const addPlant = () =>
+  const addPlant = (speciesId: string) =>
     router.push({
       pathname: '/plants/setup',
-      params: { source: 'scan', observationId: result.observationId },
+      params: { source: 'scan', observationId: result.observationId, speciesId },
+    });
+
+  // The emergency screen hedges by the match it is given. A match that is not sure names no species,
+  // so the screen shows its vet-first fallback instead of a verdict about a plant we cannot name.
+  const petAte = (petId: string) =>
+    router.push({
+      pathname: '/pet-emergency',
+      params:
+        top && bandFor(top.probability) !== 'not_sure'
+          ? { petId, speciesId: top.species.id, match: top.probability }
+          : { petId },
     });
 
   return (
@@ -113,7 +145,8 @@ export default function ScanResultRoute() {
                 placeType: logFind.placeType,
                 locationOn: logFind.locationOn,
                 saving: confirm.isPending,
-                error: failed ? resultCopy.saveFindFailed : null,
+                error: failed ? FAILURE_COPY[failed] : null,
+                blocked: failed === 'already_saved' || failed === 'rejected',
               }
             : null
         }
@@ -125,12 +158,7 @@ export default function ScanResultRoute() {
         onSourcePress={(url) => void Linking.openURL(url)}
         onRetake={toCamera}
         onRetry={() => void scan.refetch()}
-        onPetAte={(petId) =>
-          router.push({
-            pathname: '/pet-emergency',
-            params: { petId, speciesId: top?.species.id ?? '' },
-          })
-        }
+        onPetAte={petAte}
         onPlaceType={(placeType) => setLogFind((s) => (s ? { ...s, placeType } : s))}
         onSaveFind={() => void saveFind()}
         onTurnOnLocation={() => void turnOnLocation()}

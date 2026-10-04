@@ -17,6 +17,8 @@ export interface LogFindSheetProps {
   saving?: boolean;
   /** What went wrong saving, in words. */
   error?: string | null;
+  /** The save cannot work again (already saved, or rejected): Save find stays off. */
+  blocked?: boolean;
   onPlaceType: (placeType: PlaceType) => void;
   onSave: () => void;
   onTurnOnLocation: () => void;
@@ -40,6 +42,7 @@ export function LogFindSheet({
   locationOn,
   saving = false,
   error,
+  blocked = false,
   onPlaceType,
   onSave,
   onTurnOnLocation,
@@ -66,7 +69,7 @@ export function LogFindSheet({
       <View style={styles.action}>
         <Button
           label={resultCopy.saveFind}
-          disabled={placeType == null}
+          disabled={placeType == null || blocked}
           loading={saving}
           onPress={onSave}
         />

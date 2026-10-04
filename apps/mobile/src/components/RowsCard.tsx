@@ -18,6 +18,8 @@ export interface Row {
   icon?: ComponentType<IconProps>;
   highlight?: boolean;
   onPress?: () => void;
+  /** Read instead of the row's text ("This is a peace lily"). */
+  accessibilityLabel?: string;
 }
 
 export interface RowsCardProps {
@@ -101,6 +103,7 @@ function RowView({ row, inset, last }: { row: Row; inset: boolean; last: boolean
     <Pressable
       testID={`row-${row.key}`}
       accessibilityRole="button"
+      accessibilityLabel={row.accessibilityLabel}
       onPress={row.onPress}
       style={({ pressed }) => [style, pressed && { backgroundColor: c.pressedOverlay }]}
     >

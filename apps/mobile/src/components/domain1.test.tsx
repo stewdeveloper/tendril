@@ -104,6 +104,28 @@ describe('PetCheckCard', () => {
     expect(screen.getByText('Dogs: Unknown')).toBeTruthy();
     expect(screen.queryByText(/Moderate/)).toBeNull();
   });
+  it('on a likely match reads a no-known-toxicity entry as Unknown, never reassuring', async () => {
+    await wrap(
+      <PetCheckCard
+        pets={[pets[0]!]}
+        toxicity={[
+          {
+            animal: 'cat',
+            severity: 'none',
+            summary: null,
+            symptoms: null,
+            sourceName: 'ASPCA',
+            sourceUrl: null,
+          },
+        ]}
+        matchProbability={0.71}
+        speciesName="Peace lily"
+        onPetAte={() => {}}
+      />,
+    );
+    expect(screen.getByText('Cats: Unknown')).toBeTruthy();
+    expect(screen.queryByText(/No known toxicity/)).toBeNull();
+  });
   it('reads a none entry without a source as Unknown', async () => {
     await wrap(
       <PetCheckCard

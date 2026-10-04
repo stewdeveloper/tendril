@@ -41,6 +41,8 @@ export interface ResultScreenProps {
     locationOn: boolean;
     saving?: boolean;
     error?: string | null;
+    /** The save cannot work again (already saved, or rejected): Save find stays off. */
+    blocked?: boolean;
   } | null;
   /** `modal` is the app's sheet; `overlay` draws it inline over the screen, for the catalog frames. */
   presentation?: 'modal' | 'overlay';
@@ -92,6 +94,7 @@ export function ResultScreen(props: ResultScreenProps) {
           locationOn={logFind.locationOn}
           saving={logFind.saving}
           error={logFind.error}
+          blocked={logFind.blocked}
           presentation={presentation}
           onPlaceType={props.onPlaceType}
           onSave={props.onSaveFind}
@@ -259,9 +262,11 @@ function Likely({ result, pets, top, ...on }: ResultScreenProps & { top: Suggest
           subtitle: s.species.scientificName,
           subtitleItalic: true,
           right: confidenceLabel(s.probability),
+          accessibilityLabel: thisIsLine(s.species.commonName),
+          onPress: () => on.onChoose(s.species.id),
         }))}
       />
-      <PetVerdictChips pets={pets} toxicity={result.toxicity} settled />
+      <PetVerdictChips pets={pets} toxicity={result.toxicity} settled reassure={false} />
       {note ? <Note text={note} /> : null}
       {result.diagnosis ? <HealthCheckCard diagnosis={result.diagnosis} /> : null}
       <PetAteAction pets={pets} speciesName={species.commonName} onPetAte={on.onPetAte} />

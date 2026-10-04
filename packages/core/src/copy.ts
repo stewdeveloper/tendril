@@ -327,6 +327,8 @@ export const resultCopy = {
   turnOnLocation: 'Turn on location',
   saveFind: 'Save find',
   saveFindFailed: "Couldn't save your find. Try again.",
+  alreadySaved: "This one's already saved.",
+  cannotSave: "We can't save this result. Try scanning again.",
   findSaved: 'Find saved',
   allowLocation: 'Allow location',
 } as const;

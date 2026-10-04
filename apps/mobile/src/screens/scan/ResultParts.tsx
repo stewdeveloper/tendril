@@ -153,22 +153,28 @@ export function HealthCheckCard({ diagnosis }: { diagnosis: DiagnosisResult }) {
   );
 }
 
-const severityOf = (entry: ToxicityEntry | undefined): Severity =>
-  // "No known toxicity" needs a source behind it; without one the verdict is Unknown.
-  entry && !(entry.severity === 'none' && !entry.sourceName) ? entry.severity : 'unknown';
+const severityOf = (entry: ToxicityEntry | undefined, reassure: boolean): Severity =>
+  // "No known toxicity" needs a source behind it, and a match that is not yet confirmed must not
+  // reassure: either way the verdict is Unknown.
+  entry && !(entry.severity === 'none' && (!entry.sourceName || !reassure))
+    ? entry.severity
+    : 'unknown';
 
 /**
  * One chip per kind of pet in the household (4v, 2c). With `settled` false every chip reads
- * Unknown: a match that is not sure never states a verdict about the plant.
+ * Unknown: a match that is not sure never states a verdict about the plant. With `reassure` false
+ * (a likely match) a toxic verdict shows but "no known toxicity" reads Unknown.
  */
 export function PetVerdictChips({
   pets,
   toxicity,
   settled,
+  reassure = true,
 }: {
   pets: Pet[];
   toxicity: ToxicityEntry[];
   settled: boolean;
+  reassure?: boolean;
 }) {
   const animals = [...new Set(pets.map((p): Animal => p.animal))];
   if (animals.length === 0) return null;
@@ -178,7 +184,14 @@ export function PetVerdictChips({
         <VerdictChip
           key={animal}
           animal={animal}
-          severity={settled ? severityOf(toxicity.find((t) => t.animal === animal)) : 'unknown'}
+          severity={
+            settled
+              ? severityOf(
+                  toxicity.find((t) => t.animal === animal),
+                  reassure,
+                )
+              : 'unknown'
+          }
         />
       ))}
     </View>
