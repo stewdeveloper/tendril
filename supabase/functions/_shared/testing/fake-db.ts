@@ -208,14 +208,14 @@ export function fakeDb(seed: Record<string, any> = {}): FakeDb {
   const ok = (data: any): Result => ({ data, error: null });
   const registry: Record<string, (a: Record<string, any>) => Result> = {
     srv_reserve_usage: (a) => {
-      const key = `${a.p_kind}:${a.p_period_key}`;
+      const key = `${a.p_uid}:${a.p_kind}:${a.p_period_key}`;
       const used = fake.usage[key] ?? 0;
       if (fake.refuseReservations || used >= (a.p_limit ?? 0)) return ok({ ok: false, used });
       fake.usage[key] = used + 1;
       return ok({ ok: true, used: used + 1 });
     },
     srv_release_usage: (a) => {
-      const key = `${a.p_kind}:${a.p_period_key}`;
+      const key = `${a.p_uid}:${a.p_kind}:${a.p_period_key}`;
       fake.usage[key] = Math.max(0, (fake.usage[key] ?? 0) - 1);
       return ok(null);
     },

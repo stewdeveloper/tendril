@@ -156,3 +156,18 @@ Deno.test('push token upsert reassigns a shared device to the signed-in user', a
   assertEquals((await call(h, 'POST', '/push-token', { token: '', platform: 'ios' })).status, 400);
   assertEquals((await call(h, 'POST', '/push-token', { token: 't', platform: 'web' })).status, 400);
 });
+
+Deno.test('timezone accepts IANA names only and is stored canonically', async () => {
+  const db = fakeDb({});
+  const h = createHandler({ db, verifier, random: () => 0.5 });
+  for (const tz of ['+05:00', '-0300', 'UTC+5', 'GMT+1', 'EST5EDT ', 'Europe']) {
+    assertEquals((await call(h, 'POST', '/bootstrap', { ...boot, timezone: tz })).status, 400, tz);
+  }
+  assertEquals((await call(h, 'POST', '/bootstrap', { ...boot, timezone: 'UTC' })).status, 200);
+  assertEquals(db.tables.profiles[0]?.timezone, 'UTC');
+  const canon = createHandler({ db: fakeDb({}), verifier, random: () => 0.5 });
+  assertEquals(
+    (await call(canon, 'POST', '/bootstrap', { ...boot, timezone: 'america/new_york' })).status,
+    200,
+  );
+});

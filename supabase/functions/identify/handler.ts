@@ -14,7 +14,11 @@ import { readJson, router } from '../_shared/http.ts';
 import { log } from '../_shared/log.ts';
 import type { AppCheckVerifier } from '../_shared/providers/appcheck.ts';
 import type { IdentificationProvider } from '../_shared/providers/identification.ts';
-import { selectAppCheck, selectIdentificationProvider } from '../_shared/providers/select.ts';
+import {
+  selectAppCheck,
+  selectedProviderName,
+  selectIdentificationProvider,
+} from '../_shared/providers/select.ts';
 import { type SpeciesRow, toSpeciesRef, upsertSpeciesFromProvider } from '../_shared/species.ts';
 import { assertJpegUpload, parseIdentify } from '../_shared/validate.ts';
 
@@ -25,6 +29,8 @@ export interface IdentifyDeps {
   provider?: IdentificationProvider;
   /** Defaults to `selectAppCheck()`. */
   appCheck?: AppCheckVerifier;
+  /** Recorded with each observation; defaults to the selected provider's name. */
+  providerName?: string;
   now?: () => Date;
 }
 
@@ -86,7 +92,7 @@ export function createHandler(deps: IdentifyDeps): (req: Request) => Promise<Res
 
   async function identify(req: Request): Promise<Response> {
     const uid = await requireUser(verifier, req);
-    const body = parseIdentify(await readJson(req), uid);
+    const body = parseIdentify(await readJson(req), uid, now());
     const paths = body.photos.map((p) => p.path);
     const appCheck = await (deps.appCheck ?? selectAppCheck()).verify(
       req.headers.get('x-firebase-appcheck'),
@@ -213,7 +219,8 @@ export function createHandler(deps: IdentifyDeps): (req: Request) => Promise<Res
           lat: body.location?.lat ?? null,
           lng: body.location?.lng ?? null,
           datetime: body.deviceTime,
-          health: body.healthCheck,
+          // Phase 3 turns health assessment on, together with the diagnosis quota; 2B never asks the provider.
+          health: false,
         });
       } catch (e) {
         log('error', 'identification provider failed', { error: String(e) });
@@ -266,8 +273,9 @@ export function createHandler(deps: IdentifyDeps): (req: Request) => Promise<Res
         .eq('id', observationId);
       if (upd.error) throwDbError(upd.error);
       await callPrivate(db, 'srv_store_provider', {
+        p_uid: uid,
         p_observation_id: observationId,
-        p_provider: 'plantid',
+        p_provider: deps.providerName ?? selectedProviderName(),
         p_access_token: result.accessToken,
         p_raw: result.raw as never,
       });

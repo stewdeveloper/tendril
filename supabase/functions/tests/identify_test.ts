@@ -2,6 +2,7 @@ import { assertEquals } from '@std/assert';
 import { createHandler } from '../identify/handler.ts';
 import { fakeDb } from '../_shared/testing/fake-db.ts';
 import { fakeIdentificationProvider } from '../_shared/providers/fake-identification.ts';
+import { ApiError } from '../_shared/errors.ts';
 import { appCheckVerifier } from '../_shared/providers/appcheck.ts';
 import type { IdentificationProvider } from '../_shared/providers/identification.ts';
 
@@ -34,6 +35,7 @@ function setup(provider: IdentificationProvider = fakeIdentificationProvider(), 
     verifier,
     provider,
     appCheck: appCheckVerifier('dev', {}),
+    providerName: 'fake',
     now: () => new Date('2026-10-03T10:00:00Z'),
   });
   return { db, handle };
@@ -105,10 +107,23 @@ Deno.test('provider failure releases the quota and deletes the observation', asy
   assertEquals(count(db, 'srv_release_usage'), 1);
   assertEquals(db.tables.observations.length, 0);
   assertEquals(db.tables.observation_photos.length, 0);
-  assertEquals(db.usage['identification:2026-10'], 0);
-  // A retry with the same paths now works.
-  const retry = setup(fakeIdentificationProvider());
-  assertEquals((await retry.handle(req(body()))).status, 200);
+  assertEquals(db.usage[`${UID}:identification:2026-10`], 0);
+});
+
+Deno.test('a retry with the same paths works after a provider failure (same db)', async () => {
+  let fail = true;
+  const inner = fakeIdentificationProvider();
+  const provider: IdentificationProvider = {
+    ...inner,
+    identify: (input) =>
+      fail ? Promise.reject(new ApiError('provider_unavailable', 'down')) : inner.identify(input),
+  };
+  const { db, handle } = setup(provider);
+  assertEquals((await handle(req(body()))).status, 503);
+  fail = false;
+  assertEquals((await handle(req(body()))).status, 200);
+  assertEquals(db.tables.observations.length, 1);
+  assertEquals(db.usage[`${UID}:identification:2026-10`], 1);
 });
 
 Deno.test('a non-JPEG upload is a 400, releases the quota and leaves nothing behind', async () => {
@@ -326,4 +341,40 @@ Deno.test('an unknown profile is told to finish setup, before any quota use', as
   const { db, handle } = setup(undefined, { profiles: [] });
   assertEquals((await handle(req(body()))).status, 403);
   assertEquals(count(db, 'srv_reserve_usage'), 0);
+});
+
+Deno.test(
+  'the provider is called with health false even when healthCheck is requested',
+  async () => {
+    let seen: boolean | null = null;
+    const inner = fakeIdentificationProvider();
+    const provider: IdentificationProvider = {
+      ...inner,
+      identify: (input) => {
+        seen = input.health;
+        return inner.identify(input);
+      },
+    };
+    const { db, handle } = setup(provider);
+    assertEquals((await handle(req({ ...body(), healthCheck: true }))).status, 200);
+    assertEquals(seen, false);
+    assertEquals(db.tables.observations[0]?.health_requested, true);
+  },
+);
+
+Deno.test('the stored provider name and owner come from the handler', async () => {
+  const { db, handle } = setup();
+  await handle(req(body()));
+  const call = db.rpcCalls.find((c) => c.fn === 'srv_store_provider')!;
+  assertEquals(call.args.p_provider, 'fake');
+  assertEquals(call.args.p_uid, UID);
+});
+
+Deno.test('deviceTime must be within two days of server time', async () => {
+  const { db, handle } = setup();
+  for (const t of ['2026-10-10T10:00:00Z', '2026-09-20T10:00:00Z', 'garbage']) {
+    assertEquals((await handle(req({ ...body(), deviceTime: t }))).status, 400, t);
+  }
+  assertEquals(count(db, 'srv_reserve_usage'), 0);
+  assertEquals((await handle(req({ ...body(), deviceTime: '2026-10-02T12:00:00Z' }))).status, 200);
 });

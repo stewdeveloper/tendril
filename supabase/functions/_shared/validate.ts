@@ -49,10 +49,13 @@ function handle(v: unknown): string {
   if (!HANDLE.test(h)) throw bad('Handle must be 3 to 20 letters, digits or underscores.');
   return h;
 }
+const IANA_ZONE = /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+)+$/;
+
+/** IANA names only (no offsets such as +05:00 or UTC+5), stored in the canonical spelling. */
 function timezone(v: unknown): string {
   const tz = str(v, 'timezone', 1, 64);
-  if (!isValidTimeZone(tz)) throw bad('Unknown timezone.');
-  return tz;
+  if ((tz !== 'UTC' && !IANA_ZONE.test(tz)) || !isValidTimeZone(tz)) throw bad('Unknown timezone.');
+  return new Intl.DateTimeFormat(undefined, { timeZone: tz }).resolvedOptions().timeZone;
 }
 function country(v: unknown): string {
   const c = str(v, 'countryCode', 2, 2);
@@ -145,14 +148,19 @@ const SEGMENT = /^[A-Za-z0-9._-]+$/;
 export function assertPhotoPath(path: unknown, uid: string): string {
   if (typeof path !== 'string' || path.length > 200) throw bad('Photo path is not valid.');
   const segments = path.split('/');
-  if (segments.length < 2 || segments.some((s) => !SEGMENT.test(s) || s.includes('..'))) {
+  if (
+    segments.length < 2 ||
+    segments.some((s) => !SEGMENT.test(s) || s === '.' || s.includes('..'))
+  ) {
     throw bad('Photo path is not valid.');
   }
   if (segments[0] !== uid) throw new ApiError('forbidden', 'That photo is not yours.');
   return path;
 }
 
-export function parseIdentify(body: unknown, uid: string): IdentifyRequest {
+const DEVICE_TIME_SKEW_MS = 2 * 24 * 60 * 60 * 1000;
+
+export function parseIdentify(body: unknown, uid: string, now: Date): IdentifyRequest {
   const o = obj(body);
   if (!Array.isArray(o.photos) || o.photos.length < 1 || o.photos.length > 5) {
     throw bad('Send 1 to 5 photos.');
@@ -183,15 +191,16 @@ export function parseIdentify(body: unknown, uid: string): IdentifyRequest {
       mocked: l.mocked,
     };
   }
-  if (typeof o.deviceTime !== 'string' || Number.isNaN(Date.parse(o.deviceTime))) {
-    throw bad('deviceTime must be a date-time.');
+  const deviceMs = typeof o.deviceTime === 'string' ? Date.parse(o.deviceTime) : NaN;
+  if (Number.isNaN(deviceMs) || Math.abs(deviceMs - now.getTime()) > DEVICE_TIME_SKEW_MS) {
+    throw bad('deviceTime must be a date-time within two days of now.');
   }
   if (typeof o.healthCheck !== 'boolean') throw bad('healthCheck must be true or false.');
   return {
     photos,
     captureSource: o.captureSource,
     location,
-    deviceTime: new Date(o.deviceTime).toISOString(),
+    deviceTime: new Date(deviceMs).toISOString(),
     healthCheck: o.healthCheck,
   };
 }

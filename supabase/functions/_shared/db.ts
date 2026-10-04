@@ -29,6 +29,8 @@ export function throwDbError(error: DbError): never {
     case '23514':
     case '22023':
     case '22P02':
+    case '22007':
+    case '22008':
       throw new ApiError('invalid_input', 'Some of that input is not valid.');
     default:
       throw new Error(`database error ${error.code ?? ''}: ${error.message}`);

@@ -40,6 +40,17 @@ export function selectAppCheck(): AppCheckVerifier {
   return appCheckInstance;
 }
 
+/** The provider name recorded with each observation: `fake` only on a local stack, else `plantid`. */
+export function selectedProviderName(): 'fake' | 'plantid' {
+  const local = isLocalStack();
+  const which = env('IDENTIFY_PROVIDER', local ? 'fake' : 'plantid');
+  if (which === 'fake' && !local) {
+    log('error', 'IDENTIFY_PROVIDER=fake refused outside a local stack; using plantid');
+    return 'plantid';
+  }
+  return which === 'fake' ? 'fake' : 'plantid';
+}
+
 const unavailable = () => new ApiError('provider_unavailable', 'Identification is unavailable.');
 
 /**
@@ -48,13 +59,7 @@ const unavailable = () => new ApiError('provider_unavailable', 'Identification i
  */
 export function selectIdentificationProvider(fetchFn?: FetchFn): IdentificationProvider {
   if (providerInstance) return providerInstance;
-  const local = isLocalStack();
-  let which = env('IDENTIFY_PROVIDER', local ? 'fake' : 'plantid');
-  if (which === 'fake' && !local) {
-    log('error', 'IDENTIFY_PROVIDER=fake refused outside a local stack; using plantid');
-    which = 'plantid';
-  }
-  if (which === 'fake') {
+  if (selectedProviderName() === 'fake') {
     providerInstance = fakeIdentificationProvider();
     return providerInstance;
   }

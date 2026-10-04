@@ -100,7 +100,11 @@ export function createHandler(deps: MeDeps): (req: Request) => Promise<Response>
         const uid = await requireUser(verifier, req);
         const b = parsePets(await readJson(req));
         const householdId = await resolveHousehold(db, uid, b.householdId);
-        await callPrivate(db, 'srv_replace_pets', { p_household_id: householdId, p_pets: b.pets });
+        await callPrivate(db, 'srv_replace_pets', {
+          p_uid: uid,
+          p_household_id: householdId,
+          p_pets: b.pets,
+        });
         return noContent();
       },
     },
