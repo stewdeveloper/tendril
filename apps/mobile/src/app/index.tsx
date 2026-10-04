@@ -1,24 +1,9 @@
-import { confidenceLabel } from '@tendril/core';
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Redirect } from 'expo-router';
+import { useSession } from '../session/SessionProvider';
 
+/** `/` sends the person to wherever their session says they belong. */
 export default function Index() {
-  const [probability, setProbability] = useState(0.94);
-  return (
-    <View style={styles.container}>
-      <Text>Tendril</Text>
-      <Pressable accessibilityRole="button" onPress={() => setProbability(0.41)}>
-        <Text>{confidenceLabel(probability)}</Text>
-      </Pressable>
-    </View>
-  );
+  const { status, ageBlocked } = useSession();
+  if (status === 'ready') return <Redirect href="/today" />;
+  return <Redirect href={ageBlocked ? '/age-stop' : '/welcome'} />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FBFAF6',
-  },
-});
