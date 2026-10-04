@@ -7,4 +7,5 @@ export * from './label.ts';
 export * from './quota.ts';
 export * from './age.ts';
 export * from './copy.ts';
+export * from './emergency.ts';
 export * from './fixtures/index.ts';

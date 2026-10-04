@@ -2,6 +2,7 @@ import {
   aoife,
   midSentenceName,
   petNameOrFallback,
+  poisonLineFor,
   plantdexCounts,
   QUOTA_LIMITS,
   type CareBasics,
@@ -53,12 +54,15 @@ export type FixtureScenario =
   | 'not_a_plant'
   | 'not_sure'
   | 'likely'
+  | 'us'
   | 'error';
 
 export interface FixtureApiOptions {
   /** Pretend network time per call. 0 in tests; the app passes 300 so loading states are seen. */
   latencyMs?: number;
   scenario?: FixtureScenario;
+  /** The household's country, which decides the poison line a pet emergency shows. Default Ireland. */
+  countryCode?: string;
 }
 
 /** The free plan's basic schedule, and the 2-day recheck when the soil was still damp (spec §9). */
@@ -231,10 +235,12 @@ function createWorld(scenario: FixtureScenario): World {
 export class FixtureApi implements TendrilApi {
   latencyMs: number;
   private scenario: FixtureScenario;
+  private countryCode: string;
   private world: World;
 
-  constructor({ latencyMs = 0, scenario = 'default' }: FixtureApiOptions = {}) {
+  constructor({ latencyMs = 0, scenario = 'default', countryCode = 'IE' }: FixtureApiOptions = {}) {
     this.latencyMs = latencyMs;
+    this.countryCode = countryCode;
     this.scenario = scenario;
     this.world = createWorld(scenario);
   }
@@ -726,8 +732,9 @@ export class FixtureApi implements TendrilApi {
           pet.animal === 'other' ? null : (entries.find((e) => e.animal === pet.animal) ?? null),
         matchProbability: detail?.matchProbability ?? null,
         vet: w.household.vet,
-        // Ireland has no confirmed poison line yet, so the vet is the only number (frame 4bi).
-        poisonLine: null,
+        // Ireland has no confirmed poison line yet, so the vet is the only number (frame 4bi). The
+        // 'us' scenario is the United States, so frame 4bh's ASPCA line is reachable.
+        poisonLine: poisonLineFor(this.scenario === 'us' ? 'US' : this.countryCode),
       });
     });
   }

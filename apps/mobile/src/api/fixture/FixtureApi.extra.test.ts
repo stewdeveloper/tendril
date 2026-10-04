@@ -1,4 +1,4 @@
-import { aoife } from '@tendril/core';
+import { aoife, poisonLineFor } from '@tendril/core';
 import { FIXTURE_TODAY } from '../fixtureDate';
 import { FixtureApi } from './FixtureApi';
 
@@ -403,6 +403,17 @@ describe('FixtureApi people, pets and Premium', () => {
     });
     expect((await api.getQuota('diagnosis')).limit).toBe(10);
     await expect(api.startPreview()).rejects.toThrow('preview_unavailable');
+  });
+
+  it('serves the ASPCA line for a US household and none for Ireland', async () => {
+    const input = { plantId: 'lily', petId: 'pet-miso' };
+    expect((await new FixtureApi().getEmergency(input)).poisonLine).toBeNull();
+    const us = new FixtureApi({ countryCode: 'US' });
+    expect((await us.getEmergency(input)).poisonLine).toEqual(poisonLineFor('US'));
+    const scenario = new FixtureApi({ scenario: 'us' });
+    expect((await scenario.getEmergency(input)).poisonLine?.name).toBe('ASPCA Poison Control');
+    scenario.setScenario('default');
+    expect((await scenario.getEmergency(input)).poisonLine).toBeNull();
   });
 
   it('answers a pet emergency from the plant, with unknown for other animals', async () => {

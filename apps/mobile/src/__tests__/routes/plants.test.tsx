@@ -151,12 +151,20 @@ describe('Plant detail route', () => {
       jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions').mockImplementation(() => {});
     });
 
-    it('offers died and given away, with a cancel', async () => {
+    it('offers a health check, died and given away, with a cancel', async () => {
       await renderRoute(<PlantDetailRoute />);
       await fireEvent.press(await screen.findByRole('button', { name: 'More' }));
       const [config] = jest.mocked(ActionSheetIOS.showActionSheetWithOptions).mock.calls.at(-1)!;
-      expect(config.options).toEqual(['Mark as died', 'Given away', 'Cancel']);
-      expect(config.cancelButtonIndex).toBe(2);
+      expect(config.options).toEqual(['Check its health', 'Mark as died', 'Given away', 'Cancel']);
+      expect(config.cancelButtonIndex).toBe(3);
+      expect(config.destructiveButtonIndex).toBe(1);
+    });
+
+    it('"Check its health" opens the diagnosis for this plant', async () => {
+      await renderRoute(<PlantDetailRoute />);
+      await fireEvent.press(await screen.findByRole('button', { name: 'More' }));
+      await choose('Check its health');
+      expect(routerMock.push).toHaveBeenCalledWith('/plants/monty/diagnosis');
     });
 
     it('given away closes the plant and hides the tab bar', async () => {
@@ -251,6 +259,15 @@ describe('Plant detail route', () => {
     await fireEvent.press(await screen.findByRole('button', { name: 'Given away' }));
     await waitFor(() => expect(spy).toHaveBeenCalledWith('monty', 'given_away', undefined));
     expect(await screen.findByText(/^Given away on /)).toBeTruthy();
+    replaced.restore();
+  });
+
+  it('off iOS the sheet offers "Check its health" first', async () => {
+    const replaced = jest.replaceProperty(Platform, 'OS', 'android');
+    await renderRoute(<PlantDetailRoute />);
+    await fireEvent.press(await screen.findByRole('button', { name: 'More' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Check its health' }));
+    expect(routerMock.push).toHaveBeenCalledWith('/plants/monty/diagnosis');
     replaced.restore();
   });
 

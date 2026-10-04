@@ -17,6 +17,7 @@ import {
   checkInQuestion,
   copy,
   freezeUsed,
+  emergencyCopy,
   indefiniteArticle,
   midSentenceName,
   petNameOrFallback,
@@ -147,5 +148,26 @@ describe('isValidNickname', () => {
     expect(isValidNickname('   ')).toBe(false);
     expect(isValidNickname('a'.repeat(41))).toBe(false);
     expect(isValidNickname(`  ${'a'.repeat(41)} `)).toBe(false);
+  });
+});
+
+describe('emergency copy', () => {
+  it('names the pet and the plant', () => {
+    expect(emergencyCopy.title('Miso', 'peace lily')).toBe('If Miso ate peace lily');
+  });
+  it('the poison line button carries the number', () => {
+    expect(emergencyCopy.callPoisonLine('ASPCA Poison Control', '(888) 426-4435')).toBe(
+      'Call ASPCA Poison Control (888) 426-4435',
+    );
+  });
+  it('the source and match line reads as the frame does', () => {
+    expect(emergencyCopy.sourceLine('ASPCA', 0.94)).toBe(
+      'Source: ASPCA. Based on a very likely match, 94%.',
+    );
+    expect(emergencyCopy.sourceLine('ASPCA', 0.71)).toBe(
+      'Source: ASPCA. Based on a likely match, 71%.',
+    );
+    expect(emergencyCopy.sourceLine('ASPCA', null)).toBe('Source: ASPCA.');
+    expect(emergencyCopy.sourceLine(null, null)).toBeNull();
   });
 });

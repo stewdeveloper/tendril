@@ -1,4 +1,5 @@
 import type { IsoDate } from './domain.ts';
+import { bandFor, bandWord, toPercent } from './confidence.ts';
 import { longDate } from './dates.ts';
 
 /** Fixed lines from the UX brief's Copy table. Never use the word "safe". */
@@ -53,6 +54,7 @@ export const plantsCopy = {
   scanThePlant: 'Scan the plant',
   addToMyPlants: 'Add to my plants',
   noIdentificationUsed: 'No identification used.',
+  checkHealth: 'Check its health',
   markDied: 'Mark as died',
   givenAway: 'Given away',
   diedCauseTitle: 'What happened?',
@@ -209,3 +211,46 @@ export const isValidNickname = (name: string): boolean => {
 };
 /** The snackbar after a plant is marked as given away; it carries the Undo. */
 export const givenAwaySnackbar = (nickname: string) => `${nickname} marked as given away.`;
+
+/** Diagnosis (4q to 4s) and the photo step that comes before it. */
+export const diagnosisCopy = {
+  photosTitle: 'Take photos',
+  photosLine:
+    'Add one to three photos of the leaves, stems or soil that worry you. Close up and in daylight works best.',
+  takePhoto: 'Take a photo',
+  choosePhoto: 'Choose from library',
+  removePhoto: 'Remove photo',
+  check: 'Check its health',
+  checking: 'Checking',
+  photosFull: 'That is three photos, the most we can use.',
+  permissionDenied: 'Allow photo access in your phone settings to add photos.',
+  failed: "Couldn't check your plant. Try again.",
+  changeToPlan: 'Change to your plan',
+  apply: 'Apply to care plan',
+  applyFailed: "Couldn't change your plan. Try again.",
+  tryPremium: 'Try Premium free for 7 days',
+  notNow: 'Not now',
+  notSureNote: "This didn't use your diagnosis.",
+  closePhoto: 'Take a close photo',
+} as const;
+/** "1 of 3 photos" under the photo step's picker. */
+export const photosCount = (n: number) => `${n} of 3 photos`;
+
+/** The pet emergency screen (4bh, 4bi). */
+export const emergencyCopy = {
+  callVet: 'Call your vet',
+  findVet: 'Find a vet nearby',
+  saveVet: 'Save your vet',
+  noVetNote: "You haven't saved a vet yet. Call your nearest vet now.",
+  title: (petName: string, speciesName: string) => `If ${petName} ate ${speciesName}`,
+  callPoisonLine: (name: string, phone: string) => `Call ${name} ${phone}`,
+  /** "Source: ASPCA. Based on a very likely match, 94%." The match part only when there is one. */
+  sourceLine: (sourceName: string | null, matchProbability: number | null): string | null => {
+    const source = sourceName ? `Source: ${sourceName}.` : null;
+    const match =
+      matchProbability == null
+        ? null
+        : `Based on a ${bandWord(bandFor(matchProbability)).toLowerCase()} match, ${toPercent(matchProbability)}%.`;
+    return [source, match].filter(Boolean).join(' ') || null;
+  },
+} as const;

@@ -15,18 +15,21 @@ const CAUSES = [
 export function PlantActionsSheet({
   visible,
   nickname,
+  onCheckHealth,
   onDied,
   onGivenAway,
   onClose,
 }: {
   visible: boolean;
   nickname: string;
+  onCheckHealth: () => void;
   onDied: () => void;
   onGivenAway: () => void;
   onClose: () => void;
 }) {
   return (
     <Sheet visible={visible} title={nickname} onClose={onClose}>
+      <Button label={plantsCopy.checkHealth} variant="secondary" onPress={onCheckHealth} />
       <Button label={plantsCopy.markDied} variant="secondary" onPress={onDied} />
       <Button label={plantsCopy.givenAway} variant="secondary" onPress={onGivenAway} />
     </Sheet>

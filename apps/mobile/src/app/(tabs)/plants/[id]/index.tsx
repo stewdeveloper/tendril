@@ -57,18 +57,29 @@ export default function PlantDetailRoute() {
     }
   };
 
+  const checkHealth = () => {
+    setMenu(null);
+    router.push(`/plants/${id}/diagnosis`);
+  };
+
   const openMenu = () => {
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: [plantsCopy.markDied, plantsCopy.givenAway, plantsCopy.cancel],
-          cancelButtonIndex: 2,
-          destructiveButtonIndex: 0,
+          options: [
+            plantsCopy.checkHealth,
+            plantsCopy.markDied,
+            plantsCopy.givenAway,
+            plantsCopy.cancel,
+          ],
+          cancelButtonIndex: 3,
+          destructiveButtonIndex: 1,
           title: plant.data?.nickname,
         },
         (index) => {
-          if (index === 0) setMenu('cause');
-          else if (index === 1) void change('given_away');
+          if (index === 0) checkHealth();
+          else if (index === 1) setMenu('cause');
+          else if (index === 2) void change('given_away');
         },
       );
     } else {
@@ -99,6 +110,7 @@ export default function PlantDetailRoute() {
       <PlantActionsSheet
         visible={menu === 'actions'}
         nickname={plant.data.nickname}
+        onCheckHealth={checkHealth}
         onDied={() => setMenu('cause')}
         onGivenAway={() => void change('given_away')}
         onClose={() => setMenu(null)}
