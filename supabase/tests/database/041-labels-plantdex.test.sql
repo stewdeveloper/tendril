@@ -1,5 +1,5 @@
 begin;
-select plan(15);
+select plan(16);
 -- supabase/seed.sql loads a real catalogue, and this test inserts its own species with the same slugs and names. Clear the
 -- seeded reference data inside the transaction; the rollback at the end puts it back.
 delete from public.qr_codes;
@@ -52,6 +52,10 @@ select is(
   jsonb_path_query_array(public.public_label('PL-0001'), '$.toxicity[*].reviewStatus'),
   '["seed_pending_vet", "reviewed"]'::jsonb,
   'toxicity entries carry their review status');
+select is(
+  (select array_agg(k order by k collate "C") from jsonb_object_keys(public.public_label('PL-0001') -> 'species') as k),
+  array['checkIntervalDays', 'commonName', 'id', 'imageUrl', 'light', 'rarityTier', 'scientificName', 'sensitive', 'slug', 'warmth'],
+  'the label species carries the allow-listed keys, including rarity tier and sensitivity');
 reset role;
 
 select tests.authenticate_as('aoife');

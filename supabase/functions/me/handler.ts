@@ -3,6 +3,7 @@ import { randomizeZone } from '@core/privacy.ts';
 import { requireUser, type UserVerifier } from '../_shared/auth.ts';
 import { callPrivate, type Db, throwDbError } from '../_shared/db.ts';
 import { ApiError } from '../_shared/errors.ts';
+import { resolveHousehold } from '../_shared/households.ts';
 import { json, readJson, type Route, router } from '../_shared/http.ts';
 import {
   parseBootstrap,
@@ -24,25 +25,6 @@ export interface MeDeps {
 const cryptoRandom = () => crypto.getRandomValues(new Uint32Array(1))[0]! / 2 ** 32;
 const noContent = () => new Response(null, { status: 204 });
 const pattern = (pathname: string) => new URLPattern({ pathname });
-
-/** The household named in the request (the caller must be a member), else the caller's own (owner first). */
-async function resolveHousehold(db: Db, uid: string, requested?: string): Promise<string> {
-  const { data, error } = await db
-    .from('household_members')
-    .select('household_id, role')
-    .eq('user_id', uid);
-  if (error) throwDbError(error);
-  const mine = data ?? [];
-  if (requested) {
-    if (!mine.some((m) => m.household_id === requested)) {
-      throw new ApiError('forbidden', 'You are not a member of that household.');
-    }
-    return requested;
-  }
-  const home = mine.find((m) => m.role === 'owner') ?? mine[0];
-  if (!home) throw new ApiError('not_found', 'Finish setting up your account first.');
-  return home.household_id;
-}
 
 export function createHandler(deps: MeDeps): (req: Request) => Promise<Response> {
   const { db, verifier } = deps;

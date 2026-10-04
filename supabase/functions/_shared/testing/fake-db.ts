@@ -34,6 +34,7 @@ export type FakeDb = Db & {
   usage: Record<string, number>;
   providerTokens: Record<string, string>;
   refuseReservations: boolean;
+  rpcImpl: Record<string, (a: Record<string, any>) => { data: any; error: Err | null }>;
 };
 
 export function fakeDb(seed: Record<string, any> = {}): FakeDb {
@@ -249,6 +250,52 @@ export function fakeDb(seed: Record<string, any> = {}): FakeDb {
         });
       return ok({ newToPlantdex: !e, count: rows.filter((r) => r.user_id === a.p_uid).length });
     },
+    srv_create_plant: (a) => {
+      if (
+        !tables.household_members!.some(
+          (m) => m.household_id === a.p_household_id && m.user_id === a.p_uid,
+        )
+      )
+        return err('P0403', 'not a member of this household');
+      if (
+        a.p_observation_id &&
+        !tables.observations!.some((o) => o.id === a.p_observation_id && o.user_id === a.p_uid)
+      )
+        return err('P0403', 'observation is not yours');
+      const id = crypto.randomUUID();
+      tables.plants!.push({
+        id,
+        household_id: a.p_household_id,
+        species_id: a.p_species_id,
+        observation_id: a.p_observation_id,
+        nickname: a.p_nickname,
+        room: a.p_room,
+        indoor: a.p_indoor,
+        pot_size_cm: a.p_pot_size_cm,
+        pot_material: a.p_pot_material,
+        drainage: a.p_drainage,
+        light: a.p_light,
+        source: a.p_source,
+        label_code: a.p_label_code,
+        created_by: a.p_uid,
+      });
+      tables.care_tasks!.push({
+        id: crypto.randomUUID(),
+        plant_id: id,
+        household_id: a.p_household_id,
+        kind: 'check',
+        due_on: a.p_first_check_on,
+      });
+      tables.care_events!.push({
+        id: crypto.randomUUID(),
+        plant_id: id,
+        household_id: a.p_household_id,
+        user_id: a.p_uid,
+        kind: 'setup',
+        occurred_at: a.p_now,
+      });
+      return ok(id);
+    },
     srv_bootstrap: (a) => {
       let profile = tables.profiles!.find((p) => p.id === a.p_uid);
       if (!profile) {
@@ -289,6 +336,7 @@ export function fakeDb(seed: Record<string, any> = {}): FakeDb {
       return ok(null);
     },
   };
+  fake.rpcImpl = registry; // tests may add or override an rpc (for example the anon-callable public_label)
   fake.rpc = (fn: string, args: Record<string, any> = {}) => {
     fake.rpcCalls.push({ fn, args });
     const impl = registry[fn];

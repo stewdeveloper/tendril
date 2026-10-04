@@ -1,11 +1,13 @@
 import type {
   BootstrapRequest,
+  ConfirmRequest,
   HomeAreaRequest,
   IdentifyRequest,
   PetsRequest,
   PushTokenRequest,
   VetRequest,
 } from '@core/api.ts';
+import type { PlantSetup } from '@core/domain.ts';
 import { isValidTimeZone } from '@core/period.ts';
 import { ApiError } from './errors.ts';
 
@@ -213,4 +215,67 @@ export function assertJpegUpload(bytes: Uint8Array): void {
   if (bytes.byteLength < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[2] !== 0xff) {
     throw bad('Photo is not a valid JPEG.');
   }
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function assertUuid(v: unknown, field: string): string {
+  if (typeof v !== 'string' || !UUID.test(v)) throw bad(`${field} must be an id.`);
+  return v.toLowerCase();
+}
+
+function oneOf<T extends string>(v: unknown, field: string, allowed: readonly T[]): T {
+  if (typeof v !== 'string' || !(allowed as readonly string[]).includes(v)) {
+    throw bad(`${field} must be one of ${allowed.join(', ')}.`);
+  }
+  return v as T;
+}
+
+/** plants.nickname 1..40, room <= 40, pot_size_cm 4..200, and the light / pot_material / drainage enums. */
+export function parseSetup(v: unknown): PlantSetup {
+  const o = obj(v, 'setup');
+  if (typeof o.indoor !== 'boolean') throw bad('setup.indoor must be true or false.');
+  let potSizeCm: number | null = null;
+  if (o.potSizeCm !== null && o.potSizeCm !== undefined) {
+    potSizeCm = num(o.potSizeCm, 'setup.potSizeCm', 4, 200);
+    if (!Number.isInteger(potSizeCm)) throw bad('setup.potSizeCm must be a whole number.');
+  }
+  return {
+    nickname: str(o.nickname, 'setup.nickname', 1, 40),
+    room: optStr(o.room, 'setup.room', 40),
+    light: oneOf(o.light, 'setup.light', ['bright', 'medium', 'low', 'unknown']),
+    potMaterial: oneOf(o.potMaterial, 'setup.potMaterial', [
+      'plastic',
+      'terracotta',
+      'ceramic',
+      'unknown',
+    ]),
+    potSizeCm,
+    drainage: oneOf(o.drainage, 'setup.drainage', ['yes', 'no', 'unknown']),
+    indoor: o.indoor,
+  };
+}
+
+/** observations.intent and place_type checks; add_plant needs a setup, log_find ignores it. */
+export function parseConfirm(body: unknown): ConfirmRequest {
+  const o = obj(body);
+  const action = oneOf(o.action, 'action', ['add_plant', 'log_find'] as const);
+  const out: ConfirmRequest = { speciesId: assertUuid(o.speciesId, 'speciesId'), action };
+  if (o.placeType !== undefined && o.placeType !== null) {
+    out.placeType = oneOf(o.placeType, 'placeType', ['shop', 'garden_park', 'wild'] as const);
+  }
+  if (action === 'add_plant') out.setup = parseSetup(o.setup);
+  if (o.householdId !== undefined && o.householdId !== null) {
+    out.householdId = assertUuid(o.householdId, 'householdId');
+  }
+  return out;
+}
+
+export type LabelEvent = { event: 'app_open' | 'store_click'; platform: 'ios' | 'android' | 'web' };
+/** Public beacon: only the two events a stranger may report (adoption is written by care). */
+export function parseLabelEvent(body: unknown): LabelEvent {
+  const o = obj(body);
+  return {
+    event: oneOf(o.event, 'event', ['app_open', 'store_click'] as const),
+    platform: oneOf(o.platform, 'platform', ['ios', 'android', 'web'] as const),
+  };
 }
