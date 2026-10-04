@@ -1,5 +1,5 @@
 begin;
-select plan(24);
+select plan(27);
 
 select tests.create_supabase_user('aoife');
 
@@ -41,6 +41,22 @@ select is_empty(
 select is_empty(
   $$select * from held_privs where schema_name = 'public' and role_name = 'authenticated' and priv <> 'SELECT'$$,
   'authenticated holds nothing in public but select');
+-- The exact set of public relations authenticated may SELECT is pinned, so a new grant forces an edit here.
+create temp view expected_select(relname) as values
+  ('species'), ('species_toxicity'), ('profiles'), ('privacy_zones'), ('households'), ('household_members'),
+  ('household_pets'), ('household_vets'), ('push_tokens'), ('observations'), ('observation_locations'),
+  ('observation_photos'), ('plants'), ('care_tasks'), ('care_events'), ('diagnoses'), ('plantdex_entries'),
+  ('entitlements'), ('usage_counters');
+select is_empty(
+  $$select relname from held_privs where schema_name = 'public' and role_name = 'authenticated' and priv = 'SELECT'
+    except select relname from expected_select$$,
+  'authenticated can select no public relation outside the pinned set');
+select is_empty(
+  $$select relname from expected_select
+    except select relname from held_privs where schema_name = 'public' and role_name = 'authenticated' and priv = 'SELECT'$$,
+  'authenticated can select every relation in the pinned set');
+select is(
+  (select count(*)::int from expected_select), 19, 'the pinned set has 19 relations');
 select is_empty(
   $$select * from held_privs where schema_name = 'private'$$,
   'neither client role holds any privilege on any private relation');

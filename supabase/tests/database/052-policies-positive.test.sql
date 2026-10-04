@@ -1,5 +1,5 @@
 begin;
-select plan(14);
+select plan(15);
 -- supabase/seed.sql loads a real catalogue, and this test inserts its own species with the same slugs and names. Clear the
 -- seeded reference data inside the transaction; the rollback at the end puts it back.
 delete from public.qr_codes;
@@ -40,8 +40,9 @@ select isnt_empty(
 
 -- storage.objects serves every bucket, so its policies are named for the bucket they guard.
 select is(
-  (select count(*)::int from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname like 'plant-photos: own folder %'),
-  3, 'the plant-photos policies carry the bucket prefix');
+  (select string_agg(policyname || ':' || cmd, ',' order by policyname) from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname like 'plant-photos: %'),
+  'plant-photos: own folder read:SELECT,plant-photos: own folder upload:INSERT',
+  'the plant-photos policies carry the bucket prefix and allow only read and upload');
 select is_empty(
   $$select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname like 'own folder %'$$,
   'no unprefixed plant-photos policy is left behind');
@@ -67,12 +68,19 @@ select is_empty(
 -- storage.protect_delete refuses direct deletes unless this is set (the Storage API sets it); it is a guard against
 -- orphaned files, separate from the row level security under test here.
 set local storage.allow_delete_query = 'true';
+-- There is no delete policy (spec section 7: the only client write is upload), so a client cannot swap evidence.
 select lives_ok(
   $$delete from storage.objects where bucket_id = 'plant-photos' and name = (select auth.uid())::text || '/x.jpg'$$,
-  'a user can delete their own object');
-select is_empty(
+  'a client delete of its own object is filtered out, not an error');
+select isnt_empty(
   $$select 1 from storage.objects where bucket_id = 'plant-photos' and name = (select auth.uid())::text || '/x.jpg'$$,
-  'the deleted object is gone');
+  'the client''s own object is still there after its delete attempt');
+select tests.clear_authentication();
+reset role;
+select isnt_empty(
+  $$select 1 from storage.objects where bucket_id = 'plant-photos' and name = tests.get_supabase_uid('aoife')::text || '/x.jpg'$$,
+  'the object still exists as postgres');
+select tests.authenticate_as('aoife');
 -- RLS filters rather than rejects: the delete runs and touches nothing.
 select lives_ok(
   $$delete from storage.objects where bucket_id = 'plant-photos' and name = tests.get_supabase_uid('outsider')::text || '/theirs.jpg'$$,
