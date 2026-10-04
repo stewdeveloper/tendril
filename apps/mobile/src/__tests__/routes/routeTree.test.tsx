@@ -1,16 +1,14 @@
 /// <reference types="node" />
 import { render, screen } from '@testing-library/react-native';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ApiProvider } from '../../api/ApiProvider';
-import { FixtureApi } from '../../api/fixture/FixtureApi';
+import { FixtureApi, type FixtureScenario } from '../../api/fixture/FixtureApi';
 import { ThemeProvider } from '../../theme';
+import { resetRouterMock } from './mockRouter';
 
-const mockBack = jest.fn();
-jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: jest.fn(), back: mockBack, replace: jest.fn(), canGoBack: () => true }),
-}));
+jest.mock('expo-router', () => jest.requireActual('./mockRouter').mockExpoRouter());
 
 /** Spec §6.3's route list: one file each. */
 const ROUTE_FILES = [
@@ -54,7 +52,19 @@ const ROUTE_FILES = [
 ];
 
 const APP = join(__dirname, '../../app');
-const wrap = (ui: React.ReactElement) =>
+
+/**
+ * A route is a placeholder until its file stops importing `PlaceholderScreen`. The placeholder
+ * text is asserted only for those; a built screen has its own route test, which it adds when it
+ * replaces the placeholder.
+ */
+const rendersPlaceholder = (route: string) =>
+  /\bPlaceholderScreen\b.*\bfrom\b/.test(readFileSync(join(APP, `${route}.tsx`), 'utf8'));
+
+/** The Scan tab redirects to the camera under the cap, so its placeholder is seen at the cap. */
+const SCENARIO: Partial<Record<string, FixtureScenario>> = { '(tabs)/scan': 'limit_free' };
+
+const wrap = (ui: React.ReactElement, scenario?: FixtureScenario) =>
   render(
     <ThemeProvider scheme="light">
       <QueryClientProvider
@@ -62,21 +72,47 @@ const wrap = (ui: React.ReactElement) =>
           new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } })
         }
       >
-        <ApiProvider api={new FixtureApi()}>{ui}</ApiProvider>
+        <ApiProvider api={new FixtureApi({ scenario })}>{ui}</ApiProvider>
       </QueryClientProvider>
     </ThemeProvider>,
   );
 
 describe('route tree', () => {
-  it.each(ROUTE_FILES)('has a placeholder screen at %s', async (route) => {
-    expect(existsSync(join(APP, `${route}.tsx`))).toBe(true);
-    const Screen = jest.requireActual(join(APP, route)).default;
-    await wrap(<Screen />);
-    // Tab screens read the profile for their avatar letter; a plant's page is a stack screen.
-    if (/^\(tabs\)\/(?!plants\/\[id\])/.test(route))
-      expect(await screen.findByText('A')).toBeTruthy();
-    expect(screen.getByRole('header')).toBeTruthy();
-    expect(screen.getByText(/^(Design frames: |No design frame)/)).toBeTruthy();
+  beforeEach(() => resetRouterMock());
+
+  it.each(ROUTE_FILES)(
+    'has a route file at %s, with a placeholder while it is unbuilt',
+    async (route) => {
+      expect(existsSync(join(APP, `${route}.tsx`))).toBe(true);
+      const Screen = jest.requireActual(join(APP, route)).default;
+      expect(typeof Screen).toBe('function');
+      if (!rendersPlaceholder(route)) return;
+      await wrap(<Screen />, SCENARIO[route]);
+      // Tab screens read the profile for their avatar letter; a plant's page is a stack screen.
+      if (/^\(tabs\)\/(?!plants\/\[id\])/.test(route))
+        expect(await screen.findByText('A')).toBeTruthy();
+      expect(screen.getByRole('header')).toBeTruthy();
+      expect(screen.getByText(/^(Design frames: |No design frame)/)).toBeTruthy();
+    },
+  );
+
+  it('detects a placeholder by its import, not by its route name', () => {
+    expect(rendersPlaceholder('camera')).toBe(true);
+    expect(rendersPlaceholder('index')).toBe(false);
+    expect(rendersPlaceholder('_layout')).toBe(false);
+  });
+
+  it('sends the Scan tab on to the camera under the identification cap', async () => {
+    const Scan = jest.requireActual(join(APP, '(tabs)/scan')).default;
+    await wrap(<Scan />);
+    expect(await screen.findByText('redirect:/camera')).toBeTruthy();
+  });
+
+  it('keeps the Scan tab on its own screen at the cap, with no redirect', async () => {
+    const Scan = jest.requireActual(join(APP, '(tabs)/scan')).default;
+    await wrap(<Scan />, 'limit_free');
+    expect(await screen.findByText('A')).toBeTruthy();
+    expect(screen.queryByText(/^redirect:/)).toBeNull();
   });
 
   it('has the layouts, the index redirect and the catalog', () => {

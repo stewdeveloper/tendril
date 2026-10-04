@@ -62,7 +62,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // A ref, not state: it is read when `/` renders and cleared afterwards, and neither may re-render.
   const destinationRef = useRef<Destination>('/today');
   const statusRef = useRef(status);
-  statusRef.current = status;
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
 
   useEffect(() => {
     let cancelled = false;

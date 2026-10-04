@@ -1,6 +1,6 @@
 import { radius, typeScale } from '@tendril/core';
 import MapPin from 'lucide-react-native/icons/map-pin';
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 import { AppText, fontFamilyFor, useTheme } from '../theme';
 import { Card } from './Card';
