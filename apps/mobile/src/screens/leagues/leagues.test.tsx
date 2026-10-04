@@ -111,6 +111,13 @@ describe('AddFriendsScreen', () => {
     expect(onQuery).toHaveBeenCalledWith('@siobhanplant');
   });
 
+  it('typing tells the parent so a stale result can go', async () => {
+    const onEdit = jest.fn();
+    await wrap(<AddFriendsScreen {...addBase} onEdit={onEdit} />);
+    await fireEvent.changeText(screen.getByLabelText('Handle'), '@s');
+    expect(onEdit).toHaveBeenCalledTimes(1);
+  });
+
   it('a blank handle does not search', async () => {
     const onQuery = jest.fn();
     await wrap(<AddFriendsScreen {...addBase} onQuery={onQuery} />);

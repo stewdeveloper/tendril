@@ -18,6 +18,8 @@ export interface AddFriendsScreenProps {
   notice?: string | null;
   /** Forces the focused ring (the catalog frames show it without a real focus). */
   focused?: boolean;
+  /** The text changed: the parent drops a result that no longer matches the field. */
+  onEdit?: () => void;
   /** Called on submit only, never per keystroke, with the text as typed. */
   onQuery: (query: string) => void;
   onAdd: (handle: string) => void;
@@ -59,7 +61,10 @@ export function AddFriendsScreen(props: AddFriendsScreenProps) {
         <TextField
           label={leaguesCopy.handleLabel}
           value={text}
-          onChangeText={setText}
+          onChangeText={(t) => {
+            setText(t);
+            props.onEdit?.();
+          }}
           focused={props.focused}
           autoCapitalize="none"
           autoCorrect={false}

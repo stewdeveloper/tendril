@@ -105,6 +105,31 @@ describe('Add friends route', () => {
     expect(spy).toHaveBeenCalledWith('siobhanplants');
   });
 
+  it('Requested sticks: re-searching an added handle does not offer Add again', async () => {
+    const api = new FixtureApi();
+    const spy = jest.spyOn(api, 'sendFriendRequest');
+    await renderRoute(<AddFriendsRoute />, api);
+    await search('@siobhanplants');
+    await fireEvent.press(await screen.findByRole('button', { name: 'Add @siobhanplants' }));
+    expect(await screen.findByRole('button', { name: 'Requested' })).toBeTruthy();
+    await search('@fernandfox');
+    expect(await screen.findByRole('button', { name: 'Add @fernandfox' })).toBeTruthy();
+    await search('@siobhanplants');
+    const again = await screen.findByRole('button', { name: 'Requested' });
+    expect(again.props.accessibilityState).toMatchObject({ disabled: true });
+    expect(screen.queryByRole('button', { name: /^Add @/ })).toBeNull();
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('editing the field clears the shown result', async () => {
+    await renderRoute(<AddFriendsRoute />);
+    await search('@siobhanplants');
+    await screen.findByRole('button', { name: 'Add @siobhanplants' });
+    await fireEvent.changeText(screen.getByLabelText('Handle'), '@siobhanplant');
+    expect(screen.queryByRole('button', { name: /^Add @/ })).toBeNull();
+    expect(screen.queryByText('37 species')).toBeNull();
+  });
+
   it('a failed request shows a snackbar and can be retried', async () => {
     const api = new FixtureApi();
     const spy = jest.spyOn(api, 'sendFriendRequest').mockRejectedValueOnce(new Error('offline'));

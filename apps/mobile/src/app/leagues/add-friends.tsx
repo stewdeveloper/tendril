@@ -17,7 +17,8 @@ export default function AddFriendsRoute() {
   const find = useFindHandle();
   const send = useSendFriendRequest();
   const invite = useCreateInvite();
-  const [requested, setRequested] = useState<string | null>(null);
+  // Handles asked this visit. Never cleared, so searching again can't offer Add twice.
+  const [requested, setRequested] = useState<ReadonlySet<string>>(new Set());
   // Searching for yourself needs no lookup: the answer is already here.
   const [self, setSelf] = useState<{ handle: string; plantdexCount: number } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -33,7 +34,6 @@ export default function AddFriendsRoute() {
   const search = (query: string) => {
     const handle = normaliseHandle(query);
     if (!handle) return;
-    setRequested(null);
     const own = profile.data;
     if (own && handle === own.handle.toLowerCase()) {
       setSelf({ handle: own.handle, plantdexCount: own.plantdexCount });
@@ -48,7 +48,7 @@ export default function AddFriendsRoute() {
     adding.current = true;
     try {
       await send.mutateAsync(handle);
-      setRequested(handle);
+      setRequested((prev) => new Set(prev).add(handle.toLowerCase()));
     } catch {
       setNotice(leaguesCopy.requestFailed);
     } finally {
@@ -77,8 +77,14 @@ export default function AddFriendsRoute() {
       query=""
       result={result}
       ownHandle={profile.data?.handle ?? ''}
-      requested={result != null && result !== 'not_found' && requested === result.handle}
+      requested={
+        result != null && result !== 'not_found' && requested.has(result.handle.toLowerCase())
+      }
       notice={notice}
+      onEdit={() => {
+        setSelf(null);
+        find.reset();
+      }}
       onQuery={search}
       onAdd={(handle) => void add(handle)}
       onInvite={() => void sendInvite()}
