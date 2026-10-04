@@ -13,8 +13,10 @@ export interface FrameEntry {
 const frames = new Map<string, FrameEntry>();
 
 export function registerFrame(entry: FrameEntry): void {
-  // A second frame with the same id would silently replace the first; catch the typo in development.
-  if (__DEV__ && frames.has(entry.id))
+  // The same id with a different title is a typo in development. The same id and title is a fast
+  // refresh re-evaluating the module, and simply overwrites.
+  const existing = frames.get(entry.id);
+  if (__DEV__ && existing && existing.title !== entry.title)
     throw new Error(`Catalog frame ${entry.id} is registered twice`);
   frames.set(entry.id, entry);
 }

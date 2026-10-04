@@ -9,11 +9,16 @@ describe('catalog registry', () => {
     expect(getFrame('zz-test')?.title).toBe('Test frame');
     expect(listFrames().map((f) => f.id)).toContain('zz-test');
   });
-  it('throws on a duplicate id in development', () => {
+  it('throws on a duplicate id with a different title in development', () => {
     registerFrame({ id: 'zz-dup', title: 'One', render: () => <Text>one</Text> });
     expect(() =>
       registerFrame({ id: 'zz-dup', title: 'Two', render: () => <Text>two</Text> }),
     ).toThrow(/zz-dup/);
+  });
+  it('overwrites on the same id and title, as a fast refresh does', () => {
+    registerFrame({ id: 'zz-fr', title: 'Same', render: () => <Text>old</Text> });
+    registerFrame({ id: 'zz-fr', title: 'Same', render: () => <Text>new</Text> });
+    expect(listFrames().filter((f) => f.id === 'zz-fr')).toHaveLength(1);
   });
   it('renders an unknown id as a helpful message, not a crash', async () => {
     await render(<CatalogScreen frameId="nope" />);
