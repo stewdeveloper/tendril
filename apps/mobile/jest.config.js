@@ -15,6 +15,7 @@ module.exports = {
     // Order matters: the specific @/assets mapping must come before the general @/ one.
     '^@/assets/(.*)$': '<rootDir>/assets/$1',
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^react-native-maps$': '<rootDir>/src/testing/reactNativeMapsMock.tsx',
     '^lucide-react-native$': join(lucideCjs, 'lucide-react-native.js'),
     '^lucide-react-native/icons/(.*)$': join(lucideCjs, 'icons', '$1.js'),
   },
