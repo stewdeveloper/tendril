@@ -58,7 +58,7 @@ select is((select kind from public.care_tasks where plant_id = (select id from m
 select is((select r->>'nextCheckOn' from back), '2026-10-15', 'the result says when the check is due');
 
 -- given_away -> alive (the app's Undo), twice over, still one open task
-select public.srv_set_plant_status(tests.get_supabase_uid('aoife'), (select id from made), 'given_away', 'ignored', '2026-10-11', '2026-10-11T10:00:00Z', 7);
+select public.srv_set_plant_status(tests.get_supabase_uid('aoife'), (select id from made), 'given_away', null, '2026-10-11', '2026-10-11T10:00:00Z', 7);
 select is((select death_cause from public.plants where id = (select id from made)), null, 'only a death carries a cause');
 select is((select count(*)::int from public.care_tasks where plant_id = (select id from made) and status = 'due'), 0, 'given away closes the tasks');
 select public.srv_set_plant_status(tests.get_supabase_uid('aoife'), (select id from made), 'alive', null, '2026-10-11', '2026-10-11T11:00:00Z', 7);
