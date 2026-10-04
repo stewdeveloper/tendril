@@ -437,3 +437,8 @@ import_map = "./functions/deno.json"
 [functions.care]
 verify_jwt = false
 import_map = "./functions/deno.json"
+
+# Cron only: authorised by the Vault worker_key bearer, compared in the function.
+[functions.worker]
+verify_jwt = false
+import_map = "./functions/deno.json"

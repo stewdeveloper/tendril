@@ -212,6 +212,26 @@ export function fakeDb(seed: Record<string, any> = {}): FakeDb {
 
   const err = (code: string, message = code): Result => ({ data: null, error: { code, message } });
   const ok = (data: any): Result => ({ data, error: null });
+  const cmp = (x: unknown, y: unknown) =>
+    String(x) < String(y) ? -1 : String(x) > String(y) ? 1 : 0;
+  const isMember = (household: string, uid: string) =>
+    tables.household_members!.some((m) => m.household_id === household && m.user_id === uid);
+  const isPremium = (household: string) =>
+    tables.household_members!.some(
+      (m) =>
+        m.household_id === household &&
+        tables.entitlements!.some(
+          (e) => e.user_id === m.user_id && Date.parse(e.active_until) > Date.now(),
+        ),
+    );
+  const zoneOf = (uid: string) =>
+    tables.privacy_zones!.find((z) => z.user_id === uid && z.centerLatLng);
+  const profileOf = (uid: string) => tables.profiles!.find((r) => r.id === uid);
+  const cacheOf = (cell: string) => tables.weather_cache!.find((w) => w.cell_r7 === cell);
+  const openCheckOf = (plantId: string) =>
+    tables.care_tasks!.find(
+      (t) => t.plant_id === plantId && t.kind === 'check' && (t.status ?? 'due') === 'due',
+    );
   const registry: Record<string, (a: Record<string, any>) => Result> = {
     srv_reserve_usage: (a) => {
       const key = `${a.p_uid}:${a.p_kind}:${a.p_period_key}`;
@@ -633,6 +653,147 @@ export function fakeDb(seed: Record<string, any> = {}): FakeDb {
       }
       return ok(null);
     },
+    // Weather cells and the cache (cells are decimal text, as they cross PostgREST). ------------------------------
+    srv_plants_missing_cell: (a) =>
+      ok(
+        tables
+          .plants!.filter(
+            (p) =>
+              p.status === 'alive' &&
+              !p.indoor &&
+              p.cell_r7 == null &&
+              zoneOf(p.created_by) &&
+              isMember(p.household_id, p.created_by),
+          )
+          .sort((x, y) => cmp(x.created_at, y.created_at) || cmp(x.id, y.id))
+          .slice(0, Math.max(0, a.p_limit ?? 0))
+          .map((p) => ({
+            plant_id: p.id,
+            zone_lat: zoneOf(p.created_by)!.centerLatLng.lat,
+            zone_lng: zoneOf(p.created_by)!.centerLatLng.lng,
+            owner_tz: profileOf(p.created_by)?.timezone ?? 'UTC',
+          })),
+      ),
+    srv_set_plant_cells: (a) => {
+      if (!Array.isArray(a.p_cells)) return err('22023', 'cells must be an array');
+      if (a.p_cells.some((c: Row) => !/^\d+$/.test(String(c.cell))))
+        return err('22P02', 'bad cell');
+      let n = 0;
+      for (const c of a.p_cells as Row[]) {
+        const p = tables.plants!.find(
+          (r) => r.id === c.plantId && r.status === 'alive' && !r.indoor,
+        );
+        if (p) {
+          p.cell_r7 = String(c.cell);
+          n += 1;
+        }
+      }
+      return ok(n);
+    },
+    srv_weather_cells_due: (a) => {
+      const olderThan = intervalMs(a.p_older_than);
+      if (olderThan === null) return err('22007', 'bad interval');
+      const due = new Map<string, string>();
+      for (const p of tables.plants!) {
+        if (p.status !== 'alive' || p.indoor || p.cell_r7 == null) continue;
+        if (!isPremium(p.household_id) || !zoneOf(p.created_by)) continue;
+        const w = cacheOf(p.cell_r7);
+        if (w && Date.parse(w.fetched_at) > Date.now() - olderThan) continue;
+        const tz = profileOf(p.created_by)?.timezone ?? 'UTC';
+        const prev = due.get(p.cell_r7);
+        due.set(p.cell_r7, prev === undefined || tz < prev ? tz : prev);
+      }
+      return ok(
+        [...due]
+          .sort(([x], [y]) => (BigInt(x) < BigInt(y) ? -1 : 1))
+          .slice(0, Math.max(0, a.p_limit ?? 0))
+          .map(([cell, tz]) => ({ cell, tz })),
+      );
+    },
+    srv_weather_store: (a) => {
+      const row = {
+        cell_r7: String(a.p_cell),
+        tz: a.p_tz,
+        summary: a.p_summary,
+        fetched_at: new Date().toISOString(),
+      };
+      const old = cacheOf(row.cell_r7);
+      if (old) Object.assign(old, row);
+      else tables.weather_cache!.push(row);
+      return ok(null);
+    },
+    srv_weather_for_cell: (a) => {
+      const w = cacheOf(String(a.p_cell));
+      return ok(w ? [{ summary: w.summary, fetched_at: w.fetched_at }] : []);
+    },
+    // Nightly recompute ------------------------------------------------------------------------------------------
+    srv_recompute_batch: (a) => {
+      const after = a.p_after ?? '';
+      const limit = Math.min(1000, Math.max(0, a.p_limit ?? 0));
+      const page = tables
+        .plants!.filter((p) => p.status === 'alive' && p.id > after)
+        .sort((x, y) => cmp(x.id, y.id))
+        .slice(0, limit);
+      return ok(
+        page.map((p) => {
+          const s = tables.species!.find((r) => r.id === p.species_id);
+          const pr = profileOf(p.created_by);
+          const w = p.cell_r7 == null ? undefined : cacheOf(p.cell_r7);
+          return {
+            plant_id: p.id,
+            care_state: p.care_state ?? {},
+            watering_min: s?.watering_min ?? null,
+            watering_max: s?.watering_max ?? null,
+            interval_override: s?.check_interval_days ?? null,
+            pot_material: p.pot_material ?? 'unknown',
+            pot_size_cm: p.pot_size_cm ?? null,
+            light: p.light ?? 'unknown',
+            drainage: p.drainage ?? 'unknown',
+            indoor: p.indoor ?? true,
+            plan: isPremium(p.household_id) ? 'premium' : 'free',
+            tz: pr?.timezone ?? 'UTC',
+            country_code: pr?.country_code ?? null,
+            open_check_on: openCheckOf(p.id)?.due_on ?? null,
+            cell: p.cell_r7 ?? null,
+            weather_summary: w?.summary ?? null,
+            weather_fetched_at: w?.fetched_at ?? null,
+          };
+        }),
+      );
+    },
+    srv_recompute_plant: (a) => {
+      const isObject = (v: unknown) => typeof v === 'object' && v !== null && !Array.isArray(v);
+      if (!isObject(a.p_state)) return err('22023', 'state must be an object');
+      if (!a.p_next_check_on || !a.p_today)
+        return err('22023', 'next check and today are required');
+      const p = tables.plants!.find((r) => r.id === a.p_plant_id);
+      if (!p || p.status !== 'alive') return ok('closed');
+      const stored = p.care_state ?? {};
+      if (!jsonEqual(stored, a.p_expected_state)) return ok('conflict');
+      const task = openCheckOf(p.id);
+      const dateIt = !task || (task.due_on > a.p_today && task.due_on !== a.p_next_check_on);
+      if (dateIt && a.p_next_check_on <= a.p_today)
+        return err('22023', 'a check is never dated before tomorrow');
+      let changed = false;
+      if (!jsonEqual(stored, a.p_state)) {
+        p.care_state = structuredClone(a.p_state);
+        changed = true;
+      }
+      if (dateIt) {
+        if (task) task.due_on = a.p_next_check_on;
+        else
+          tables.care_tasks!.push({
+            id: crypto.randomUUID(),
+            plant_id: p.id,
+            household_id: p.household_id,
+            kind: 'check',
+            due_on: a.p_next_check_on,
+            status: 'due',
+          });
+        changed = true;
+      }
+      return ok(changed ? 'updated' : 'unchanged');
+    },
   };
   fake.rpcImpl = registry; // tests may add or override an rpc (for example the anon-callable public_label)
   fake.rpc = (fn: string, args: Record<string, any> = {}) => {
@@ -642,6 +803,31 @@ export function fakeDb(seed: Record<string, any> = {}): FakeDb {
   };
 
   return fake as FakeDb;
+}
+
+/** jsonb equality: key order does not matter. */
+function jsonEqual(a: unknown, b: unknown): boolean {
+  const canon = (v: unknown): unknown =>
+    Array.isArray(v)
+      ? v.map(canon)
+      : v && typeof v === 'object'
+        ? Object.fromEntries(
+            Object.keys(v)
+              .sort()
+              .map((k) => [k, canon((v as Row)[k])]),
+          )
+        : v;
+  return a != null && b != null && JSON.stringify(canon(a)) === JSON.stringify(canon(b));
+}
+
+/** `6 hours`, `0 seconds`, `30 minutes`, `1 day` in milliseconds; null when unreadable. */
+function intervalMs(text: unknown): number | null {
+  const m = /^(\d+)\s*(second|minute|hour|day)s?$/.exec(String(text ?? '').trim());
+  if (!m) return null;
+  const unit = { second: 1000, minute: 60_000, hour: 3_600_000, day: 86_400_000 }[
+    m[2] as 'second' | 'minute' | 'hour' | 'day'
+  ];
+  return Number(m[1]) * unit;
 }
 
 /** privacy_zones rows carry `centerLatLng` for inspection; the handler writes `center` as EWKT. */
