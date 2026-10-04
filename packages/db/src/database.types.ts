@@ -25,16 +25,22 @@ export type Database = {
           Tables: {
             "care_events": {
                   Row: {
-                    "client_id": string | null,"created_at": string,"household_id": string,"id": string,"kind": string,"leaf_states": (string)[],"new_status": string | null,"next_check_on": string | null,"occurred_at": string,"photo_path": string | null,"plant_id": string,"soil_dry": boolean | null,"task_id": string | null,"user_id": string | null,"water_task_created": boolean | null
+                    "client_id": string | null,"created_at": string,"diagnosis_id": string | null,"household_id": string,"id": string,"kind": string,"leaf_states": (string)[],"new_status": string | null,"next_check_on": string | null,"occurred_at": string,"photo_path": string | null,"plant_id": string,"soil_dry": boolean | null,"task_id": string | null,"user_id": string | null,"water_task_created": boolean | null
                   }
                   Insert: {
-                    "client_id"?: string | null,"created_at"?: string,"household_id": string,"id"?: string,"kind": string,"leaf_states"?: (string)[],"new_status"?: string | null,"next_check_on"?: string | null,"occurred_at": string,"photo_path"?: string | null,"plant_id": string,"soil_dry"?: boolean | null,"task_id"?: string | null,"user_id"?: string | null,"water_task_created"?: boolean | null
+                    "client_id"?: string | null,"created_at"?: string,"diagnosis_id"?: string | null,"household_id": string,"id"?: string,"kind": string,"leaf_states"?: (string)[],"new_status"?: string | null,"next_check_on"?: string | null,"occurred_at": string,"photo_path"?: string | null,"plant_id": string,"soil_dry"?: boolean | null,"task_id"?: string | null,"user_id"?: string | null,"water_task_created"?: boolean | null
                   }
                   Update: {
-                    "client_id"?: string | null,"created_at"?: string,"household_id"?: string,"id"?: string,"kind"?: string,"leaf_states"?: (string)[],"new_status"?: string | null,"next_check_on"?: string | null,"occurred_at"?: string,"photo_path"?: string | null,"plant_id"?: string,"soil_dry"?: boolean | null,"task_id"?: string | null,"user_id"?: string | null,"water_task_created"?: boolean | null
+                    "client_id"?: string | null,"created_at"?: string,"diagnosis_id"?: string | null,"household_id"?: string,"id"?: string,"kind"?: string,"leaf_states"?: (string)[],"new_status"?: string | null,"next_check_on"?: string | null,"occurred_at"?: string,"photo_path"?: string | null,"plant_id"?: string,"soil_dry"?: boolean | null,"task_id"?: string | null,"user_id"?: string | null,"water_task_created"?: boolean | null
                   }
                   Relationships: [
                     {
+      foreignKeyName: "care_events_diagnosis_id_fkey"
+      columns: ["diagnosis_id"]
+isOneToOne: false
+      referencedRelation: "diagnoses"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "care_events_household_id_fkey"
       columns: ["household_id"]
 isOneToOne: false
@@ -227,13 +233,13 @@ isOneToOne: false
                   ]
                 },"observations": {
                   Row: {
-                    "capture_source": string,"confidence": number | null,"confirmed_at": string | null,"created_at": string,"device_time": string,"health_requested": boolean,"household_id": string | null,"id": string,"image_hash": string | null,"integrity": NonNullable<Json>,"intent": string | null,"no_points_reason": string | null,"organs": (string)[],"place_type": string | null,"plant_id": string | null,"points_status": string,"public_cell_r5": number | null,"species_id": string | null,"status": string,"suggestions": NonNullable<Json>,"user_id": string
+                    "capture_source": string,"confidence": number | null,"confirmed_at": string | null,"created_at": string,"device_time": string,"health_requested": boolean,"health_result": Json | null,"household_id": string | null,"id": string,"image_hash": string | null,"integrity": NonNullable<Json>,"intent": string | null,"no_points_reason": string | null,"organs": (string)[],"place_type": string | null,"plant_id": string | null,"points_status": string,"public_cell_r5": number | null,"species_id": string | null,"status": string,"suggestions": NonNullable<Json>,"user_id": string
                   }
                   Insert: {
-                    "capture_source": string,"confidence"?: number | null,"confirmed_at"?: string | null,"created_at"?: string,"device_time": string,"health_requested"?: boolean,"household_id"?: string | null,"id"?: string,"image_hash"?: string | null,"integrity"?: NonNullable<Json>,"intent"?: string | null,"no_points_reason"?: string | null,"organs"?: (string)[],"place_type"?: string | null,"plant_id"?: string | null,"points_status"?: string,"public_cell_r5"?: number | null,"species_id"?: string | null,"status"?: string,"suggestions"?: NonNullable<Json>,"user_id": string
+                    "capture_source": string,"confidence"?: number | null,"confirmed_at"?: string | null,"created_at"?: string,"device_time": string,"health_requested"?: boolean,"health_result"?: Json | null,"household_id"?: string | null,"id"?: string,"image_hash"?: string | null,"integrity"?: NonNullable<Json>,"intent"?: string | null,"no_points_reason"?: string | null,"organs"?: (string)[],"place_type"?: string | null,"plant_id"?: string | null,"points_status"?: string,"public_cell_r5"?: number | null,"species_id"?: string | null,"status"?: string,"suggestions"?: NonNullable<Json>,"user_id": string
                   }
                   Update: {
-                    "capture_source"?: string,"confidence"?: number | null,"confirmed_at"?: string | null,"created_at"?: string,"device_time"?: string,"health_requested"?: boolean,"household_id"?: string | null,"id"?: string,"image_hash"?: string | null,"integrity"?: NonNullable<Json>,"intent"?: string | null,"no_points_reason"?: string | null,"organs"?: (string)[],"place_type"?: string | null,"plant_id"?: string | null,"points_status"?: string,"public_cell_r5"?: number | null,"species_id"?: string | null,"status"?: string,"suggestions"?: NonNullable<Json>,"user_id"?: string
+                    "capture_source"?: string,"confidence"?: number | null,"confirmed_at"?: string | null,"created_at"?: string,"device_time"?: string,"health_requested"?: boolean,"health_result"?: Json | null,"household_id"?: string | null,"id"?: string,"image_hash"?: string | null,"integrity"?: NonNullable<Json>,"intent"?: string | null,"no_points_reason"?: string | null,"organs"?: (string)[],"place_type"?: string | null,"plant_id"?: string | null,"points_status"?: string,"public_cell_r5"?: number | null,"species_id"?: string | null,"status"?: string,"suggestions"?: NonNullable<Json>,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -296,13 +302,13 @@ isOneToOne: false
                   ]
                 },"plants": {
                   Row: {
-                    "care_state": NonNullable<Json>,"client_id": string | null,"created_at": string,"created_by": string | null,"death_cause": string | null,"drainage": string,"household_id": string,"id": string,"indoor": boolean,"label_code": string | null,"light": string,"nickname": string,"observation_id": string | null,"parent_plant_id": string | null,"photo_path": string | null,"pot_material": string,"pot_size_cm": number | null,"room": string | null,"source": string,"species_id": string,"status": string,"status_at": string | null,"updated_at": string
+                    "care_state": NonNullable<Json>,"cell_r7": number | null,"client_id": string | null,"created_at": string,"created_by": string | null,"death_cause": string | null,"drainage": string,"household_id": string,"id": string,"indoor": boolean,"label_code": string | null,"light": string,"nickname": string,"observation_id": string | null,"parent_plant_id": string | null,"photo_path": string | null,"pot_material": string,"pot_size_cm": number | null,"room": string | null,"source": string,"species_id": string,"status": string,"status_at": string | null,"updated_at": string
                   }
                   Insert: {
-                    "care_state"?: NonNullable<Json>,"client_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"death_cause"?: string | null,"drainage"?: string,"household_id": string,"id"?: string,"indoor"?: boolean,"label_code"?: string | null,"light"?: string,"nickname": string,"observation_id"?: string | null,"parent_plant_id"?: string | null,"photo_path"?: string | null,"pot_material"?: string,"pot_size_cm"?: number | null,"room"?: string | null,"source": string,"species_id": string,"status"?: string,"status_at"?: string | null,"updated_at"?: string
+                    "care_state"?: NonNullable<Json>,"cell_r7"?: number | null,"client_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"death_cause"?: string | null,"drainage"?: string,"household_id": string,"id"?: string,"indoor"?: boolean,"label_code"?: string | null,"light"?: string,"nickname": string,"observation_id"?: string | null,"parent_plant_id"?: string | null,"photo_path"?: string | null,"pot_material"?: string,"pot_size_cm"?: number | null,"room"?: string | null,"source": string,"species_id": string,"status"?: string,"status_at"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "care_state"?: NonNullable<Json>,"client_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"death_cause"?: string | null,"drainage"?: string,"household_id"?: string,"id"?: string,"indoor"?: boolean,"label_code"?: string | null,"light"?: string,"nickname"?: string,"observation_id"?: string | null,"parent_plant_id"?: string | null,"photo_path"?: string | null,"pot_material"?: string,"pot_size_cm"?: number | null,"room"?: string | null,"source"?: string,"species_id"?: string,"status"?: string,"status_at"?: string | null,"updated_at"?: string
+                    "care_state"?: NonNullable<Json>,"cell_r7"?: number | null,"client_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"death_cause"?: string | null,"drainage"?: string,"household_id"?: string,"id"?: string,"indoor"?: boolean,"label_code"?: string | null,"light"?: string,"nickname"?: string,"observation_id"?: string | null,"parent_plant_id"?: string | null,"photo_path"?: string | null,"pot_material"?: string,"pot_size_cm"?: number | null,"room"?: string | null,"source"?: string,"species_id"?: string,"status"?: string,"status_at"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -492,6 +498,11 @@ isOneToOne: false
 "srv_plantdex_record":
 { Args: { "p_category": string,"p_found_at": string,"p_observation_id": string,"p_species_id": string,"p_uid": string }; Returns: Json
                            },
+"srv_plants_missing_cell":
+{ Args: { "p_limit": number }; Returns: {
+              "owner_tz": string,"plant_id": string,"zone_lat": number,"zone_lng": number
+            }[]
+                           },
 "srv_point_in_zone":
 { Args: { "p_lat": number,"p_lng": number,"p_uid": string }; Returns: boolean
                            },
@@ -504,11 +515,27 @@ isOneToOne: false
 "srv_reserve_usage":
 { Args: { "p_kind": string,"p_limit": number,"p_period_key": string,"p_uid": string }; Returns: Json
                            },
+"srv_set_plant_cells":
+{ Args: { "p_cells": Json }; Returns: number
+                           },
 "srv_set_plant_status":
 { Args: { "p_base_days": number,"p_death_cause": string,"p_now": string,"p_plant_id": string,"p_status": string,"p_today": string,"p_uid": string }; Returns: Json
                            },
 "srv_store_provider":
 { Args: { "p_access_token": string,"p_observation_id": string,"p_provider": string,"p_raw": Json,"p_uid": string }; Returns: undefined
+                           },
+"srv_weather_cells_due":
+{ Args: { "p_limit": number,"p_older_than": string }; Returns: {
+              "cell": string,"tz": string
+            }[]
+                           },
+"srv_weather_for_cell":
+{ Args: { "p_cell": string }; Returns: {
+              "fetched_at": string,"summary": Json
+            }[]
+                           },
+"srv_weather_store":
+{ Args: { "p_cell": string,"p_summary": Json,"p_tz": string }; Returns: undefined
                            }
           }
           Enums: {
