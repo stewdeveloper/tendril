@@ -1,6 +1,7 @@
 import {
   checkInAnsweredNo,
   checkInQuestion,
+  offlineSaved,
   radius,
   streakContinues,
   type LeafState,
@@ -140,14 +141,14 @@ export function CheckInSheet(props: CheckInSheetProps) {
               We&apos;ve added a watering task for today.
             </AppText>
             {props.offline ? (
-              <Note tone="dark" text="You're offline. Saved, and it will sync when you're back." />
+              <Note tone="dark" text={offlineSaved} />
             ) : null}
           </>
         ) : (
           <>
             <AppText variant="title">{checkInAnsweredNo(props.nextCheckWeekday)}</AppText>
             {props.state === 'saved_offline' ? (
-              <Note tone="dark" text="You're offline. Saved, and it will sync when you're back." />
+              <Note tone="dark" text={offlineSaved} />
             ) : streakDays != null && streakDays > 0 ? (
               <AppText variant="sub" color="textSecondary">
                 {streakContinues(streakDays)}

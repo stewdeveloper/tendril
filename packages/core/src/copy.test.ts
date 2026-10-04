@@ -6,6 +6,7 @@ import {
   freezesHeldLine,
   freezesHeldShort,
   leaguePointsLine,
+  offlineSaved,
   streakBroken,
   taskDoneTitle,
   weeksLabel,
@@ -102,5 +103,11 @@ describe('today copy', () => {
       'All done for today. Next check: Spidey, tomorrow.',
     );
     expect(allDoneToday()).toBe('All done for today.');
+  });
+});
+
+describe('offlineSaved', () => {
+  it('is the one sanctioned offline note', () => {
+    expect(offlineSaved).toBe("You're offline. Saved, and it will sync when you're back.");
   });
 });

@@ -126,6 +126,9 @@ export const todayCopy = {
   invite: 'Invite a friend to earn a freeze',
 } as const;
 
+/** The note under a check-in that was saved without a connection (4e, and an offline Yes). */
+export const offlineSaved = "You're offline. Saved, and it will sync when you're back.";
+
 /** "1 freeze held", "2 freezes held": the line under the Today streak tiles (2e). */
 export const freezesHeldLine = (n: number) => `${n} ${n === 1 ? 'freeze' : 'freezes'} held`;
 /** "1 held": the Freezes row on Streaks (4f, 4g). */
