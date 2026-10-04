@@ -417,3 +417,11 @@ enabled = true
 [functions.health]
 verify_jwt = false
 import_map = "./functions/deno.json"
+
+[functions.me]
+verify_jwt = false
+import_map = "./functions/deno.json"
+
+[functions.identify]
+verify_jwt = false
+import_map = "./functions/deno.json"
