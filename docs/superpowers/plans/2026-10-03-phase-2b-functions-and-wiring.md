@@ -524,7 +524,7 @@ git commit -m "feat(functions): Plant.id provider with fixtures, fake provider a
   - Task 2 shared modules
   - Task 3 providers
   - from core: `randomizeZone`, `monthKey`, `nextMonthStart`, `QUOTA_LIMITS`
-  - the Phase 2A tables and `private.reserve_usage`/`release_usage`/`is_premium` (called through `db.rpc` on schema `private`; expose the three functions to PostgREST via `db.schema('private')`). The database helpers are reached by an `rpc` wrapper in `_shared/db.ts`: `callPrivate(db, fn, args)`, which uses a `SECURITY DEFINER` `public.srv_*` wrapper granted only to `service_role`. Add a migration `<ts>_server_rpcs.sql` with `public.srv_reserve_usage`, `public.srv_release_usage` and `public.srv_is_premium`, each delegating to `private.*`, with execute revoked from `anon` and `authenticated` and granted to `service_role`. Add a pgTAP test that `authenticated` cannot execute them.
+  - the Phase 2A tables and `private.reserve_usage`/`release_usage`/`is_premium` (never expose schema `private` to PostgREST). The database helpers are reached by an `rpc` wrapper in `_shared/db.ts`: `callPrivate(db, fn, args)`, which uses a `SECURITY DEFINER` `public.srv_*` wrapper granted only to `service_role`. Add a migration `<ts>_server_rpcs.sql` with `public.srv_reserve_usage`, `public.srv_release_usage` and `public.srv_is_premium`, each delegating to `private.*`, with execute revoked from `anon` and `authenticated` and granted to `service_role`. Add a pgTAP test that `authenticated` cannot execute them.
 - Produces:
   - **`me` routes:**
     - `POST /bootstrap` (`BootstrapRequest`) is idempotent. It creates the profile (handle = requested, or `plant` + 6 random digits until unique), a household "Home" with an owner membership, and returns `BootstrapResponse`. `ageConfirmed13Plus` must be `true`, otherwise 400.
@@ -532,19 +532,19 @@ git commit -m "feat(functions): Plant.id provider with fixtures, fake provider a
     - `PUT /pets` replaces the household's pets. The user must be a member.
     - `PUT /vet`.
     - `PUT /home-area` stores `randomizeZone(home, radiusM, crypto-random)` and never the original point. `DELETE /home-area`.
-    - `POST /push-token` upserts.
+    - `POST /push-token` upserts on the token and reassigns the owner (`push_tokens.token` is unique across users, so a shared device follows the signed-in account).
   - **`identify` route:** `POST /` (`IdentifyRequest`, header `X-Firebase-AppCheck`) returns `IdentifyResponse`. In order:
     1. Require the user, and validate the photos: 1–5, each path starting with `<uid>/`.
     2. Load the profile's timezone and premium status.
     3. Reserve the identification quota (plus the diagnosis quota when `healthCheck`). On refusal, throw `quota_exceeded` with details `{ kind, limit, resetsOn, plan }`.
-    4. Insert the observation (`pending`), the location (with the cells) and the photo rows.
-    5. Download each photo, strip EXIF, assert there's no GPS, re-upload with upsert, and compute the SHA-256. The first photo's hash becomes `image_hash`.
+    4. Download each photo, strip EXIF, assert there's no GPS, re-upload with upsert through the service role (clients have no update or delete policy on the bucket), and compute the SHA-256. The first photo's hash becomes `image_hash`.
+    5. Insert the observation (`pending`), the location (with the cells) and the photo rows. `observation_photos.sha256` is NOT NULL, so hashing comes first.
     6. Call the provider.
        - Not a plant: status `not_a_plant`, release every reservation, return `state: 'not_a_plant'`.
        - Provider error: status `failed`, release every reservation, rethrow `provider_unavailable`.
     7. Upsert the suggested species, by `provider_entity_id`, then by scientific name. The slug is `kebab-case(common name)`, falling back to the scientific name, with `-2` and so on if taken.
     8. Store the suggestions JSON, the confidence and the provider token in `private.observation_provider` (through a `public.srv_store_provider` wrapper, as above).
-    9. Read the toxicity rows for the top suggestion.
+    9. Read the toxicity rows for the top suggestion. If that species has none, fall back to the genus-level species row: same genus, with `scientific_name` equal to the genus, as the seed stores *Spathiphyllum*, *Dieffenbachia*, *Phalaenopsis* and so on. Plant.id returns species-level names, and a peace lily must not read Unknown. Add a test for the fallback.
     10. Return the response, with `integrity.appCheck` stored on the observation.
   - **`fake-db.ts`:** a minimal in-memory implementation of the subset of the supabase-js query builder the handlers use (`from().select().eq().maybeSingle()`, `insert`, `upsert`, `update`, `rpc`, `storage.from().download/upload`), so handler unit tests run without the stack. Keep it small. The integration test in Task 7 covers the real database.
 

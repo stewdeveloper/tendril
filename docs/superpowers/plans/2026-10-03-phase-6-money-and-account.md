@@ -79,6 +79,7 @@
   - `private.apple_credentials(user_id uuid pk references auth.users on delete cascade, refresh_token_enc text, iv text, created_at)`
   - `public.household_handovers(id, household_id, from_user, to_user, starts_on date, ends_on date, created_at, ended_at)`: household members can read it
   - `public.household_invites(code text pk, household_id, created_by, created_at, accepted_by, accepted_at, expires_at)`: the creator can read their own
+  - Co-members must see each other's display names (`Household.members[].name`), but `profiles` is owner-only. Add a `public.household_member_profiles` security-invoker view or a `srv_*` RPC returning `(household_id, user_id, display_name, handle)` for households in `private.my_household_ids()`, with a test that a non-member sees nothing. Phase 2A's outsider matrix and the pinned SELECT list in `015-hardening` must be updated to match.
   - `public.srv_set_store_entitlement(uid uuid, active_until timestamptz, store text, product_id text, environment text)`: service role only; upserts `source='store'`
 
 - [ ] **Step 1: Write the failing test** (`100-money-account.test.sql`):
