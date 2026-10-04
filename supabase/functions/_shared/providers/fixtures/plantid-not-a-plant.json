@@ -1,0 +1,27 @@
+{
+  "access_token": "tok-not-a-plant",
+  "model_version": "plant_id:example",
+  "custom_id": null,
+  "input": {
+    "latitude": 53.3,
+    "longitude": -6.2,
+    "similar_images": true,
+    "images": ["https://plant.id/media/imgs/example.jpg"],
+    "datetime": "2026-10-03T10:00:00.000Z"
+  },
+  "result": {
+    "is_plant": {
+      "probability": 0.04,
+      "threshold": 0.5,
+      "binary": false
+    },
+    "classification": {
+      "suggestions": []
+    }
+  },
+  "status": "COMPLETED",
+  "sla_compliant_client": true,
+  "sla_compliant_system": true,
+  "created": 1759485600.0,
+  "completed": 1759485601.2
+}

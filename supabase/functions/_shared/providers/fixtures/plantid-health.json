@@ -1,0 +1,138 @@
+{
+  "access_token": "tok-health",
+  "model_version": "plant_id:example",
+  "custom_id": null,
+  "input": {
+    "latitude": 53.3,
+    "longitude": -6.2,
+    "similar_images": true,
+    "images": ["https://plant.id/media/imgs/example.jpg"],
+    "datetime": "2026-10-03T10:00:00.000Z"
+  },
+  "result": {
+    "is_plant": {
+      "probability": 0.98,
+      "threshold": 0.5,
+      "binary": true
+    },
+    "classification": {
+      "suggestions": [
+        {
+          "id": "a1b2c3d4e5f60001",
+          "name": "Spathiphyllum",
+          "probability": 0.94,
+          "similar_images": [
+            {
+              "id": "a1b2c3d4e5f60001-s1",
+              "url": "https://plant-id.example/similar/a1b2c3d4e5f60001.jpg",
+              "url_small": "https://plant-id.example/similar/a1b2c3d4e5f60001-small.jpg",
+              "similarity": 0.846,
+              "citation": "Example contributor",
+              "license_name": "CC BY-SA 4.0",
+              "license_url": "https://creativecommons.org/licenses/by-sa/4.0/"
+            }
+          ],
+          "details": {
+            "common_names": ["peace lily"],
+            "taxonomy": {
+              "kingdom": "Plantae",
+              "phylum": "Tracheophyta",
+              "class": "Liliopsida",
+              "order": "Alismatales",
+              "family": "Araceae",
+              "genus": "Spathiphyllum"
+            },
+            "rank": "genus",
+            "gbif_id": 2868323,
+            "image": {
+              "value": "https://plant-id.example/images/a1b2c3d4e5f60001.jpg",
+              "citation": "Example contributor",
+              "license_name": "CC BY-SA 4.0",
+              "license_url": "https://creativecommons.org/licenses/by-sa/4.0/"
+            },
+            "watering": {
+              "min": 2,
+              "max": 3
+            },
+            "best_light_condition": "Bright indirect light; tolerates low light.",
+            "language": "en",
+            "entity_id": "a1b2c3d4e5f60001"
+          }
+        },
+        {
+          "id": "a1b2c3d4e5f60002",
+          "name": "Anthurium andraeanum",
+          "probability": 0.03,
+          "similar_images": [
+            {
+              "id": "a1b2c3d4e5f60002-s1",
+              "url": "https://plant-id.example/similar/a1b2c3d4e5f60002.jpg",
+              "url_small": "https://plant-id.example/similar/a1b2c3d4e5f60002-small.jpg",
+              "similarity": 0.027,
+              "citation": "Example contributor",
+              "license_name": "CC BY-SA 4.0",
+              "license_url": "https://creativecommons.org/licenses/by-sa/4.0/"
+            }
+          ],
+          "details": {
+            "common_names": ["flamingo flower"],
+            "taxonomy": {
+              "kingdom": "Plantae",
+              "phylum": "Tracheophyta",
+              "class": "Liliopsida",
+              "order": "Alismatales",
+              "family": "Araceae",
+              "genus": "Anthurium"
+            },
+            "rank": "species",
+            "gbif_id": 2868210,
+            "image": {
+              "value": "https://plant-id.example/images/a1b2c3d4e5f60002.jpg",
+              "citation": "Example contributor",
+              "license_name": "CC BY-SA 4.0",
+              "license_url": "https://creativecommons.org/licenses/by-sa/4.0/"
+            },
+            "watering": {
+              "min": 2,
+              "max": 3
+            },
+            "best_light_condition": "Bright indirect light.",
+            "language": "en",
+            "entity_id": "a1b2c3d4e5f60002"
+          }
+        }
+      ]
+    },
+    "is_healthy": {
+      "probability": 0.18,
+      "threshold": 0.525,
+      "binary": false
+    },
+    "disease": {
+      "question": null,
+      "suggestions": [
+        {
+          "id": "d1e2f3a4b5c60001",
+          "name": "overwatering",
+          "probability": 0.72,
+          "similar_images": [],
+          "details": {
+            "language": "en",
+            "entity_id": "d1e2f3a4b5c60001",
+            "local_name": "Overwatering",
+            "description": "Too much water keeps the roots wet, so leaves yellow and droop.",
+            "treatment": {
+              "prevention": ["Water only when the top of the soil is dry"]
+            },
+            "cause": "Watering too often or poor drainage"
+          }
+        }
+      ]
+    }
+  },
+  "status": "COMPLETED",
+  "sla_compliant_client": true,
+  "sla_compliant_system": true,
+  "created": 1759485600.0,
+  "completed": 1759485601.2
+}
