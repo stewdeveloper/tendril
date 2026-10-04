@@ -41,18 +41,16 @@ export function router(prefix: string, routes: Route[]): (req: Request) => Promi
       return withHeaders(new Response(null, { status: 204 }), requestId);
     try {
       const path = subPath(new URL(req.url).pathname, prefix);
-      let pathMatched = false;
       for (const route of routes) {
         const match = route.pattern.exec({ pathname: path });
         if (!match) continue;
-        pathMatched = true;
         if (route.method !== req.method) continue;
         const params: Record<string, string> = {};
         for (const [k, v] of Object.entries(match.pathname.groups))
           if (v !== undefined) params[k] = v;
         return withHeaders(await route.handle(req, params), requestId);
       }
-      throw new ApiError('not_found', pathMatched ? 'Method not allowed.' : 'Route not found.');
+      throw new ApiError('not_found', 'Route not found.');
     } catch (e) {
       return withHeaders(errorResponse(e, requestId), requestId);
     }

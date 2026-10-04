@@ -22,7 +22,10 @@ export function secretKey(): string {
 
 const LOCAL_HOSTS = new Set(['kong', 'localhost', '127.0.0.1', 'host.docker.internal']);
 
-/** True on the local Supabase stack; Task 3 uses it to choose fail-closed defaults. */
+/**
+ * True on the local Supabase stack; Task 3 uses it to choose fail-closed defaults.
+ * TENDRIL_LOCAL must never be set in production: it switches the defaults to dev/fake.
+ */
 export function isLocalStack(): boolean {
   if (Deno.env.get('TENDRIL_LOCAL') === '1') return true;
   const url = Deno.env.get('SUPABASE_URL');

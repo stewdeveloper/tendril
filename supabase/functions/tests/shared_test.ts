@@ -1,4 +1,4 @@
-// The GPS fixture (tests/fixtures/gps.jpg) is generated once with:
+// The JPEG fixtures (gps.jpg, xmp.jpg, plain.jpg) are generated once with:
 //   deno run --config supabase/functions/deno.json --allow-write supabase/functions/tests/fixtures/make-gps-fixture.ts
 import { assertEquals, assertRejects } from '@std/assert';
 import { ApiError, errorResponse, statusFor } from '../_shared/errors.ts';
@@ -94,14 +94,40 @@ Deno.test('stripExif removes GPS from a JPEG', async () => {
   await assertRejects(() => assertNoGps(withGps), ApiError);
 });
 
-Deno.test('stripExif rejects non-JPEG bytes', () => {
-  let code = '';
-  try {
-    stripExif(new Uint8Array([1, 2, 3]));
-  } catch (e) {
-    code = (e as ApiError).code;
+const fixture = (name: string) => Deno.readFile(new URL(`./fixtures/${name}`, import.meta.url));
+
+Deno.test('stripExif removes XMP, IPTC and COM segments and assertNoGps agrees', async () => {
+  const withXmp = await fixture('xmp.jpg');
+  await assertRejects(() => assertNoGps(withXmp), ApiError);
+  const stripped = stripExif(withXmp);
+  await assertNoGps(stripped);
+  const text = new TextDecoder('latin1').decode(stripped);
+  assertEquals(text.includes('GPSLatitude'), false);
+  assertEquals(text.includes('taken at home'), false);
+});
+
+Deno.test('stripExif round-trips a metadata-free JPEG', async () => {
+  const plain = await fixture('plain.jpg');
+  const out = stripExif(plain);
+  assertEquals([out[0], out[1]], [0xff, 0xd8]);
+  assertEquals([out[out.length - 2], out[out.length - 1]], [0xff, 0xd9]);
+  assertEquals(out, plain);
+  await assertNoGps(out);
+});
+
+Deno.test('stripExif rejects PNG, truncated and empty input with invalid_input', async () => {
+  const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+  const gps = await fixture('gps.jpg');
+  const inputs = [png, new Uint8Array(0), gps.subarray(0, 30), gps.subarray(0, gps.length - 2)];
+  for (const input of inputs) {
+    let code = '';
+    try {
+      stripExif(input);
+    } catch (e) {
+      code = (e as ApiError).code;
+    }
+    assertEquals(code, 'invalid_input', `length ${input.length}`);
   }
-  assertEquals(code, 'invalid_input');
 });
 
 Deno.test('env, secretKey and isLocalStack', () => {
