@@ -54,6 +54,16 @@ describe('useStartScan', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/(tabs)/scan');
   });
 
+  it('navigates once when tapped twice before the quota read returns', async () => {
+    const { result } = await setup(new FixtureApi());
+    await act(async () => {
+      await Promise.all([result.current(), result.current()]);
+    });
+    expect(mockPush).toHaveBeenCalledTimes(1);
+    await act(() => result.current());
+    expect(mockPush).toHaveBeenCalledTimes(2);
+  });
+
   it('opens the camera when the quota cannot be read, and leaves the server to refuse', async () => {
     const api = new FixtureApi();
     api.getQuota = () => Promise.reject(new Error('offline'));

@@ -2,6 +2,22 @@ import { render, screen } from '@testing-library/react-native';
 import { Text } from 'react-native';
 import { TabBarVisibilityProvider, useHideTabBar, useTabBarHidden } from './TabBarVisibility';
 
+// A focus-aware stand-in: the effect runs while `mockFocus.current` is true, and is cleaned up
+// when it turns false, re-evaluated on each render.
+const mockFocus = { current: true };
+jest.mock('expo-router', () => ({
+  useFocusEffect: (effect: () => void | (() => void)) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { useEffect } = require('react');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => (mockFocus.current ? effect() : undefined), [effect, mockFocus.current]);
+  },
+}));
+
+beforeEach(() => {
+  mockFocus.current = true;
+});
+
 function Reader() {
   return <Text>{useTabBarHidden() ? 'hidden' : 'shown'}</Text>;
 }
@@ -45,6 +61,17 @@ describe('tab bar visibility', () => {
     expect(screen.getByText('hidden')).toBeTruthy();
     await view.rerender(tree(false, false));
     expect(screen.getByText('shown')).toBeTruthy();
+  });
+
+  it('hides the bar only while the calling screen is focused', async () => {
+    const view = await render(tree(true));
+    expect(screen.getByText('hidden')).toBeTruthy();
+    mockFocus.current = false;
+    await view.rerender(tree(true));
+    expect(screen.getByText('shown')).toBeTruthy();
+    mockFocus.current = true;
+    await view.rerender(tree(true));
+    expect(screen.getByText('hidden')).toBeTruthy();
   });
 
   it('does nothing outside a provider', async () => {

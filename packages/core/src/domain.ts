@@ -43,6 +43,8 @@ export interface ToxicityEntry {
   symptoms: string | null;
   sourceName: string | null;
   sourceUrl: string | null;
+  /** Set by the server (Phase 2B): whether a vet has reviewed this seed row yet. */
+  reviewStatus?: 'seed_pending_vet' | 'reviewed';
 }
 
 export interface CareBasics {
