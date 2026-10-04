@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatResetDate,
+  healthToggleLine,
   limitReachedBody,
   limitReachedLine,
   limitReachedTitle,
@@ -96,5 +97,26 @@ describe('limit reached title and body', () => {
       "You've used this month's diagnosis. More arrive on 1 November, or get 10 a month with Premium.",
     );
     expect(limitReachedLine({ ...free, used: 10 })).toBe(limitReachedBody({ ...free, used: 10 }));
+  });
+});
+
+describe('healthToggleLine (the camera health toggle)', () => {
+  const diagnosis = {
+    kind: 'diagnosis',
+    used: 0,
+    limit: 1,
+    resetsOn: '2026-11-01',
+    plan: 'free',
+  } as const;
+  it('names the one free diagnosis it uses', () => {
+    expect(healthToggleLine(diagnosis)).toBe('Uses your 1 diagnosis this month');
+  });
+  it('counts what is left for Premium', () => {
+    expect(healthToggleLine({ ...diagnosis, plan: 'premium', limit: 10, used: 3 })).toBe(
+      'Uses 1 of your 7 diagnoses this month',
+    );
+  });
+  it('says so when the month is used up', () => {
+    expect(healthToggleLine({ ...diagnosis, used: 1 })).toBe('Diagnosis used this month');
   });
 });

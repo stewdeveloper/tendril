@@ -14,6 +14,7 @@ import {
   streakBroken,
   taskDoneTitle,
   weeksLabel,
+  cameraCopy,
   checkInQuestion,
   copy,
   freezeUsed,
@@ -25,6 +26,7 @@ import {
   pointsPendingReview,
   PROPER_FIRST_WORDS,
   taskDueTitle,
+  trayCount,
   likelyResultLine,
   streakContinues,
   streakLastDay,
@@ -177,5 +179,21 @@ describe('emergency copy', () => {
     );
     expect(emergencyCopy.sourceLine('ASPCA', null)).toBe('Source: ASPCA.');
     expect(emergencyCopy.sourceLine(null, null)).toBeNull();
+  });
+});
+
+describe('camera copy', () => {
+  it('counts the tray out of five', () => {
+    expect(trayCount(0)).toBe('0 of 5');
+    expect(trayCount(2)).toBe('2 of 5');
+  });
+  it('never says safe', () => {
+    for (const line of Object.values(cameraCopy)) expect(line).not.toMatch(/\bsafe/i);
+  });
+  it('says what the label scanner wants and what it found', () => {
+    expect(cameraCopy.labelHint).toBe(
+      'Point the camera at the QR code on your Tendril plant label.',
+    );
+    expect(cameraCopy.notTendrilLabel).toBe("That's not a Tendril label.");
   });
 });

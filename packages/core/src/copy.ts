@@ -265,3 +265,33 @@ export const emergencyCopy = {
     return [source, match].filter(Boolean).join(' ') || null;
   },
 } as const;
+
+/** The camera, gallery and label-scan screens (2b, 4t, 4u and the label scanner). */
+export const cameraCopy = {
+  organLeaf: 'Leaf',
+  organFlower: 'Flower',
+  organWhole: 'Whole plant',
+  gallery: 'Gallery',
+  takePhoto: 'Take photo',
+  identify: 'Identify',
+  healthToggle: 'Check its health',
+  removePhoto: 'Remove photo',
+  deniedTitle: 'The camera is off for Tendril.',
+  deniedBody: 'Turn it on in Settings to scan plants. Gallery photos still work.',
+  deniedLabelBody: 'Turn it on in Settings to scan plant labels.',
+  openSettings: 'Open Settings',
+  chooseFromGallery: 'Choose from gallery',
+  galleryTitle: 'Choose photos',
+  gallerySub: 'Up to 5 photos of the same plant.',
+  galleryAdd: 'Add photos',
+  identifyFailed: "Couldn't identify that. Try again.",
+  photoFailed: "Couldn't use that photo. Try another.",
+  labelHint: 'Point the camera at the QR code on your Tendril plant label.',
+  notTendrilLabel: "That's not a Tendril label.",
+  addPhoto: 'Add a photo',
+  changePhoto: 'Change photo',
+  photoSourceTake: 'Take a photo',
+  photoSourceChoose: 'Choose from library',
+} as const;
+/** "2 of 5" under the camera's photo tray. */
+export const trayCount = (n: number) => `${n} of 5`;

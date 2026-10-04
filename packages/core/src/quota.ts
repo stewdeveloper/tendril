@@ -58,3 +58,15 @@ export function limitReachedLine(q: QuotaState): string {
     ? body
     : `${limitReachedTitle(q.kind, q.plan, q.limit)}. ${body}`;
 }
+
+/**
+ * The line under the camera's "Check its health" toggle (2b): what turning it on uses. A health
+ * check spends one diagnosis, so with none left the toggle says so instead.
+ */
+export function healthToggleLine(q: QuotaState): string {
+  const left = quotaLeft(q);
+  if (left === 0) return 'Diagnosis used this month';
+  return left === 1
+    ? 'Uses your 1 diagnosis this month'
+    : `Uses 1 of your ${left} diagnoses this month`;
+}
