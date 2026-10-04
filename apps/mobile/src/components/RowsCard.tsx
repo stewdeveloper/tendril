@@ -17,14 +17,21 @@ export interface Row {
   onPress?: () => void;
 }
 
+export interface RowsCardProps {
+  rows?: Row[];
+  /** Rows that draw themselves (a `PlantCard` with `variant="row"`), after any `rows`. */
+  children?: ReactNode;
+}
+
 /** A white card of rows with hairline dividers (4aq). Rows with `onPress` are buttons. */
-export function RowsCard({ rows }: { rows: Row[] }) {
+export function RowsCard({ rows = [], children }: RowsCardProps) {
   const { c } = useTheme();
   return (
     <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.hairline }]}>
       {rows.map((row) => (
         <RowView key={row.key} row={row} />
       ))}
+      {children}
     </View>
   );
 }

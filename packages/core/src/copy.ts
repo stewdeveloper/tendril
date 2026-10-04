@@ -15,6 +15,7 @@ export const copy = {
 export const checkInQuestion = (nickname: string) => `Is the top of ${nickname}'s soil dry?`;
 export const checkInAnsweredNo = (weekday: string) => `Good. We'll check again on ${weekday}.`;
 export const streakLastDay = (days: number) => `Your ${days}-day streak needs one check-in today.`;
+export const streakContinues = (days: number) => `Your ${days}-day streak continues.`;
 export const freezeUsed = (days: number) => `A freeze kept your ${days}-day streak going.`;
 export const previewEnding = () =>
   "Your Premium preview ends tomorrow. You'll go back to Free, and nothing is charged.";

@@ -54,6 +54,7 @@ export function SheetPanel({
   const { c } = useTheme();
   const insets = useInsets();
   const { height: windowHeight } = useWindowDimensions();
+  const maxHeight = Math.max(0, windowHeight - insets.top - TOP_GAP);
   return (
     <View
       testID="sheet-panel"
@@ -64,8 +65,10 @@ export function SheetPanel({
           // 42 pt on an iPhone 16: the 34 pt home-indicator inset plus 8.
           paddingBottom: Math.max(42, insets.bottom + 8),
           height: height === 'auto' ? undefined : height,
-          minHeight: height === 'auto' ? minHeight : undefined,
-          maxHeight: Math.max(0, windowHeight - insets.top - TOP_GAP),
+          // Never above the cap: a short window must not push the title past the top.
+          minHeight:
+            height === 'auto' && minHeight != null ? Math.min(minHeight, maxHeight) : undefined,
+          maxHeight,
         },
       ]}
     >

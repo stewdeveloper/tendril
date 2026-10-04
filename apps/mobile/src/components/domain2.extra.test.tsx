@@ -6,12 +6,14 @@ import { dayMonth, daysBetween, deviceToday, sinceLabel, weekdayName } from './d
 import {
   Button,
   CheckInSheet,
+  type CheckInSheetProps,
   FindMarker,
   LeagueRow,
   PhotoSlot,
   PlanCard,
   PlantCard,
   PlantdexTile,
+  RowsCard,
   TaskRow,
 } from './index';
 
@@ -104,6 +106,81 @@ describe('PlantCard states', () => {
     expect(StyleSheet.flatten(screen.getByText('Swiss cheese plant').props.style)).toMatchObject({
       fontFamily: 'Inter_400Regular_Italic',
     });
+  });
+});
+
+describe('PlantCard next check', () => {
+  it('an all-good plant checked tomorrow says Tomorrow, otherwise the weekday (4i)', async () => {
+    const { unmount } = await wrap(<PlantCard plant={lily} today="2026-10-04" onPress={noop} />);
+    expect(screen.getByText('Tomorrow')).toBeTruthy();
+    await unmount();
+    await wrap(<PlantCard plant={lily} today="2026-10-02" onPress={noop} />);
+    expect(screen.getByText('Monday')).toBeTruthy();
+    expect(screen.queryByText('Tomorrow')).toBeNull();
+  });
+  it('takes a plain summary: the closing date comes from statusOn', async () => {
+    const dead: PlantSummary = {
+      ...monty,
+      status: 'dead',
+      careState: 'closed',
+      statusOn: '2026-08-20',
+    };
+    await wrap(<PlantCard plant={dead} onPress={noop} />);
+    expect(screen.getByText('Died 20 Aug')).toBeTruthy();
+  });
+});
+
+describe('PlantCard row variant (4i)', () => {
+  const flat = (el: { props: { style?: unknown } }) =>
+    StyleSheet.flatten(el.props.style as never) as Record<string, unknown>;
+
+  it('is the frame row: no lead, plain type, 12/16 padding and a divider', async () => {
+    await wrap(<PlantCard plant={monty} variant="row" today={TODAY} onPress={noop} />);
+    expect(screen.queryByText('M', { hidden: true })).toBeNull();
+    expect(flat(screen.getByText('Monty'))).toMatchObject({
+      fontFamily: 'Inter_400Regular',
+      fontSize: 17,
+    });
+    expect(flat(screen.getByText('Swiss cheese plant'))).toMatchObject({
+      fontFamily: 'Inter_400Regular',
+      fontSize: 15,
+      lineHeight: 20,
+      color: '#56605A',
+    });
+    expect(flat(screen.getByText('Check today'))).toMatchObject({
+      fontFamily: 'Inter_500Medium',
+      fontSize: 13,
+      color: '#2E6B4E',
+    });
+    expect(flat(screen.getByRole('button'))).toMatchObject({
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      minHeight: 53,
+      borderBottomWidth: 1,
+      borderBottomColor: 'rgba(127,137,131,0.18)',
+      backgroundColor: 'transparent',
+    });
+  });
+  it('shows Tomorrow in the secondary colour and opens on press', async () => {
+    const onPress = jest.fn();
+    await wrap(<PlantCard plant={lily} variant="row" today="2026-10-04" onPress={onPress} />);
+    expect(flat(screen.getByText('Tomorrow'))).toMatchObject({ color: '#56605A' });
+    await fireEvent.press(screen.getByRole('button', { name: 'Lily, Peace lily, Tomorrow' }));
+    expect(onPress).toHaveBeenCalledTimes(1);
+  });
+  it('sits inside a RowsCard next to its own rows, and dims a closed plant', async () => {
+    const away = aoife.plantDetails['lily-given-away']!;
+    await wrap(
+      <RowsCard rows={[{ key: 'a', title: 'Plain row' }]}>
+        <PlantCard plant={monty} variant="row" today={TODAY} onPress={noop} />
+        <PlantCard plant={away} variant="row" today={TODAY} onPress={noop} />
+      </RowsCard>,
+    );
+    expect(screen.getByText('Plain row')).toBeTruthy();
+    expect(screen.getByText('Monty')).toBeTruthy();
+    expect(screen.getByText('Given away')).toBeTruthy();
+    expect(flat(screen.getByRole('button', { name: /Given away/ })).opacity).toBe(0.6);
+    expect(flat(screen.getByRole('button', { name: /Check today/ })).opacity).toBe(1);
   });
 });
 
@@ -227,6 +304,9 @@ describe('PlantdexTile states', () => {
   it('a sensitive species says its location is private', async () => {
     await wrap(<PlantdexTile species={orchid} found />);
     expect(screen.getByText('Location private')).toBeTruthy();
+    expect(screen.queryByText('Digitalis purpurea')).toBeNull();
+    // 4aj: a sensitive species shows no rarity.
+    expect(screen.queryByLabelText(/Rarity/)).toBeNull();
     expect(boldTexts('Early purple orchid')).toHaveLength(1);
   });
   it('missing names its set and never shows a species', async () => {
@@ -362,16 +442,18 @@ describe('PlanCard states', () => {
   });
 });
 
-const sheet = (over: Partial<React.ComponentProps<typeof CheckInSheet>> = {}) => (
+const sheet = (over: Record<string, unknown> = {}) => (
   <CheckInSheet
-    visible
-    plantNickname="Monty"
-    state="unanswered"
-    onAnswer={noop}
-    onAddPhoto={noop}
-    onClose={noop}
-    onDone={noop}
-    {...over}
+    {...({
+      visible: true,
+      plantNickname: 'Monty',
+      state: 'unanswered',
+      onAnswer: noop,
+      onAddPhoto: noop,
+      onClose: noop,
+      onDone: noop,
+      ...over,
+    } as CheckInSheetProps)}
   />
 );
 
@@ -449,10 +531,17 @@ describe('CheckInSheet states', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Done' }));
     expect(onDone).toHaveBeenCalledTimes(1);
   });
-  it('without a weekday the title does not name a bad day', async () => {
-    await wrap(sheet({ state: 'answered_no' }));
-    expect(screen.getByText("Good. We'll check again soon.")).toBeTruthy();
-    expect(screen.queryByText(/undefined/)).toBeNull();
+  it('says the weekday in the two states that name the next check, and the type insists on it', () => {
+    const base = { visible: true, plantNickname: 'Monty', onAnswer: noop } as const;
+    const handlers = { onAddPhoto: noop, onClose: noop, onDone: noop };
+    // @ts-expect-error answered_no names the next check, so it needs the weekday
+    const noDay = <CheckInSheet {...base} {...handlers} state="answered_no" />;
+    // @ts-expect-error so does saved_offline
+    const noDayOffline = <CheckInSheet {...base} {...handlers} state="saved_offline" />;
+    expect([noDay, noDayOffline]).toHaveLength(2);
+    // The question and the watering state do not.
+    expect(<CheckInSheet {...base} {...handlers} state="unanswered" />).toBeTruthy();
+    expect(<CheckInSheet {...base} {...handlers} state="answered_yes" />).toBeTruthy();
   });
   it('closes from the sheet header', async () => {
     const onClose = jest.fn();

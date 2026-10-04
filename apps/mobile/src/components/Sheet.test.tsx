@@ -183,6 +183,19 @@ describe('SheetPanel and SheetOverlay', () => {
     expect(style.height).toBeUndefined();
   });
 
+  it('clamps minHeight to the cap, so a short window never pushes the title off the top', async () => {
+    await render(
+      withInsets(
+        <SheetPanel title="Check-in" onClose={() => {}} minHeight={100000}>
+          <Text>x</Text>
+        </SheetPanel>,
+      ),
+    );
+    const style = StyleSheet.flatten(screen.getByTestId('sheet-panel').props.style);
+    expect(style.minHeight).toBe(Dimensions.get('window').height - 59 - 8);
+    expect(style.minHeight).toBe(style.maxHeight);
+  });
+
   it('ignores minHeight when the height is fixed', async () => {
     await render(
       withInsets(

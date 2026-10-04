@@ -263,6 +263,7 @@ const monty: PlantSummary = {
   nextCheckOn: '2026-10-03',
   pausedNote: null,
   photoUrl: null,
+  statusOn: null,
 };
 const spidey: PlantSummary = {
   id: 'spidey',
@@ -274,6 +275,7 @@ const spidey: PlantSummary = {
   nextCheckOn: '2026-10-02',
   pausedNote: null,
   photoUrl: null,
+  statusOn: null,
 };
 const lily: PlantSummary = {
   id: 'lily',
@@ -285,6 +287,7 @@ const lily: PlantSummary = {
   nextCheckOn: '2026-10-05',
   pausedNote: null,
   photoUrl: null,
+  statusOn: null,
 };
 
 const plants: PlantSummary[] = [monty, spidey, lily];
@@ -321,7 +324,6 @@ const plantDetails: Record<string, PlantDetail> = {
       { label: 'Watered', on: '2026-09-26' },
       { label: 'Added from a scan', on: '2026-08-02' },
     ],
-    statusOn: null,
     deathCause: null,
   },
   'lily-given-away': {

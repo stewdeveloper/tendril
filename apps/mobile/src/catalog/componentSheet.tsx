@@ -25,6 +25,7 @@ import {
   PlantdexTile,
   QuotaMeter,
   RarityBadge,
+  RowsCard,
   SheetPanel,
   Snackbar,
   StreakCounter,
@@ -265,11 +266,16 @@ frame('5e', 'Plant card', () => (
     <State label="Paused by a diagnosis">
       <PlantCard plant={paused} today={TODAY} onPress={noop} />
     </State>
-    <State label="Dead, kept in history">
-      <PlantCard plant={dead} today={TODAY} onPress={noop} />
+    <State label="Dead, then given away: both kept in history">
+      <View style={styles.pair}>
+        <PlantCard plant={dead} today={TODAY} onPress={noop} />
+        <PlantCard plant={givenAway} today={TODAY} onPress={noop} />
+      </View>
     </State>
-    <State label="Given away, kept in history">
-      <PlantCard plant={givenAway} today={TODAY} onPress={noop} />
+    <State label="Row variant, inside a RowsCard (4i)">
+      <RowsCard>
+        <PlantCard plant={monty} variant="row" today={TODAY} onPress={noop} />
+      </RowsCard>
     </State>
   </Page>
 ));
@@ -664,7 +670,7 @@ frame('5r', 'Snackbar', () => (
 
 const styles = StyleSheet.create({
   page: { flex: 1 },
-  content: { paddingHorizontal: 16, gap: 16 },
+  content: { paddingHorizontal: 16, gap: 12 },
   // A full-bleed page: the sheets span the screen, so the labels bring their own side padding.
   bleed: { paddingHorizontal: 0, gap: 10 },
   inset: { paddingHorizontal: 16 },
@@ -673,6 +679,7 @@ const styles = StyleSheet.create({
   start: { alignItems: 'flex-start' },
   rowCard: { overflow: 'hidden' },
   grid: { flexDirection: 'row', gap: 8, alignItems: 'stretch' },
+  pair: { gap: 8 },
   cell: { flex: 1, minWidth: 0 },
   map: { height: 132, borderRadius: 16, overflow: 'hidden' },
   marker: {

@@ -1,4 +1,10 @@
-import { checkInAnsweredNo, checkInQuestion, radius, type LeafState } from '@tendril/core';
+import {
+  checkInAnsweredNo,
+  checkInQuestion,
+  radius,
+  streakContinues,
+  type LeafState,
+} from '@tendril/core';
 import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText, useTheme } from '../theme';
@@ -16,21 +22,32 @@ export type CheckInState = 'unanswered' | 'answered_no' | 'answered_yes' | 'save
  */
 export type CheckInPresentation = 'modal' | 'overlay' | 'inline';
 
-export interface CheckInSheetProps {
+interface CheckInSheetBase {
   /** Shows or hides the `modal` presentation. The other two are drawn whenever they are mounted. */
   visible: boolean;
   plantNickname: string;
-  state: CheckInState;
-  /** "Friday": the day of the next check, named in the answered and offline states. */
-  nextCheckWeekday?: string;
   /** The care streak, named in the answered No state. */
   streakDays?: number;
+  /**
+   * Called once with the answer. The parent must then move `state` on (answered_no, answered_yes
+   * or saved_offline): until it does, both answers stay disabled so a second tap cannot record a
+   * second check-in.
+   */
   onAnswer: (dry: boolean, leaves: LeafState[]) => void;
   onAddPhoto: () => void;
   onClose: () => void;
   onDone: () => void;
   presentation?: CheckInPresentation;
 }
+
+export type CheckInSheetProps = CheckInSheetBase &
+  (
+    | { state: 'unanswered'; nextCheckWeekday?: string }
+    | { state: 'answered_yes'; nextCheckWeekday?: string }
+    // These two say when the next check is, so they cannot be drawn without the day.
+    | { state: 'answered_no'; nextCheckWeekday: string }
+    | { state: 'saved_offline'; nextCheckWeekday: string }
+  );
 
 const LEAF_OPTIONS: { value: LeafState; label: string }[] = [
   { value: 'healthy', label: 'Healthy' },
@@ -53,18 +70,18 @@ const ANSWERED_MIN_HEIGHT = 382;
  * Answering is a single tap and cannot be repeated until the state moves on, so a double tap
  * records one check-in. Finishing a watering task gets no celebration, in any state.
  */
-export function CheckInSheet({
-  visible,
-  plantNickname,
-  state,
-  nextCheckWeekday,
-  streakDays,
-  onAnswer,
-  onAddPhoto,
-  onClose,
-  onDone,
-  presentation = 'modal',
-}: CheckInSheetProps) {
+export function CheckInSheet(props: CheckInSheetProps) {
+  const {
+    visible,
+    plantNickname,
+    state,
+    streakDays,
+    onAnswer,
+    onAddPhoto,
+    onClose,
+    onDone,
+    presentation = 'modal',
+  } = props;
   const [leaves, setLeaves] = useState<LeafState[]>([]);
   const [answered, setAnswered] = useState(false);
 
@@ -84,9 +101,6 @@ export function CheckInSheet({
     onAnswer(dry, leaves);
   };
 
-  const next = nextCheckWeekday
-    ? checkInAnsweredNo(nextCheckWeekday)
-    : "Good. We'll check again soon.";
   let content: ReactNode;
   if (state === 'unanswered') {
     content = (
@@ -117,7 +131,7 @@ export function CheckInSheet({
   } else {
     content = (
       <View style={styles.result} accessibilityLiveRegion="polite">
-        {state === 'answered_yes' ? (
+        {props.state === 'answered_yes' ? (
           <>
             <AppText variant="title">{`Time to water ${plantNickname}.`}</AppText>
             <AppText variant="sub" color="textSecondary">
@@ -126,12 +140,12 @@ export function CheckInSheet({
           </>
         ) : (
           <>
-            <AppText variant="title">{next}</AppText>
-            {state === 'saved_offline' ? (
+            <AppText variant="title">{checkInAnsweredNo(props.nextCheckWeekday)}</AppText>
+            {props.state === 'saved_offline' ? (
               <Note tone="dark" text="You're offline. Saved, and it will sync when you're back." />
             ) : streakDays != null && streakDays > 0 ? (
               <AppText variant="sub" color="textSecondary">
-                {`Your ${streakDays}-day streak continues.`}
+                {streakContinues(streakDays)}
               </AppText>
             ) : null}
           </>

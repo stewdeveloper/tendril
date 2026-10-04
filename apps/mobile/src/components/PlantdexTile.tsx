@@ -23,7 +23,7 @@ const RING = 1.5;
 /**
  * One species in the Plantdex grid (2f). Found: photo, common name, scientific name in italics and
  * the rarity badge. Missing: a silhouette that reads "Not found yet" and names its set. A sensitive
- * species says "Location private" instead of anything about where it grows.
+ * species says "Location private" in place of its scientific name and shows no rarity (4aj).
  */
 export function PlantdexTile({ species, found, setName, photoUrl, onPress }: PlantdexTileProps) {
   const { c } = useTheme();
@@ -34,7 +34,7 @@ export function PlantdexTile({ species, found, setName, photoUrl, onPress }: Pla
             and the content after gives the same stacking. */}
         <View pointerEvents="none" style={[styles.ring, { borderColor: c.border }]} />
         <View style={[styles.silhouette, { backgroundColor: c.primaryTint }]}>
-          <CircleQuestionMark {...DECORATIVE} size={40} color={c.primary} strokeWidth={2} />
+          <CircleQuestionMark {...DECORATIVE} size={40} color={c.primary} strokeWidth={1.6} />
         </View>
         <View style={styles.missingText}>
           <AppText variant="bodyStrong">Not found yet</AppText>
@@ -54,7 +54,12 @@ export function PlantdexTile({ species, found, setName, photoUrl, onPress }: Pla
         onPress={onPress}
         style={silhouette}
       >
-        {missing}
+        {({ pressed }) => (
+          <>
+            {missing}
+            {pressed ? <PressedOverlay /> : null}
+          </>
+        )}
       </Pressable>
     ) : (
       <View
@@ -87,25 +92,34 @@ export function PlantdexTile({ species, found, setName, photoUrl, onPress }: Pla
             </AppText>
           )}
         </View>
-        <RarityBadge tier={species.rarity} />
+        {/* A sensitive species never shows its rarity (4aj). */}
+        {species.sensitive ? null : <RarityBadge tier={species.rarity} />}
       </View>
     </>
   );
   const look = [styles.tile, styles.found, { backgroundColor: c.surface, borderColor: c.hairline }];
   return onPress ? (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [look, pressed && { backgroundColor: c.pressedOverlay }]}
-    >
-      {body}
+    <Pressable accessibilityRole="button" onPress={onPress} style={look}>
+      {({ pressed }) => (
+        <>
+          {body}
+          {pressed ? <PressedOverlay /> : null}
+        </>
+      )}
     </Pressable>
   ) : (
     <View style={look}>{body}</View>
   );
 }
 
+/** The pressed state: the shared overlay over the tile, as Button draws it, not a new fill. */
+function PressedOverlay() {
+  const { c } = useTheme();
+  return <View style={[styles.pressed, { backgroundColor: c.pressedOverlay }]} />;
+}
+
 const styles = StyleSheet.create({
+  pressed: { ...StyleSheet.absoluteFill, pointerEvents: 'none' },
   tile: { borderRadius: radius.card, overflow: 'hidden' },
   // The hairline is an outer ring in the frame: a 1 pt border and a -1 pt margin keep the content
   // where the frame puts it, so a grid of tiles lines up (the same trick as Card).

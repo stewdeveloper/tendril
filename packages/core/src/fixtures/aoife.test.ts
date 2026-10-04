@@ -18,6 +18,10 @@ describe('aoife fixture (UX brief sample data)', () => {
     const monty = aoife.plantDetails['monty'];
     expect(monty?.toxicity.every((t) => t.severity === 'unknown')).toBe(true);
   });
+  it('has no closing date on the living plants, on their summaries or their details', () => {
+    expect(aoife.plants.every((p) => p.status === 'alive' && p.statusOn === null)).toBe(true);
+    expect(aoife.plantDetails['monty']?.statusOn).toBeNull();
+  });
   it('has the quota, streaks, league and collection numbers', () => {
     expect(aoife.today.identifications).toMatchObject({
       used: 3,
