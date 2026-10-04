@@ -6,12 +6,14 @@ import type {
   ProviderSuggestion,
 } from './identification.ts';
 
-export type FakeScenario = 'very_likely' | 'likely' | 'not_sure' | 'not_a_plant' | 'error';
+export type FakeScenario =
+  'very_likely' | 'likely' | 'not_sure' | 'not_a_plant' | 'orchid' | 'error';
 const SCENARIOS: readonly FakeScenario[] = [
   'very_likely',
   'likely',
   'not_sure',
   'not_a_plant',
+  'orchid',
   'error',
 ];
 const MARKER = new TextEncoder().encode('TENDRIL_FAKE:');
@@ -23,6 +25,7 @@ function suggestion(
   probability: number,
   genus: string,
   gbifId: number,
+  family = 'Araceae',
 ): ProviderSuggestion {
   return {
     providerEntityId: id,
@@ -30,7 +33,7 @@ function suggestion(
     commonNames: [commonName],
     probability,
     gbifId,
-    family: 'Araceae',
+    family,
     genus,
     watering: { min: 2, max: 3 },
     light: 'Bright indirect light; tolerates low light.',
@@ -63,10 +66,11 @@ function scenarioFromImage(b64: string | undefined): FakeScenario | null {
   return SCENARIOS.find((s) => s === word) ?? null;
 }
 
-const PROBS: Record<'very_likely' | 'likely' | 'not_sure', [number, number]> = {
+const PROBS: Record<'very_likely' | 'likely' | 'not_sure' | 'orchid', [number, number]> = {
   very_likely: [0.94, 0.03],
   likely: [0.71, 0.22],
   not_sure: [0.41, 0.32],
+  orchid: [0.93, 0.04],
 };
 
 /** Deterministic provider for local work; the scenario can be chosen by a marker in the image. */
@@ -83,6 +87,26 @@ export function fakeIdentificationProvider(
       }
       const notPlant = s === 'not_a_plant';
       const [a, b] = PROBS[notPlant ? 'very_likely' : s];
+      if (s === 'orchid') {
+        return Promise.resolve({
+          accessToken: 'fake-orchid',
+          isPlant: true,
+          isPlantProbability: 0.98,
+          suggestions: [
+            suggestion(
+              'fake-early-purple-orchid',
+              'Orchis mascula',
+              'early purple orchid',
+              PROBS.orchid[0],
+              'Orchis',
+              2850000,
+              'Orchidaceae',
+            ),
+          ],
+          diagnosis: [],
+          raw: { fake: true, scenario: s },
+        });
+      }
       return Promise.resolve({
         accessToken: `fake-${s}`,
         isPlant: !notPlant,

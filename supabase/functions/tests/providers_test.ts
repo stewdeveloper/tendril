@@ -220,6 +220,11 @@ Deno.test('fake provider scenarios', async () => {
   assertEquals(nap.isPlant, false);
   assertEquals(nap.suggestions, []);
 
+  const orchid = await run(undefined, markedJpeg('TENDRIL_FAKE:orchid'));
+  assertEquals(orchid.suggestions.length, 1);
+  assertEquals(orchid.suggestions[0]?.family, 'Orchidaceae');
+  assertEquals(orchid.suggestions[0]?.scientificName, 'Orchis mascula');
+
   const e = await assertRejects(() => run(undefined, markedJpeg('TENDRIL_FAKE:error')), ApiError);
   assertEquals(e.code, 'provider_unavailable');
 
