@@ -1,6 +1,6 @@
 import type { IsoDate, PlaceType } from './domain.ts';
 import { bandFor, bandWord, confidenceLabel, toPercent } from './confidence.ts';
-import { longDate } from './dates.ts';
+import { longDate, ordinal } from './dates.ts';
 import { nonBreakingPhone } from './emergency.ts';
 
 /** Fixed lines from the UX brief's Copy table. Never use the word "safe". */
@@ -411,3 +411,42 @@ export const collectionCopy = {
 export const filterPillLabel = (label: string, count: number) => `${label} · ${count}`;
 /** What Share carries for a badge. */
 export const badgeShareMessage = (name: string) => `I earned the ${name} badge in Tendril.`;
+
+/** Leagues, friends, adding a friend and the week's results (4aq to 4ax). */
+export const leaguesCopy = {
+  title: 'Leagues',
+  segmentLeague: 'League',
+  segmentFriends: 'Friends',
+  scanPlant: 'Scan a plant',
+  addFriends: 'Add friends',
+  emptyFriends: 'No friends here yet. Invite someone to compare finds each week.',
+  handleLabel: 'Handle',
+  add: 'Add',
+  requested: 'Requested',
+  thatsYou: "That's you.",
+  handleNotFound: 'No one has that handle. Check the spelling, or send an invite link.',
+  sendInvite: 'Send invite link',
+  searchFailed: "Couldn't search for that handle. Try again.",
+  requestFailed: "Couldn't send that request. Try again.",
+  inviteFailed: "Couldn't make an invite link. Try again.",
+  weekResults: 'Week results',
+  quietWeek: 'A quiet week',
+  quietWeekLine: 'No points this week. A new board starts Monday.',
+  points: 'Points',
+  bestFind: 'Best find',
+  continue: 'Continue',
+  resultsFailed: "We couldn't load your week's results. They will be here when you are back.",
+} as const;
+/** "Log a find to join this week's board with 20 people near you." (4ar) */
+export const leagueEmptyLine = (size: number) =>
+  `Log a find to join this week’s board with ${size} people near you.`;
+/** "3 days left · resets Monday": under the Leagues title (4aq). */
+export const leagueDaysLine = (daysLeft: number, resetsOn: string) =>
+  daysLeft <= 0
+    ? `Ends today · resets ${resetsOn}`
+    : `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left · resets ${resetsOn}`;
+/** "4th of 20": the week's result (4aw). */
+export const rankOfLine = (rank: number, of: number) => `${ordinal(rank)} of ${of}`;
+/** What Share carries for an invite link. */
+export const inviteShareMessage = (url: string) =>
+  `Come and compare finds with me on Tendril: ${url}`;

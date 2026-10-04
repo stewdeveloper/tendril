@@ -6,6 +6,7 @@ export * from './dates.ts';
 export * from './label.ts';
 export * from './quota.ts';
 export * from './age.ts';
+export * from './handle.ts';
 export * from './copy.ts';
 export * from './emergency.ts';
 export * from './fixtures/index.ts';

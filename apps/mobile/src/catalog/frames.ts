@@ -10,3 +10,4 @@ import './areas/scan';
 import './areas/result';
 import './areas/moments';
 import './areas/collection';
+import './areas/leagues';

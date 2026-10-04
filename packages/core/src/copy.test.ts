@@ -10,6 +10,10 @@ import {
   freezesHeldLine,
   freezesHeldShort,
   leaguePointsLine,
+  leagueDaysLine,
+  leagueEmptyLine,
+  rankOfLine,
+  inviteShareMessage,
   diedNote,
   givenAwayNote,
   givenAwaySnackbar,
@@ -233,5 +237,19 @@ describe('collection copy', () => {
   });
   it('never says safe', () => {
     expect(JSON.stringify(collectionCopy)).not.toMatch(/\bsafe\b/i);
+  });
+});
+
+describe('leagues copy', () => {
+  it('words the days left, the empty board and the rank', () => {
+    expect(leagueDaysLine(3, 'Monday')).toBe('3 days left · resets Monday');
+    expect(leagueDaysLine(1, 'Monday')).toBe('1 day left · resets Monday');
+    expect(leagueDaysLine(0, 'Monday')).toBe('Ends today · resets Monday');
+    expect(leagueEmptyLine(20)).toBe(
+      'Log a find to join this week’s board with 20 people near you.',
+    );
+    expect(rankOfLine(4, 20)).toBe('4th of 20');
+    expect(rankOfLine(12, 30)).toBe('12th of 30');
+    expect(inviteShareMessage('https://x.y/i')).toContain('https://x.y/i');
   });
 });
