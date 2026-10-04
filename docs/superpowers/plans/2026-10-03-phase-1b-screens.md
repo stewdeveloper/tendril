@@ -670,7 +670,7 @@ Expected: FAIL.
 - `preview` is a `CameraView`, unmounted when the screen loses focus.
 - The shutter calls `takePictureAsync`, then `preparePhoto`, and adds the result to the tray.
 - Gallery uses `launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: 5 - photos.length })` and marks the capture source as gallery.
-- "Identify" calls `api.identify(...)`, then `router.replace('/scan/<id>')`.
+- "Identify" calls a new `useIdentify()` mutation hook (add it to `api/hooks.ts`; on success it invalidates the `quota` and `scanResult` keys), then `router.replace('/scan/<id>')`.
 - The health toggle is disabled with "Diagnosis used this month" when the diagnosis quota is used up.
 
 The catalog passes a dark `View` as the preview.
