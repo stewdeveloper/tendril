@@ -13,3 +13,6 @@ export * from './privacy.ts';
 export * from './period.ts';
 export * from './care/basic.ts';
 export * from './api.ts';
+export * from './care/state.ts';
+export * from './care/engine.ts';
+export * from './care/diagnosis.ts';

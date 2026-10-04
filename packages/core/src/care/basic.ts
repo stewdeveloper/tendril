@@ -15,13 +15,16 @@ export function baseIntervalDays(
   return 4;
 }
 
+/** On Free, a "No" (still damp) moves the next check this many days out. */
+export const FREE_RECHECK_DAYS = 2;
+
 export function basicCheckIn(input: { today: IsoDate; soilDry: boolean; baseDays: number }): {
   waterTaskOn: IsoDate | null;
   nextCheckOn: IsoDate;
 } {
   return input.soilDry
     ? { waterTaskOn: input.today, nextCheckOn: addDays(input.today, input.baseDays) }
-    : { waterTaskOn: null, nextCheckOn: addDays(input.today, 2) };
+    : { waterTaskOn: null, nextCheckOn: addDays(input.today, FREE_RECHECK_DAYS) };
 }
 
 /** The window a soil check should fall in: the interval give or take a day, never below 1. */
