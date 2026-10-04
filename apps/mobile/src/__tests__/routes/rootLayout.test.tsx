@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { render, screen } from '@testing-library/react-native';
 import { readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -11,6 +12,8 @@ jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,
 );
+// The module-level FixtureApi (300 ms latency) isn't needed here and must not hold timers.
+jest.mock('../../api/createApi', () => ({ createApi: () => ({}) }));
 jest.mock('expo-font', () => ({ useFonts: jest.fn() }));
 // A stack that lists the screens it is given, and drops those behind a closed guard.
 jest.mock('expo-router', () => ({

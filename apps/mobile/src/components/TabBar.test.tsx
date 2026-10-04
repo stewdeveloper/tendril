@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { ThemeProvider } from '../theme';
 import { TabBar, TabBarView } from './TabBar';
 
@@ -22,6 +23,28 @@ describe('TabBar', () => {
     await fireEvent.press(screen.getByRole('tab', { name: 'Scan' }));
     expect(onScan).toHaveBeenCalled();
     expect(onTab).not.toHaveBeenCalledWith('scan');
+  });
+});
+
+describe('TabBar geometry', () => {
+  it('keeps the raised Scan button inside its parent, for Android touch delivery', async () => {
+    await render(
+      <ThemeProvider scheme="light">
+        <TabBarView active="today" onTab={jest.fn()} onScan={jest.fn()} />
+      </ThemeProvider>,
+    );
+    const flat = (el: { props: { style?: unknown } }) =>
+      StyleSheet.flatten(el.props.style as StyleProp<ViewStyle>) ?? {};
+    const scan = flat(screen.getByRole('tab', { name: 'Scan' }));
+    // The circle's top sits in the container (no negative offset), as do its 60 pt and its label.
+    expect(scan.marginTop ?? 0).toBeGreaterThanOrEqual(0);
+    const outer = flat(screen.getByTestId('tab-bar'));
+    expect(outer.height).toBe(118);
+    // Layout footprint is the 90 pt bar: the 28 pt raise is a negative margin on the container.
+    expect(outer.marginTop).toBe(-28);
+    expect(Number(scan.marginTop ?? 0) + 60 + 2 + 16).toBeLessThanOrEqual(outer.height as number);
+    // The container and its row let touches outside the items through.
+    expect(screen.getByTestId('tab-bar').props.pointerEvents).toBe('box-none');
   });
 });
 

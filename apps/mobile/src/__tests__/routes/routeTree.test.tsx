@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { render, screen } from '@testing-library/react-native';
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
