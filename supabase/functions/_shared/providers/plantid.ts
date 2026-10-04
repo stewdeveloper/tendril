@@ -1,4 +1,5 @@
 import { ApiError } from '../errors.ts';
+import { log } from '../log.ts';
 import type { IdentificationProvider, IdentifyInput } from './identification.ts';
 import { mapPlantIdResponse } from './plantid-map.ts';
 
@@ -17,7 +18,11 @@ export function plantIdProvider(
   fetchFn: FetchFn = fetch,
   timeoutMs = PLANT_ID_TIMEOUT_MS,
 ): IdentificationProvider {
-  async function post(path: string, body: unknown): Promise<Response> {
+  async function post<T>(
+    path: string,
+    body: unknown,
+    read: (res: Response) => Promise<T>,
+  ): Promise<T> {
     const ctrl = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_, reject) => {
@@ -26,21 +31,23 @@ export function plantIdProvider(
         reject(unavailable());
       }, timeoutMs);
     });
-    try {
-      const res = await Promise.race([
-        fetchFn(`${BASE}${path}`, {
-          method: 'POST',
-          headers: { 'Api-Key': apiKey, 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-          signal: ctrl.signal,
-        }),
-        timeout,
-      ]);
-      if (res.status === 429) {
-        throw unavailable('Identification is busy. Try again soon.');
+    const work = (async () => {
+      const res = await fetchFn(`${BASE}${path}`, {
+        method: 'POST',
+        headers: { 'Api-Key': apiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: ctrl.signal,
+      });
+      if (!res.ok) {
+        log('error', 'plant.id request failed', { status: res.status });
+        throw unavailable(
+          res.status === 429 ? 'Identification is busy. Try again soon.' : undefined,
+        );
       }
-      if (!res.ok) throw unavailable();
-      return res;
+      return await read(res);
+    })();
+    try {
+      return await Promise.race([work, timeout]);
     } catch (e) {
       if (e instanceof ApiError) throw e;
       throw unavailable();
@@ -60,17 +67,15 @@ export function plantIdProvider(
         classification_level: 'species',
         ...(input.health ? { health: 'all' } : {}),
       };
-      const res = await post(`/identification?details=${DETAILS}&language=en`, body);
-      let json: unknown;
-      try {
-        json = await res.json();
-      } catch {
-        throw unavailable();
-      }
+      const json = await post(`/identification?details=${DETAILS}&language=en`, body, (r) =>
+        r.json(),
+      );
       return mapPlantIdResponse(json);
     },
     async feedback(accessToken: string, comment: string) {
-      await post(`/identification/${encodeURIComponent(accessToken)}/feedback`, { comment });
+      await post(`/identification/${encodeURIComponent(accessToken)}/feedback`, { comment }, (r) =>
+        r.arrayBuffer(),
+      );
     },
   };
 }

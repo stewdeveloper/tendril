@@ -38,6 +38,7 @@ export function appCheckVerifier(mode: AppCheckMode, cfg: AppCheckConfig): AppCh
         getKey ??= createRemoteJWKSet(new URL(JWKS_URL));
         const { payload } = await jwtVerify(token, getKey, {
           algorithms: ['RS256'],
+          requiredClaims: ['exp', 'sub'],
           issuer: `https://firebaseappcheck.googleapis.com/${projectNumber}`,
           audience: `projects/${projectNumber}`,
         });

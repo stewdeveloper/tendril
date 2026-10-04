@@ -4,7 +4,12 @@ import { mapPlantIdResponse } from '../_shared/providers/plantid-map.ts';
 import { plantIdProvider } from '../_shared/providers/plantid.ts';
 import { appCheckVerifier } from '../_shared/providers/appcheck.ts';
 import { fakeIdentificationProvider } from '../_shared/providers/fake-identification.ts';
-import { selectAppCheckMode, selectIdentificationProvider } from '../_shared/providers/select.ts';
+import {
+  resetSelectionForTests,
+  selectAppCheck,
+  selectAppCheckMode,
+  selectIdentificationProvider,
+} from '../_shared/providers/select.ts';
 import { ApiError } from '../_shared/errors.ts';
 import type { IdentifyInput } from '../_shared/providers/identification.ts';
 
@@ -26,12 +31,14 @@ function withEnv(vars: Record<string, string | undefined>, fn: () => Promise<voi
   return async () => {
     const saved = Object.keys(vars).map((k) => [k, Deno.env.get(k)] as const);
     try {
+      resetSelectionForTests();
       for (const [k, v] of Object.entries(vars)) {
         if (v === undefined) Deno.env.delete(k);
         else Deno.env.set(k, v);
       }
       await fn();
     } finally {
+      resetSelectionForTests();
       for (const [k, v] of saved) {
         if (v === undefined) Deno.env.delete(k);
         else Deno.env.set(k, v);
@@ -347,3 +354,127 @@ Deno.test(
     assertEquals(err.code, 'provider_unavailable');
   }),
 );
+
+Deno.test(
+  'select: dev app check is refused outside a local stack',
+  withEnv({ ...CLEAN, APP_CHECK_MODE: 'dev' }, async () => {
+    assertEquals(selectAppCheckMode(), 'firebase');
+    assertEquals(await selectAppCheck().verify('dev-ok'), 'invalid');
+  }),
+);
+
+Deno.test(
+  'select: fake provider is refused outside a local stack',
+  withEnv({ ...CLEAN, IDENTIFY_PROVIDER: 'fake' }, async () => {
+    const err = await assertRejects(
+      () => selectIdentificationProvider().identify(input()),
+      ApiError,
+    );
+    assertEquals(err.code, 'provider_unavailable');
+  }),
+);
+
+Deno.test(
+  'select: local stack with explicit dev and fake still gets them',
+  withEnv(
+    {
+      ...CLEAN,
+      SUPABASE_URL: 'http://localhost:54321',
+      APP_CHECK_MODE: 'dev',
+      IDENTIFY_PROVIDER: 'fake',
+    },
+    async () => {
+      assertEquals(selectAppCheckMode(), 'dev');
+      assertEquals(await selectAppCheck().verify('dev-ok'), 'valid');
+      assertEquals((await selectIdentificationProvider().identify(input())).isPlant, true);
+    },
+  ),
+);
+
+Deno.test(
+  'select: TENDRIL_LOCAL=1 still counts as local',
+  withEnv({ ...CLEAN, TENDRIL_LOCAL: '1', APP_CHECK_MODE: 'dev' }, () => {
+    assertEquals(selectAppCheckMode(), 'dev');
+  }),
+);
+
+Deno.test(
+  'select: instances are memoised until reset',
+  withEnv({ ...CLEAN, SUPABASE_URL: 'http://kong:8000' }, () => {
+    assert(selectAppCheck() === selectAppCheck());
+    assert(selectIdentificationProvider() === selectIdentificationProvider());
+    const a = selectAppCheck();
+    resetSelectionForTests();
+    assert(selectAppCheck() !== a);
+  }),
+);
+
+Deno.test('firebase app check rejects HS256 and alg none tokens', async () => {
+  const { publicKey } = await generateKeyPair('RS256');
+  const jwk = { ...(await exportJWK(publicKey)), kid: 'k1', alg: 'RS256', use: 'sig' };
+  const v = appCheckVerifier('firebase', {
+    projectNumber: '123',
+    appIds: ['app'],
+    keyGetter: createLocalJWKSet({ keys: [jwk] }),
+  });
+  const claims = {
+    iss: 'https://firebaseappcheck.googleapis.com/123',
+    aud: ['projects/123'],
+    sub: 'app',
+    exp: Math.floor(Date.now() / 1000) + 3600,
+  };
+  const hs = await new SignJWT(claims)
+    .setProtectedHeader({ alg: 'HS256', kid: 'k1' })
+    .sign(new TextEncoder().encode('secret-secret-secret-secret-secret!'));
+  assertEquals(await v.verify(hs), 'invalid');
+  const b64 = (o: unknown) =>
+    btoa(JSON.stringify(o)).replaceAll('=', '').replaceAll('+', '-').replaceAll('/', '_');
+  const none = `${b64({ alg: 'none', typ: 'JWT' })}.${b64(claims)}.`;
+  assertEquals(await v.verify(none), 'invalid');
+});
+
+Deno.test('firebase app check requires exp and sub', async () => {
+  const { publicKey, privateKey } = await generateKeyPair('RS256');
+  const jwk = { ...(await exportJWK(publicKey)), kid: 'k1', alg: 'RS256', use: 'sig' };
+  const v = appCheckVerifier('firebase', {
+    projectNumber: '123',
+    appIds: ['app'],
+    keyGetter: createLocalJWKSet({ keys: [jwk] }),
+  });
+  const noExp = await new SignJWT({})
+    .setProtectedHeader({ alg: 'RS256', kid: 'k1' })
+    .setIssuer('https://firebaseappcheck.googleapis.com/123')
+    .setAudience(['projects/123'])
+    .setSubject('app')
+    .sign(privateKey);
+  assertEquals(await v.verify(noExp), 'invalid');
+});
+
+Deno.test('mapping swaps inverted watering and clamps probability', async () => {
+  const j = await load('plantid-peace-lily.json');
+  const s = j.result.classification.suggestions[0];
+  s.details.watering = { min: 3, max: 1 };
+  s.probability = 1.4;
+  j.result.classification.suggestions[1].probability = -0.2;
+  const r = mapPlantIdResponse(j);
+  assertEquals(r.suggestions[0]?.watering, { min: 1, max: 3 });
+  assertEquals(r.suggestions[0]?.probability, 1);
+  assertEquals(r.suggestions[1]?.probability, 0);
+});
+
+Deno.test('non-2xx logs only the status, never the body or key', async () => {
+  const lines: string[] = [];
+  const orig = console.error;
+  console.error = (l: string) => lines.push(String(l));
+  try {
+    const p = plantIdProvider('secret-key', () =>
+      Promise.resolve(new Response('SECRET BODY', { status: 502, headers: { 'x-h': 'hdr' } })),
+    );
+    await assertRejects(() => p.identify(input()), ApiError);
+  } finally {
+    console.error = orig;
+  }
+  const out = lines.join('\n');
+  assert(out.includes('502'));
+  assert(!out.includes('SECRET BODY') && !out.includes('secret-key') && !out.includes('hdr'));
+});

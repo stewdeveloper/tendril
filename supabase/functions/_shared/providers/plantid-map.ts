@@ -8,6 +8,7 @@ import type {
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
 const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null);
+const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 const strings = (v: unknown): string[] =>
   Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x !== '') : [];
@@ -17,8 +18,9 @@ const malformed = () => new ApiError('provider_unavailable', 'Identification is 
 function mapSuggestion(s: unknown): ProviderSuggestion | null {
   if (!isObj(s)) return null;
   const name = str(s.name);
-  const probability = num(s.probability);
-  if (name === null || probability === null) return null;
+  const rawP = num(s.probability);
+  if (name === null || rawP === null) return null;
+  const probability = clamp01(rawP);
   const d = isObj(s.details) ? s.details : {};
   const tax = isObj(d.taxonomy) ? d.taxonomy : {};
   const w = isObj(d.watering) ? d.watering : null;
@@ -34,7 +36,8 @@ function mapSuggestion(s: unknown): ProviderSuggestion | null {
     gbifId: num(d.gbif_id),
     family: str(tax.family),
     genus: str(tax.genus),
-    watering: min !== null && max !== null ? { min, max } : null,
+    watering:
+      min !== null && max !== null ? { min: Math.min(min, max), max: Math.max(min, max) } : null,
     light: str(d.best_light_condition),
     imageUrl: image,
     similarImageUrl: isObj(similar) ? (str(similar.url_small) ?? str(similar.url)) : null,
@@ -51,8 +54,9 @@ function treatments(t: unknown): string[] {
 function mapDiagnosis(s: unknown): ProviderDiagnosis | null {
   if (!isObj(s)) return null;
   const name = str(s.name);
-  const probability = num(s.probability);
-  if (name === null || probability === null) return null;
+  const rawP = num(s.probability);
+  if (name === null || rawP === null) return null;
+  const probability = clamp01(rawP);
   const d = isObj(s.details) ? s.details : {};
   return {
     name,
@@ -86,7 +90,7 @@ export function mapPlantIdResponse(json: unknown): IdentificationResult {
   return {
     accessToken: token,
     isPlant: isPlant.binary,
-    isPlantProbability: num(isPlant.probability) ?? (isPlant.binary ? 1 : 0),
+    isPlantProbability: clamp01(num(isPlant.probability) ?? (isPlant.binary ? 1 : 0)),
     suggestions,
     diagnosis,
     raw: json,
