@@ -28,7 +28,7 @@ select throws_ok($$update public.plants set nickname = 'X'$$, '42501', null, 'cl
 select throws_ok($$insert into public.care_events (plant_id, household_id, kind, occurred_at) values ('00000000-0000-0000-0000-00000000d001', '00000000-0000-0000-0000-0000000000a1', 'checkin', now())$$, '42501', null, 'clients cannot write events directly');
 
 select tests.authenticate_as('outsider');
-select is_empty('select * from public.plants', 'outsiders see no plants');
+select is_empty('select id from public.plants', 'outsiders see no plants');
 select is_empty('select * from public.care_tasks', 'outsiders see no tasks');
 
 select tests.clear_authentication();

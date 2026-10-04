@@ -1,5 +1,5 @@
 begin;
-select plan(39);
+select plan(62);
 select tests.create_supabase_user('aoife');
 select tests.create_supabase_user('partner');
 select tests.create_supabase_user('nozone');
@@ -84,6 +84,66 @@ select lives_ok($$insert into public.care_tasks (plant_id, household_id, kind, d
 -- srv grants ----------------------------------------------------------------------------------------------------
 select is_empty($$select proname from pg_proc where proname in ('srv_plants_missing_cell', 'srv_set_plant_cells', 'srv_weather_cells_due', 'srv_weather_store', 'srv_weather_for_cell')
   and (has_function_privilege('authenticated', oid, 'execute') or has_function_privilege('anon', oid, 'execute') or not has_function_privilege('service_role', oid, 'execute'))$$, 'new srv_ functions are service_role only');
+
+-- Fix round 1: the cell follows the home area ----------------------------------------------------------------------
+update public.plants set indoor = false where id = (select outdoor from pl);
+select is((select count(*)::int from public.srv_plants_missing_cell(100) where plant_id = (select outdoor from pl)), 1, 'an indoor plant switched back to outdoor needs a cell again');
+
+select public.srv_set_plant_cells(jsonb_build_array(jsonb_build_object('plantId', (select outdoor from pl), 'cell', '608533827635118079')));
+update public.privacy_zones set radius_m = 2000 where user_id = tests.get_supabase_uid('aoife');
+select is((select cell_r7 from public.plants where id = (select outdoor from pl)), null, 'moving the home area clears the cell');
+select is((select count(*)::int from public.srv_plants_missing_cell(100) where plant_id = (select outdoor from pl)), 1, 'and the plant needs a new one');
+
+select public.srv_set_plant_cells(jsonb_build_array(jsonb_build_object('plantId', (select outdoor from pl), 'cell', '608533827635118079')));
+select public.srv_weather_store('608533827635118079', 'Europe/Dublin', '{"temp": 11}'::jsonb);
+delete from public.privacy_zones where user_id = tests.get_supabase_uid('aoife');
+select is((select cell_r7 from public.plants where id = (select outdoor from pl)), null, 'deleting the home area clears the cell');
+select is_empty($$select 1 from public.srv_weather_cells_due('0 seconds', 100)$$, 'and no cell is due for it');
+select is_empty($$select 1 from public.srv_plants_missing_cell(100) where plant_id = (select outdoor from pl)$$, 'and it is not missing a cell without a home area');
+-- A cell that survives somehow still needs the creator's zone to be due.
+update public.plants set cell_r7 = 608533827635118079 where id = (select outdoor from pl);
+select is_empty($$select 1 from public.srv_weather_cells_due('0 seconds', 100)$$, 'a cell without a creator zone is never due');
+update public.plants set cell_r7 = null where id = (select outdoor from pl);
+
+-- An ex-member's plant is not placed.
+insert into public.household_members (household_id, user_id, role)
+values ((select (r->>'householdId')::uuid from boot), tests.get_supabase_uid('partner'), 'member');
+insert into public.privacy_zones (user_id, center, radius_m)
+values (tests.get_supabase_uid('partner'), extensions.st_setsrid(extensions.st_makepoint(-6.2, 53.3), 4326)::extensions.geography, 1000);
+create temp table px as select pg_temp.mk(tests.get_supabase_uid('partner'), (select (r->>'householdId')::uuid from boot), 'Partner', false) as id;
+select is((select count(*)::int from public.srv_plants_missing_cell(100) where plant_id = (select id from px)), 1, 'a member''s outdoor plant is placed');
+delete from public.household_members where user_id = tests.get_supabase_uid('partner');
+select is_empty($$select 1 from public.srv_plants_missing_cell(100) where plant_id = (select id from px)$$, 'an ex-member''s plant is not returned');
+
+-- Dead and indoor plants are neither placed nor due.
+select is(public.srv_set_plant_cells(jsonb_build_array(
+  jsonb_build_object('plantId', (select indoor from pl), 'cell', '111'), jsonb_build_object('plantId', (select dead from pl), 'cell', '222'))), 0, 'cells for indoor and dead plants are not written');
+update public.plants set cell_r7 = 222 where id = (select dead from pl);
+update public.plants set cell_r7 = 111 where id = (select indoor from pl);
+select is((select cell_r7 from public.plants where id = (select indoor from pl)), null, 'an indoor plant cannot hold a cell');
+insert into public.privacy_zones (user_id, center, radius_m)
+values (tests.get_supabase_uid('aoife'), extensions.st_setsrid(extensions.st_makepoint(-6.25, 53.35), 4326)::extensions.geography, 1000);
+select is_empty($$select 1 from public.srv_weather_cells_due('0 seconds', 100) where cell in ('111', '222')$$, 'due cells exclude dead and indoor plants');
+
+-- Format and exposure -----------------------------------------------------------------------------------------
+select public.srv_weather_store('608533827635118079', 'Europe/Dublin', '{}'::jsonb);
+select matches((select fetched_at from public.srv_weather_for_cell('608533827635118079')), '^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}Z$', 'fetched_at is a full ISO timestamp');
+select is(has_column_privilege('authenticated', 'public.plants', 'cell_r7', 'SELECT'), false, 'authenticated cannot read plants.cell_r7');
+select is(has_column_privilege('anon', 'public.plants', 'cell_r7', 'SELECT'), false, 'anon cannot read plants.cell_r7');
+select is(has_column_privilege('authenticated', 'public.plants', 'nickname', 'SELECT'), true, 'but still reads the other plant columns');
+select is(has_column_privilege('service_role', 'public.plants', 'cell_r7', 'SELECT'), true, 'service_role reads the cell');
+select is(has_function_privilege('service_role', 'net.http_post(text, jsonb, jsonb, jsonb, integer)', 'execute'), true, 'service_role keeps net.http_post');
+select matches((select prosrc from pg_proc where proname = 'call_worker' and pronamespace = 'private'::regnamespace), 'rtrim\(', 'call_worker trims a trailing slash');
+
+-- Dedupe of open checks (the migration calls the same function) ------------------------------------------------------
+drop index public.care_tasks_one_open_check_idx;
+insert into public.care_tasks (plant_id, household_id, kind, due_on, created_at)
+select id, household_id, 'check', d, now() from public.plants, (values ('2026-10-12'::date), ('2026-10-10'::date), ('2026-10-11'::date)) v(d)
+where id = (select indoor from pl);
+select is(private.dedupe_open_checks(), 3, 'dedupe supersedes the surplus open checks');
+select is((select due_on from public.care_tasks where plant_id = (select indoor from pl) and kind = 'check' and status = 'due'), '2026-10-07'::date, 'the earliest-due open check is kept');
+select is((select count(*)::int from public.care_tasks where plant_id = (select indoor from pl) and kind = 'check' and status = 'due'), 1, 'exactly one stays open');
+select is(private.dedupe_open_checks(), 0, 'dedupe is idempotent');
 
 select * from finish();
 rollback;
