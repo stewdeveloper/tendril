@@ -1,13 +1,16 @@
 import type {
   BootstrapRequest,
+  CheckInRequest,
   ConfirmRequest,
+  CreatePlantRequest,
   HomeAreaRequest,
   IdentifyRequest,
   PetsRequest,
+  PlantStatusRequest,
   PushTokenRequest,
   VetRequest,
 } from '@core/api.ts';
-import type { PlantSetup } from '@core/domain.ts';
+import type { LeafState, PlantSetup } from '@core/domain.ts';
 import { isValidTimeZone } from '@core/period.ts';
 import { ApiError } from './errors.ts';
 
@@ -284,5 +287,134 @@ export function parseLabelEvent(body: unknown): LabelEvent {
   return {
     event: oneOf(o.event, 'event', ['app_open', 'store_click'] as const),
     platform: oneOf(o.platform, 'platform', ['ios', 'android', 'web'] as const),
+  };
+}
+
+const TIME_SKEW_MS = 2 * 24 * 60 * 60 * 1000;
+/** A date-time within two days of now (a queued offline action may be a little old, never far from the clock). */
+function instant(v: unknown, field: string, now: Date): string {
+  const ms = typeof v === 'string' ? Date.parse(v) : NaN;
+  if (Number.isNaN(ms) || Math.abs(ms - now.getTime()) > TIME_SKEW_MS) {
+    throw bad(`${field} must be a date-time within two days of now.`);
+  }
+  return new Date(ms).toISOString();
+}
+
+const LABEL_CODE = /^[A-Z0-9-]{4,32}$/; // qr_codes.code check
+const LEAF_STATES: readonly LeafState[] = [
+  'healthy',
+  'yellowing',
+  'drooping',
+  'brown_tips',
+  'spots',
+];
+
+/** A new plant from a label (the code decides the species), or by hand or as a gift (the species is named). */
+export function parseCreatePlant(body: unknown): CreatePlantRequest {
+  const o = obj(body);
+  const source = oneOf(o.source, 'source', ['label_qr', 'manual', 'gift'] as const);
+  const out: CreatePlantRequest = { source, setup: parseSetup(o.setup) };
+  if (source === 'label_qr') {
+    const code = str(o.labelCode, 'labelCode', 4, 32).toUpperCase();
+    if (!LABEL_CODE.test(code)) throw bad('labelCode is not a valid label code.');
+    out.labelCode = code;
+  } else {
+    out.speciesId = assertUuid(o.speciesId, 'speciesId');
+  }
+  if (o.householdId !== undefined && o.householdId !== null) {
+    out.householdId = assertUuid(o.householdId, 'householdId');
+  }
+  return out;
+}
+
+export type PlantPatch = Partial<
+  Pick<
+    PlantSetup,
+    'nickname' | 'room' | 'light' | 'potMaterial' | 'potSizeCm' | 'drainage' | 'indoor'
+  >
+>;
+const PATCH_FIELDS = [
+  'nickname',
+  'room',
+  'light',
+  'potMaterial',
+  'potSizeCm',
+  'drainage',
+  'indoor',
+];
+
+/** Only the setup fields may change; the species, household and status have their own routes (or none). */
+export function parsePlantPatch(body: unknown): PlantPatch {
+  const o = obj(body);
+  for (const k of Object.keys(o))
+    if (!PATCH_FIELDS.includes(k)) throw bad(`${k} cannot be changed.`);
+  const out: PlantPatch = {};
+  // Same rule as core's isValidNickname: 1 to 40 characters once trimmed.
+  if (o.nickname !== undefined) out.nickname = str(o.nickname, 'nickname', 1, 40);
+  if (o.room !== undefined) out.room = optStr(o.room, 'room', 40);
+  if (o.light !== undefined) {
+    out.light = oneOf(o.light, 'light', ['bright', 'medium', 'low', 'unknown'] as const);
+  }
+  if (o.potMaterial !== undefined) {
+    out.potMaterial = oneOf(o.potMaterial, 'potMaterial', [
+      'plastic',
+      'terracotta',
+      'ceramic',
+      'unknown',
+    ] as const);
+  }
+  if (o.potSizeCm !== undefined) {
+    if (o.potSizeCm === null) out.potSizeCm = null;
+    else {
+      out.potSizeCm = num(o.potSizeCm, 'potSizeCm', 4, 200);
+      if (!Number.isInteger(out.potSizeCm)) throw bad('potSizeCm must be a whole number.');
+    }
+  }
+  if (o.drainage !== undefined) {
+    out.drainage = oneOf(o.drainage, 'drainage', ['yes', 'no', 'unknown'] as const);
+  }
+  if (o.indoor !== undefined) {
+    if (typeof o.indoor !== 'boolean') throw bad('indoor must be true or false.');
+    out.indoor = o.indoor;
+  }
+  if (Object.keys(out).length === 0) throw bad('Nothing to update.');
+  return out;
+}
+
+/** plants.death_cause <= 80. */
+export function parsePlantStatus(body: unknown): PlantStatusRequest {
+  const o = obj(body);
+  const out: PlantStatusRequest = {
+    status: oneOf(o.status, 'status', ['alive', 'dead', 'given_away'] as const),
+  };
+  const cause = optStr(o.deathCause, 'deathCause', 80);
+  if (cause !== null) out.deathCause = cause;
+  return out;
+}
+
+export function parseCheckIn(body: unknown, uid: string, now: Date): CheckInRequest {
+  const o = obj(body);
+  if (typeof o.soilDry !== 'boolean') throw bad('soilDry must be true or false.');
+  if (!Array.isArray(o.leafStates) || o.leafStates.length > LEAF_STATES.length) {
+    throw bad('leafStates must be a list.');
+  }
+  const leafStates = [...new Set(o.leafStates.map((l) => oneOf(l, 'leafStates', LEAF_STATES)))];
+  const out: CheckInRequest = {
+    clientId: assertUuid(o.clientId, 'clientId'),
+    plantId: assertUuid(o.plantId, 'plantId'),
+    soilDry: o.soilDry,
+    leafStates,
+    occurredAt: instant(o.occurredAt, 'occurredAt', now),
+  };
+  if (o.photoPath !== undefined && o.photoPath !== null)
+    out.photoPath = assertPhotoPath(o.photoPath, uid);
+  return out;
+}
+
+export function parseTaskDone(body: unknown, now: Date): { clientId: string; occurredAt: string } {
+  const o = obj(body);
+  return {
+    clientId: assertUuid(o.clientId, 'clientId'),
+    occurredAt: instant(o.occurredAt, 'occurredAt', now),
   };
 }

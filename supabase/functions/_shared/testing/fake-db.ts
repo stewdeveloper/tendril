@@ -267,9 +267,17 @@ export function fakeDb(seed: Record<string, any> = {}): FakeDb {
         !tables.observations!.some((o) => o.id === a.p_observation_id && o.user_id === a.p_uid)
       )
         return err('P0403', 'observation is not yours');
+      if (a.p_source === 'label_qr') {
+        if (!a.p_label_code) return err('22023', 'a label plant needs a code');
+        const q = tables.qr_codes!.find((c) => c.code === a.p_label_code && c.status === 'active');
+        if (!q) return err('P0404', 'label not found');
+        if (q.species_id !== a.p_species_id)
+          return err('22023', 'species does not match the label');
+      }
       const id = crypto.randomUUID();
       tables.plants!.push({
         id,
+        status: 'alive',
         household_id: a.p_household_id,
         species_id: a.p_species_id,
         observation_id: a.p_observation_id,
@@ -299,7 +307,166 @@ export function fakeDb(seed: Record<string, any> = {}): FakeDb {
         kind: 'setup',
         occurred_at: a.p_now,
       });
+      if (a.p_source === 'label_qr') {
+        tables.qr_scans!.push({
+          id: crypto.randomUUID(),
+          code: a.p_label_code,
+          event: 'adoption',
+          user_id: a.p_uid,
+        });
+      }
       return ok(id);
+    },
+    srv_check_in: (a) => {
+      const plant = tables.plants!.find((p) => p.id === a.p_plant_id);
+      if (!plant) return err('P0404', 'plant not found');
+      if (
+        !tables.household_members!.some(
+          (m) => m.household_id === plant.household_id && m.user_id === a.p_uid,
+        )
+      )
+        return err('P0403', 'not a member of this household');
+      const old = tables.care_events!.find((e) => e.client_id === a.p_client_id);
+      if (old) {
+        if (old.plant_id !== a.p_plant_id || old.user_id !== a.p_uid)
+          return err('P0409', 'client id already used');
+        return ok({
+          duplicate: true,
+          eventId: old.id,
+          nextCheckOn: old.next_check_on,
+          waterTaskCreated: old.water_task_created ?? false,
+        });
+      }
+      const eventId = crypto.randomUUID();
+      tables.care_events!.push({
+        id: eventId,
+        plant_id: a.p_plant_id,
+        household_id: plant.household_id,
+        user_id: a.p_uid,
+        kind: 'checkin',
+        soil_dry: a.p_soil_dry,
+        leaf_states: a.p_leaf_states ?? [],
+        photo_path: a.p_photo_path,
+        client_id: a.p_client_id,
+        occurred_at: a.p_occurred_at,
+        water_task_created: a.p_create_water,
+        next_check_on: a.p_next_check_on,
+      });
+      for (const t of tables.care_tasks!) {
+        if (t.plant_id === a.p_plant_id && t.kind === 'check' && t.status === 'due') {
+          Object.assign(t, { status: 'done', completed_by: a.p_uid });
+        }
+      }
+      const task = (kind: string, due_on: string) =>
+        tables.care_tasks!.push({
+          id: crypto.randomUUID(),
+          plant_id: a.p_plant_id,
+          household_id: plant.household_id,
+          kind,
+          due_on,
+          status: 'due',
+        });
+      if (a.p_create_water) task('water', a.p_today);
+      task('check', a.p_next_check_on);
+      return ok({
+        duplicate: false,
+        eventId,
+        nextCheckOn: a.p_next_check_on,
+        waterTaskCreated: a.p_create_water,
+      });
+    },
+    srv_set_plant_status: (a) => {
+      if (!['alive', 'dead', 'given_away'].includes(a.p_status))
+        return err('22023', 'unknown status');
+      const plant = tables.plants!.find((p) => p.id === a.p_plant_id);
+      if (!plant) return err('P0404', 'plant not found');
+      if (
+        !tables.household_members!.some(
+          (m) => m.household_id === plant.household_id && m.user_id === a.p_uid,
+        )
+      )
+        return err('P0403', 'not a member of this household');
+      if (plant.status === a.p_status)
+        return ok({ status: plant.status, statusAt: plant.status_at ?? null, nextCheckOn: null });
+      const mine = (t: Row) => t.plant_id === a.p_plant_id;
+      let next: string | null = null;
+      if (a.p_status === 'alive') {
+        const superseded = tables
+          .care_tasks!.filter((t) => mine(t) && t.kind === 'check' && t.status === 'superseded')
+          .sort((x, y) => String(y.completed_at).localeCompare(String(x.completed_at)));
+        const events = tables
+          .care_events!.filter((e) => mine(e) && e.next_check_on)
+          .sort((x, y) => String(y.occurred_at).localeCompare(String(x.occurred_at)));
+        const last = superseded[0]?.due_on ?? events[0]?.next_check_on;
+        next =
+          last ??
+          new Date(Date.parse(a.p_today) + a.p_base_days * 86_400_000).toISOString().slice(0, 10);
+        Object.assign(plant, { status: 'alive', status_at: null, death_cause: null });
+        if (!tables.care_tasks!.some((t) => mine(t) && t.kind === 'check' && t.status === 'due')) {
+          tables.care_tasks!.push({
+            id: crypto.randomUUID(),
+            plant_id: a.p_plant_id,
+            household_id: plant.household_id,
+            kind: 'check',
+            due_on: next,
+            status: 'due',
+            created_at: a.p_now,
+          });
+        }
+      } else {
+        Object.assign(plant, {
+          status: a.p_status,
+          status_at: a.p_now,
+          death_cause: a.p_status === 'dead' ? (a.p_death_cause ?? '').trim() || null : null,
+        });
+        for (const t of tables.care_tasks!) {
+          if (mine(t) && t.status === 'due')
+            Object.assign(t, { status: 'superseded', completed_at: a.p_now });
+        }
+      }
+      tables.care_events!.push({
+        id: crypto.randomUUID(),
+        plant_id: a.p_plant_id,
+        household_id: plant.household_id,
+        user_id: a.p_uid,
+        kind: 'status',
+        occurred_at: a.p_now,
+      });
+      return ok({
+        status: a.p_status,
+        statusAt: a.p_status === 'alive' ? null : a.p_now,
+        nextCheckOn: next,
+      });
+    },
+    srv_complete_task: (a) => {
+      const task = tables.care_tasks!.find((t) => t.id === a.p_task_id);
+      if (!task) return err('P0404', 'task not found');
+      if (
+        !tables.household_members!.some(
+          (m) => m.household_id === task.household_id && m.user_id === a.p_uid,
+        )
+      )
+        return err('P0403', 'not a member of this household');
+      if (task.kind !== 'water') return err('P0409', 'only water tasks are completed here');
+      const old = tables.care_events!.find((e) => e.client_id === a.p_client_id);
+      if (old) {
+        if (old.plant_id !== task.plant_id || old.user_id !== a.p_uid || old.kind !== 'water')
+          return err('P0409', 'client id already used');
+        return ok({ duplicate: true, eventId: old.id, taskId: task.id });
+      }
+      if (task.status !== 'due') return err('P0409', 'task is no longer due');
+      const eventId = crypto.randomUUID();
+      tables.care_events!.push({
+        id: eventId,
+        plant_id: task.plant_id,
+        household_id: task.household_id,
+        user_id: a.p_uid,
+        kind: 'water',
+        client_id: a.p_client_id,
+        occurred_at: a.p_occurred_at,
+      });
+      Object.assign(task, { status: 'done', completed_by: a.p_uid, completed_at: a.p_occurred_at });
+      return ok({ duplicate: false, eventId, taskId: task.id });
     },
     srv_confirm_observation: (a) => {
       const o = tables.observations!.find(
