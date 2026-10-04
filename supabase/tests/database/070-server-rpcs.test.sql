@@ -9,7 +9,7 @@ select tests.create_supabase_user('outsider');
 create temp view srv_fns as
 select p.oid, p.proname::text as proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public' and p.proname like 'srv\_%';
-select is((select count(*)::int from srv_fns), 19, 'there are 19 srv_ functions');
+select is((select count(*)::int from srv_fns), 21, 'there are 21 srv_ functions');
 select is_empty($$select proname from srv_fns where has_function_privilege('anon', oid, 'execute')$$, 'anon cannot execute any srv_ function');
 select is_empty($$select proname from srv_fns where has_function_privilege('authenticated', oid, 'execute')$$, 'authenticated cannot execute any srv_ function');
 select is_empty($$select proname from srv_fns where not has_function_privilege('service_role', oid, 'execute')$$, 'service_role can execute every srv_ function');

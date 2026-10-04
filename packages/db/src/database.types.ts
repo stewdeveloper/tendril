@@ -506,6 +506,14 @@ isOneToOne: false
 "srv_point_in_zone":
 { Args: { "p_lat": number,"p_lng": number,"p_uid": string }; Returns: boolean
                            },
+"srv_recompute_batch":
+{ Args: { "p_after": string,"p_limit": number }; Returns: {
+              "care_state": Json,"cell": string,"country_code": string,"drainage": string,"indoor": boolean,"interval_override": number,"light": string,"open_check_on": string,"plan": string,"plant_id": string,"pot_material": string,"pot_size_cm": number,"tz": string,"watering_max": number,"watering_min": number,"weather_fetched_at": string,"weather_summary": Json
+            }[]
+                           },
+"srv_recompute_plant":
+{ Args: { "p_expected_state": Json,"p_next_check_on": string,"p_plant_id": string,"p_state": Json,"p_today": string }; Returns: string
+                           },
 "srv_release_usage":
 { Args: { "p_kind": string,"p_period_key": string,"p_uid": string }; Returns: undefined
                            },
