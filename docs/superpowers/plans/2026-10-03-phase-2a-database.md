@@ -248,7 +248,7 @@ select is_empty('select * from public.profiles', 'outsider sees no other profile
 
 select tests.clear_authentication();
 set local role anon;
-select is_empty('select * from public.profiles', 'anon sees no profiles');
+select throws_ok('select * from public.profiles', '42501', null, 'anon has no grant on profiles');
 select throws_ok('select * from public.privacy_zones', '42501', null, 'anon has no grant on privacy zones');
 reset role;
 

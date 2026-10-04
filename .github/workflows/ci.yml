@@ -26,3 +26,21 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm lint
+
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:start
+      - run: pnpm db:test
+      - name: Seed is up to date
+        run: pnpm db:seed && git diff --exit-code supabase/seed.sql
+      - name: Generated types are up to date
+        run: pnpm db:types && git diff --exit-code packages/db/src/database.types.ts
