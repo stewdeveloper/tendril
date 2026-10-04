@@ -1,62 +1,20 @@
 // End-to-end flow against the local stack, through the real Edge Functions (`pnpm e2e:functions`).
 // Not under tests/: `pnpm test:functions` must not need a running stack.
 import { assert, assertEquals, assertNotEquals } from '@std/assert';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import exifr from 'exifr';
+import {
+  admin,
+  BUCKET,
+  call,
+  createUser,
+  deleteUsers,
+  PUBLISHABLE,
+  type TestUser,
+  URL_,
+} from './support.ts';
 
-const URL_ = Deno.env.get('SUPABASE_URL');
-const PUBLISHABLE = Deno.env.get('SUPABASE_PUBLISHABLE_KEY');
-const SECRET = Deno.env.get('SUPABASE_SECRET_KEY');
-if (!URL_ || !PUBLISHABLE || !SECRET) {
-  throw new Error(
-    'Run through `pnpm e2e:functions`: SUPABASE_URL/PUBLISHABLE_KEY/SECRET_KEY are not set.',
-  );
-}
-
-const admin = createClient(URL_, SECRET, { auth: { persistSession: false } });
-const BUCKET = 'plant-photos';
 const fixture = (name: string) =>
   Deno.readFile(new globalThis.URL(`../tests/fixtures/${name}`, import.meta.url));
-
-interface TestUser {
-  id: string;
-  email: string;
-  token: string;
-  client: SupabaseClient;
-}
-
-async function createUser(): Promise<TestUser> {
-  const email = `e2e+${crypto.randomUUID().slice(0, 8)}@example.com`;
-  const password = `pw-${crypto.randomUUID()}`;
-  const created = await admin.auth.admin.createUser({ email, password, email_confirm: true });
-  if (created.error) throw created.error;
-  const client = createClient(URL_!, PUBLISHABLE!, { auth: { persistSession: false } });
-  const signed = await client.auth.signInWithPassword({ email, password });
-  if (signed.error || !signed.data.session) throw signed.error ?? new Error('no session');
-  return { id: created.data.user.id, email, token: signed.data.session.access_token, client };
-}
-
-async function call(
-  user: TestUser,
-  method: string,
-  path: string,
-  body?: unknown,
-  headers: Record<string, string> = {},
-  // deno-lint-ignore no-explicit-any
-): Promise<{ status: number; json: any }> {
-  const res = await fetch(`${URL_}/functions/v1/${path}`, {
-    method,
-    headers: {
-      authorization: `Bearer ${user.token}`,
-      apikey: PUBLISHABLE!,
-      'content-type': 'application/json',
-      ...headers,
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  const text = await res.text();
-  return { status: res.status, json: text ? JSON.parse(text) : null };
-}
 
 const DEV = { 'x-firebase-appcheck': 'dev-ok' };
 
@@ -129,7 +87,7 @@ Deno.test('scan to check-in flow against the local stack', async (t) => {
       assertEquals(h.status, 200);
       const anon = await fetch(`${URL_}/functions/v1/me/bootstrap`, {
         method: 'POST',
-        headers: { apikey: PUBLISHABLE! },
+        headers: { apikey: PUBLISHABLE },
       });
       assertEquals(anon.status, 401);
     });
@@ -377,6 +335,6 @@ Deno.test('scan to check-in flow against the local stack', async (t) => {
   } finally {
     if (photoPaths.length > 0) await admin.storage.from(BUCKET).remove(photoPaths);
     photoPaths = [];
-    for (const u of users) await admin.auth.admin.deleteUser(u.id);
+    await deleteUsers(users.map((u) => u.id));
   }
 });
