@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  allDoneToday,
   checkInAnsweredNo,
+  checkInOn,
+  freezesHeldLine,
+  freezesHeldShort,
+  leaguePointsLine,
+  streakBroken,
+  taskDoneTitle,
+  weeksLabel,
   checkInQuestion,
   copy,
   freezeUsed,
@@ -74,5 +82,25 @@ describe('previewDaysLeft', () => {
     expect(previewDaysLeft(1)).toBe(
       'Premium preview: 1 day left. It ends on its own, and nothing is charged.',
     );
+  });
+});
+
+describe('today copy', () => {
+  it('matches the frames', () => {
+    expect(freezesHeldLine(1)).toBe('1 freeze held');
+    expect(freezesHeldLine(2)).toBe('2 freezes held');
+    expect(freezesHeldShort(0)).toBe('0 held');
+    expect(weeksLabel(3)).toBe('3 weeks');
+    expect(weeksLabel(1)).toBe('1 week');
+    expect(streakBroken(16)).toBe('Your last streak ran 16 days. Any check-in starts a new one.');
+    expect(checkInOn('Monty')).toBe('Check in on Monty');
+    expect(taskDoneTitle('check', 'Monty')).toBe("Checked Monty's soil");
+    expect(taskDoneTitle('water', 'Lily')).toBe('Watered Lily');
+    expect(leaguePointsLine(340, 3)).toBe('340 points · 3 days left');
+    expect(leaguePointsLine(5, 1)).toBe('5 points · 1 day left');
+    expect(allDoneToday({ plantNickname: 'Spidey', when: 'tomorrow' })).toBe(
+      'All done for today. Next check: Spidey, tomorrow.',
+    );
+    expect(allDoneToday()).toBe('All done for today.');
   });
 });

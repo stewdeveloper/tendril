@@ -101,3 +101,50 @@ export const linkSentLine = (email: string) =>
   `We sent a sign-in link to ${email}. Open it on this phone within 15 minutes.`;
 export const linkExpiredLine = (email: string) =>
   `Sign-in links work once, for 15 minutes. We can send a fresh one to ${email}.`;
+
+/** Today, the check-in and Streaks (2e, 4a to 4h): the lines the frames fix. */
+export const todayCopy = {
+  today: 'Today',
+  dueToday: 'Due today',
+  emptyLine: "Add your first plant and we'll tell you when to check its soil.",
+  scanPlant: 'Scan a plant',
+  scanLabel: 'Scan your plant label',
+  checkIn: 'Check in',
+  checkInFailed: "Couldn't save your check-in. Try again.",
+  careStreakLabel: 'day care streak',
+  discoveryStreakLabel: 'week discovery streak',
+  league: 'League',
+  identifications: 'Identifications',
+  streaksTitle: 'Streaks',
+  discoveryRow: 'Discovery streak',
+  discoveryRowLine: 'A new species each week',
+  freezesRow: 'Freezes',
+  freezesRowLine: 'Spent on a missed day',
+  freezesRowLineSpent: 'Invite a friend to earn another',
+  winterRow: 'Winter mode',
+  winterRowLine: 'Protects discovery when little grows',
+  invite: 'Invite a friend to earn a freeze',
+} as const;
+
+/** "1 freeze held", "2 freezes held": the line under the Today streak tiles (2e). */
+export const freezesHeldLine = (n: number) => `${n} ${n === 1 ? 'freeze' : 'freezes'} held`;
+/** "1 held": the Freezes row on Streaks (4f, 4g). */
+export const freezesHeldShort = (n: number) => `${n} held`;
+/** "3 weeks", "1 week": the Discovery streak row (4f). */
+export const weeksLabel = (n: number) => `${n} ${n === 1 ? 'week' : 'weeks'}`;
+/** The line under a broken streak. It says what happened and how to start again, never who failed (4h). */
+export const streakBroken = (days: number) =>
+  `Your last streak ran ${days} ${days === 1 ? 'day' : 'days'}. Any check-in starts a new one.`;
+/** "Check in on Monty" (4h). */
+export const checkInOn = (nickname: string) => `Check in on ${nickname}`;
+/** A finished task in the all-done list (4b). */
+export const taskDoneTitle = (kind: 'water' | 'check', nickname: string) =>
+  kind === 'water' ? `Watered ${nickname}` : `Checked ${nickname}'s soil`;
+/** "340 points · 3 days left": under the league rank (2e, 4b). */
+export const leaguePointsLine = (points: number, daysLeft: number) =>
+  `${points} points · ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left`;
+/** "All done for today. Next check: Spidey, tomorrow." `when` is "tomorrow" or a weekday (4b). */
+export const allDoneToday = (next?: { plantNickname: string; when: string }) =>
+  next
+    ? `All done for today. Next check: ${next.plantNickname}, ${next.when}.`
+    : 'All done for today.';

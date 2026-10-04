@@ -220,6 +220,14 @@ describe('TaskRow states', () => {
     );
     expect(screen.getByText('overdue since 28 Sep')).toBeTruthy();
   });
+  it('a check that is not due yet names its day', async () => {
+    const task = { ...dueTask, dueOn: '2026-10-04' as const, room: 'Kitchen' };
+    const { unmount } = await wrap(<TaskRow task={task} today={TODAY} onPress={noop} />);
+    expect(screen.getByText('Kitchen · tomorrow')).toBeTruthy();
+    await unmount();
+    await wrap(<TaskRow task={{ ...task, dueOn: '2026-10-09' }} today={TODAY} onPress={noop} />);
+    expect(screen.getByText('Kitchen · 9 Oct')).toBeTruthy();
+  });
   it('a done task is struck through, checked, faded and not celebrated', async () => {
     await wrap(<TaskRow task={doneTask} today={TODAY} onPress={noop} />);
     expect(StyleSheet.flatten(screen.getByText('Water Lily').props.style)).toMatchObject({

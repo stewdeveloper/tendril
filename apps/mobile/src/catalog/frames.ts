@@ -3,3 +3,4 @@ import './componentSheet';
 // today.tsx, ...), imported here, one line each. They live in `areas/`, not `frames/`, so the
 // directory never shadows this file's module path `catalog/frames`.
 import './areas/onboarding';
+import './areas/today';
