@@ -1,7 +1,9 @@
-import { radius, typeScale } from '@tendril/core';
+import { radius, shadows, typeScale } from '@tendril/core';
+import CircleX from 'lucide-react-native/icons/circle-x';
 import MapPin from 'lucide-react-native/icons/map-pin';
+import Search from 'lucide-react-native/icons/search';
 import { useState } from 'react';
-import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 import { AppText, fontFamilyFor, useTheme } from '../theme';
 import { Card } from './Card';
 import { DECORATIVE } from './decorative';
@@ -30,6 +32,11 @@ export interface TextFieldProps extends Pick<
    * line of help (3j); the ring keeps its normal colour.
    */
   error?: FieldError;
+  /**
+   * `search` is the town search (3i, 3j): the label is not drawn (it stays as the accessible name),
+   * a magnifier leads the text and a clear button trails it once there is some.
+   */
+  variant?: 'default' | 'search';
 }
 
 export type FieldError = string | { title: string; body: string };
@@ -42,6 +49,7 @@ export function TextField({
   placeholder,
   focused,
   error,
+  variant = 'default',
   ...input
 }: TextFieldProps) {
   const { c } = useTheme();
@@ -52,36 +60,71 @@ export function TextField({
   const text = typeof error === 'string' && error ? error : null;
   const message = card ? `${card.title}. ${card.body}` : (text ?? undefined);
   const ringColor = text ? c.danger : active ? c.primary : c.border;
+  const search = variant === 'search';
+  const inputProps = {
+    ...input,
+    accessibilityLabel: label,
+    accessibilityHint: message,
+    'aria-invalid': message ? true : undefined,
+    value,
+    onChangeText,
+    placeholder,
+    placeholderTextColor: c.textSecondary,
+    onFocus: () => setHasFocus(true),
+    onBlur: () => setHasFocus(false),
+  };
   return (
     <View style={styles.field}>
-      <AppText variant="caption" color="textSecondary">
-        {label}
-      </AppText>
-      <TextInput
-        {...input}
-        accessibilityLabel={label}
-        accessibilityHint={message}
-        aria-invalid={message ? true : undefined}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={c.textSecondary}
-        onFocus={() => setHasFocus(true)}
-        onBlur={() => setHasFocus(false)}
-        style={[
-          styles.input,
-          {
-            backgroundColor: c.surface,
-            color: c.textPrimary,
-            borderColor: ringColor,
-            borderWidth: ring,
-            // The design's ring is an inset shadow, so the text stays 16 pt from the edge.
-            paddingHorizontal: 16 - ring,
-          },
-        ]}
-      />
+      {search ? null : (
+        <AppText variant="caption" color="textSecondary">
+          {label}
+        </AppText>
+      )}
+      {search ? (
+        <View
+          style={[
+            styles.search,
+            { backgroundColor: c.surface, borderColor: ringColor, borderWidth: ring },
+          ]}
+        >
+          <Search {...DECORATIVE} size={20} color={c.textSecondary} strokeWidth={2} />
+          <TextInput {...inputProps} style={[styles.searchInput, { color: c.textPrimary }]} />
+          {value ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+              hitSlop={12}
+              onPress={() => onChangeText('')}
+              style={styles.clear}
+            >
+              <CircleX {...DECORATIVE} size={20} color={c.textSecondary} strokeWidth={2} />
+            </Pressable>
+          ) : null}
+        </View>
+      ) : (
+        <TextInput
+          {...inputProps}
+          style={[
+            styles.input,
+            {
+              backgroundColor: c.surface,
+              color: c.textPrimary,
+              borderColor: ringColor,
+              borderWidth: ring,
+              // The design's ring is an inset shadow, so the text stays 16 pt from the edge.
+              paddingHorizontal: 16 - ring,
+            },
+          ]}
+        />
+      )}
       {card ? (
-        <Card accessible role="alert" accessibilityLiveRegion="polite" style={styles.card} gap={12}>
+        <Card
+          accessible
+          role="alert"
+          accessibilityLiveRegion="polite"
+          style={[styles.card, { boxShadow: shadows.popover }]}
+          gap={12}
+        >
           <MapPin {...DECORATIVE} size={22} color={c.textSecondary} strokeWidth={2} />
           <View style={styles.cardText}>
             <AppText variant="bodyStrong">{card.title}</AppText>
@@ -103,6 +146,21 @@ const styles = StyleSheet.create({
   field: { gap: 6 },
   card: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 10 },
   cardText: { flex: 1, gap: 4 },
+  search: {
+    minHeight: 52,
+    borderRadius: radius.input,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+  },
+  searchInput: {
+    flex: 1,
+    alignSelf: 'stretch',
+    fontFamily: fontFamilyFor(typeScale.body),
+    fontSize: typeScale.body.size,
+  },
+  clear: { minWidth: 20, minHeight: 20 },
   input: {
     minHeight: 52,
     borderRadius: radius.input,

@@ -63,3 +63,34 @@ export const veryLikelyResultLine = (name: string, percent: number) =>
   `Very likely ${indefiniteArticle(name)} ${midSentenceName(name)}, ${percent}% match.`;
 export const likelyResultLine = (name: string, percent: number) =>
   `Likely ${indefiniteArticle(name)} ${midSentenceName(name)}, ${percent}%. Compare these two before you add it.`;
+
+/** Onboarding (3a to 3k): the lines the frames fix, so the screens and the tests read one source. */
+export const onboardingCopy = {
+  welcomeLine: 'Name any plant from a photo, see how sure we are, and check it against your pets.',
+  ageTitle: 'When were you born?',
+  ageLine: 'Month and year are enough.',
+  ageStopTitle: 'Thanks for telling us',
+  ageStopLine: "You can't create a Tendril account right now. We haven't kept your date of birth.",
+  signInTitle: 'Save your plants',
+  signInLine: 'Sign in so your plants and finds follow you to a new phone.',
+  linkSentTitle: 'Check your email',
+  linkExpiredTitle: 'This link has expired',
+  petsTitle: 'Who lives with you?',
+  petsLine: 'Pick all that apply. Every plant gets a pet check for each of them.',
+  petsNone: 'No pet checks for now. Add a pet any time in Settings and every plant gets checked.',
+  homeAreaTitle: "Where's home?",
+  townNotFoundTitle: "We couldn't find that town",
+  townNotFoundBody: 'Check the spelling, or move the area on the map instead.',
+  firstScanTitle: 'Your first scan',
+  firstScanLines: [
+    'Fill the frame with one leaf, a flower or the whole plant.',
+    'Tendril needs the camera to take plant photos.',
+    'Photos stay private unless you share one.',
+  ],
+  homeAreaSkipped: "Home area skipped. We'll ask again before your first public find.",
+} as const;
+
+export const linkSentLine = (email: string) =>
+  `We sent a sign-in link to ${email}. Open it on this phone within 15 minutes.`;
+export const linkExpiredLine = (email: string) =>
+  `Sign-in links work once, for 15 minutes. We can send a fresh one to ${email}.`;

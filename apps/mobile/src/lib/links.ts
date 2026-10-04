@@ -14,3 +14,7 @@ export function telUrl(phone: string): string | null {
 export function mapsUrl(query: string): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
+
+/** The terms and privacy pages the sign-in screen links to. */
+export const TERMS_URL = 'https://tendril.app/terms';
+export const PRIVACY_URL = 'https://tendril.app/privacy';
