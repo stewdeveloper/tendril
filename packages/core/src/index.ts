@@ -7,3 +7,7 @@ export * from './label.ts';
 export * from './quota.ts';
 export * from './copy.ts';
 export * from './fixtures/index.ts';
+export * from './privacy.ts';
+export * from './period.ts';
+export * from './care/basic.ts';
+export * from './api.ts';
