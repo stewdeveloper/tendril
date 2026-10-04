@@ -380,3 +380,34 @@ export const noPointsReasonLine = (reason: string | null): string | null => {
       return null;
   }
 };
+
+/** The Collection tab and the species card (2f, 4ah to 4ap). */
+export const collectionCopy = {
+  title: 'Collection',
+  segmentPlantdex: 'Plantdex',
+  segmentSets: 'Sets',
+  segmentMap: 'Map',
+  segmentBadges: 'Badges',
+  filterAll: 'All',
+  filterHouseplants: 'Houseplants',
+  filterWild: 'Wild',
+  emptyPlantdex: 'Your Plantdex fills up as you scan. Start with a plant at home.',
+  scanPlant: 'Scan a plant',
+  notFoundYet: 'Not found yet',
+  mapAlt: 'Map with your exact pins',
+  mapSub: 'Only you see exact pins. Anything shared shows an area at most.',
+  locationOff: 'Location is off, so your finds show as a list.',
+  turnOnLocation: 'Turn on location',
+  locationPrivate: 'Location private',
+  noFindsYet: 'No finds yet. Log one from a scan.',
+  emptyBadges: 'No badges yet. Log your first find to earn one.',
+  earned: 'Earned',
+  locked: 'Locked',
+  shareBadge: 'Share a badge',
+  yourFinds: 'Your finds',
+  seeOnMap: 'See finds on the map',
+} as const;
+/** "Foxglove" as a plain filter pill label: "All · 37". */
+export const filterPillLabel = (label: string, count: number) => `${label} · ${count}`;
+/** What Share carries for a badge. */
+export const badgeShareMessage = (name: string) => `I earned the ${name} badge in Tendril.`;

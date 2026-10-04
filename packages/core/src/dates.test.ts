@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { longDate, ordinal } from './dates.ts';
+import { longDate, ordinal, shortDate } from './dates.ts';
 
 describe('ordinal', () => {
   it.each([
@@ -27,5 +27,12 @@ describe('longDate', () => {
     expect(longDate('2026-09-12')).toBe('12 September');
     expect(longDate('2026-11-01')).toBe('1 November');
     expect(longDate('2026-01-31')).toBe('31 January');
+  });
+});
+
+describe('shortDate', () => {
+  it('writes a calendar date as day and a three-letter month', () => {
+    expect(shortDate('2026-09-28')).toBe('28 Sep');
+    expect(shortDate('2026-04-02')).toBe('2 Apr');
   });
 });

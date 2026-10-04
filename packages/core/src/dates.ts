@@ -28,3 +28,9 @@ export function longDate(iso: IsoDate): string {
   const [, month, day] = iso.split('-').map(Number);
   return `${day} ${MONTHS[(month ?? 1) - 1]}`;
 }
+
+/** "28 Sep": a calendar date as day and short month, for a find's row. */
+export function shortDate(iso: IsoDate): string {
+  const [, month, day] = iso.split('-').map(Number);
+  return `${day} ${MONTHS[(month ?? 1) - 1]?.slice(0, 3)}`;
+}

@@ -35,6 +35,9 @@ import {
   streakContinues,
   streakLastDay,
   veryLikelyResultLine,
+  badgeShareMessage,
+  collectionCopy,
+  filterPillLabel,
 } from './copy.ts';
 
 describe('copy', () => {
@@ -220,5 +223,15 @@ describe('scan result copy', () => {
   });
   it('never says safe', () => {
     expect(JSON.stringify(resultCopy)).not.toMatch(/\bsafe\b/i);
+  });
+});
+
+describe('collection copy', () => {
+  it('writes the filter pills and the badge share line', () => {
+    expect(filterPillLabel('All', 37)).toBe('All · 37');
+    expect(badgeShareMessage('First find')).toBe('I earned the First find badge in Tendril.');
+  });
+  it('never says safe', () => {
+    expect(JSON.stringify(collectionCopy)).not.toMatch(/\bsafe\b/i);
   });
 });
