@@ -171,6 +171,32 @@ describe('PetCheckCard', () => {
     ).toBeTruthy();
     expect(screen.queryByText(/safe/i)).toBeNull();
   });
+  it('the compact variant (2d) drops the avatar, kind caption, names and match footer', async () => {
+    const onPetAte = jest.fn();
+    await wrap(
+      <PetCheckCard
+        variant="compact"
+        pets={pets}
+        toxicity={[]}
+        matchProbability={0.96}
+        speciesName="Swiss cheese plant"
+        onPetAte={onPetAte}
+      />,
+    );
+    expect(screen.getByText('Pet check')).toBeTruthy();
+    expect(screen.getByText('Cats: Unknown')).toBeTruthy();
+    expect(screen.getByText('Dogs: Unknown')).toBeTruthy();
+    expect(
+      screen.getByText('Not reviewed yet. Keep it away from Miso until we know more.'),
+    ).toBeTruthy();
+    expect(screen.queryByText('Cat')).toBeNull();
+    expect(screen.queryByText('Dog')).toBeNull();
+    expect(screen.queryByText('Miso and Bran')).toBeNull();
+    expect(screen.queryByText(/Based on the match/)).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'My pet ate this' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Bran' }));
+    expect(onPetAte).toHaveBeenCalledWith(pets[1]!.id);
+  });
   it('renders nothing with no pets', async () => {
     await wrap(
       <PetCheckCard

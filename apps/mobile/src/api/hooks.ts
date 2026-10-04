@@ -50,9 +50,9 @@ export const usePlants = (householdId: string) => {
     queryFn: () => api.getPlants(householdId),
   });
 };
-export const usePlant = (id: string) => {
+export const usePlant = (id: string, enabled = true) => {
   const api = useApi();
-  return useQuery({ queryKey: queryKeys.plant(id), queryFn: () => api.getPlant(id) });
+  return useQuery({ queryKey: queryKeys.plant(id), queryFn: () => api.getPlant(id), enabled });
 };
 export const useQuota = (kind: QuotaKind) => {
   const api = useApi();
@@ -122,11 +122,12 @@ export const useLabel = (code: string) => {
   const api = useApi();
   return useQuery({ queryKey: queryKeys.label(code), queryFn: () => api.getLabel(code) });
 };
-export const useEmergency = (input: Input<'getEmergency'>) => {
+export const useEmergency = (input: Input<'getEmergency'>, enabled = true) => {
   const api = useApi();
   return useQuery({
     queryKey: queryKeys.emergency(input),
     queryFn: () => api.getEmergency(input),
+    enabled,
   });
 };
 

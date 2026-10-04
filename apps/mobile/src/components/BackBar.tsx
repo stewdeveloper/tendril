@@ -6,15 +6,17 @@ export interface BackBarProps {
   /** Where back goes: the previous screen's name ("Today", "Cancel"). */
   label: string;
   onPress: () => void;
+  /** Overrides the spoken name, which is "Back to <label>": for a label that is not a place ("Cancel", "Back"). */
+  accessibilityLabel?: string;
 }
 
 /** The in-screen back row (4f): a 24 pt chevron and the previous screen's name, 44 pt tall. */
-export function BackBar({ label, onPress }: BackBarProps) {
+export function BackBar({ label, onPress, accessibilityLabel }: BackBarProps) {
   const { c } = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Back to ${label}`}
+      accessibilityLabel={accessibilityLabel ?? `Back to ${label}`}
       onPress={onPress}
       style={styles.bar}
     >

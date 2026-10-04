@@ -6,6 +6,10 @@ import {
   freezesHeldLine,
   freezesHeldShort,
   leaguePointsLine,
+  diedNote,
+  givenAwayNote,
+  givenAwaySnackbar,
+  isValidNickname,
   offlineSaved,
   streakBroken,
   taskDoneTitle,
@@ -14,6 +18,7 @@ import {
   copy,
   soilCheckLine,
   freezeUsed,
+  emergencyCopy,
   indefiniteArticle,
   midSentenceName,
   petNameOrFallback,
@@ -116,5 +121,68 @@ describe('today copy', () => {
 describe('offlineSaved', () => {
   it('is the one sanctioned offline note', () => {
     expect(offlineSaved).toBe("You're offline. Saved, and it will sync when you're back.");
+  });
+});
+
+describe('plant closed notes (4k, 4l)', () => {
+  it('say what happened and on which day, and that it stays in the history', () => {
+    expect(givenAwayNote('2026-09-12')).toBe('Given away on 12 September. Kept in your history.');
+  });
+  it('a plant that died names the cause when there is one', () => {
+    expect(diedNote('2026-08-20', 'too dry')).toBe(
+      'Marked as died on 20 August: too dry. We use this to give better advice.',
+    );
+    expect(diedNote('2026-08-20', null)).toBe(
+      'Marked as died on 20 August. We use this to give better advice.',
+    );
+  });
+});
+
+describe('given-away snackbar', () => {
+  it('names the plant', () => {
+    expect(givenAwaySnackbar('Lily')).toBe('Lily marked as given away.');
+  });
+});
+
+describe('isValidNickname', () => {
+  it('accepts 1 to 40 characters after trimming', () => {
+    expect(isValidNickname('Lily')).toBe(true);
+    expect(isValidNickname('  Lily  ')).toBe(true);
+    expect(isValidNickname('a'.repeat(40))).toBe(true);
+  });
+  it('refuses empty, blank and over-long names', () => {
+    expect(isValidNickname('')).toBe(false);
+    expect(isValidNickname('   ')).toBe(false);
+    expect(isValidNickname('a'.repeat(41))).toBe(false);
+    expect(isValidNickname(`  ${'a'.repeat(41)} `)).toBe(false);
+  });
+});
+
+describe('emergency copy', () => {
+  it('names the pet and the plant', () => {
+    expect(emergencyCopy.title('Miso', 'peace lily')).toBe('If Miso ate peace lily');
+  });
+  it('the poison line button carries the number', () => {
+    expect(emergencyCopy.callPoisonLine('ASPCA Poison Control', '(888) 426-4435')).toBe(
+      'Call ASPCA Poison Control (888)\u00A0426\u20114435',
+    );
+  });
+  it('a vet whose number cannot be dialled still gets guidance', () => {
+    expect(emergencyCopy.vetNoNumber('Riverside Vets')).toBe(
+      "We can't dial the number saved for Riverside Vets. Call your nearest vet now.",
+    );
+  });
+  it('the source and match line reads as the frame does', () => {
+    expect(emergencyCopy.sourceLine('ASPCA', 0.94)).toBe(
+      'Source: ASPCA. Based on a very likely match, 94%.',
+    );
+    expect(emergencyCopy.sourceLine('ASPCA', 0.71)).toBe(
+      'Source: ASPCA. Based on a likely match, 71%.',
+    );
+    expect(emergencyCopy.sourceLine('ASPCA', 0.34)).toBe(
+      'Source: ASPCA. Based on the match: Not sure, 34%.',
+    );
+    expect(emergencyCopy.sourceLine('ASPCA', null)).toBe('Source: ASPCA.');
+    expect(emergencyCopy.sourceLine(null, null)).toBeNull();
   });
 });

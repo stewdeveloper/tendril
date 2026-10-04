@@ -4,3 +4,5 @@ import './componentSheet';
 // directory never shadows this file's module path `catalog/frames`.
 import './areas/onboarding';
 import './areas/today';
+import './areas/plants';
+import './areas/care';

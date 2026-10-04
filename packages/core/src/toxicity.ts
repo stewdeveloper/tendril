@@ -34,6 +34,9 @@ const A11Y: Record<Severity, string> = {
   severe: 'severe toxicity',
 };
 
+/** Said wherever a plant is called harmless to a pet: eating any plant can still upset a stomach. */
+export const ANY_PLANT_CAVEAT = 'Eating any plant can still cause vomiting or an upset stomach.';
+
 export function animalPlural(animal: Animal): 'Cats' | 'Dogs' | 'Other pets' {
   return PLURAL[animal];
 }
@@ -67,7 +70,7 @@ export function petCheckLine(input: PetCheckInput): string {
   }
   if (severity === 'none') {
     const source = input.sourceName ? ` (${input.sourceName})` : '';
-    return `No known toxicity to ${plural}${source}. Eating any plant can still cause vomiting or an upset stomach.`;
+    return `No known toxicity to ${plural}${source}. ${ANY_PLANT_CAVEAT}`;
   }
   const parts = [`${WORD[severity]} for ${plural}.`];
   if (input.summary) parts.push(input.summary);

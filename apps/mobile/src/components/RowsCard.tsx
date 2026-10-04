@@ -24,22 +24,33 @@ export interface RowsCardProps {
   rows?: Row[];
   /** Rows that draw themselves (a `PlantCard` with `variant="row"`), after any `rows`. */
   children?: ReactNode;
+  /**
+   * The care plan's look (2d): the card pads 4 pt above and 16 pt at the sides, the rows sit inside
+   * that padding with their dividers inset to match, and the last row has no divider.
+   */
+  inset?: boolean;
 }
 
 /** A white card of rows with hairline dividers (4aq). Rows with `onPress` are buttons. */
-export function RowsCard({ rows = [], children }: RowsCardProps) {
+export function RowsCard({ rows = [], children, inset = false }: RowsCardProps) {
   const { c } = useTheme();
   return (
-    <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.hairline }]}>
-      {rows.map((row) => (
-        <RowView key={row.key} row={row} />
+    <View
+      style={[
+        styles.card,
+        inset && styles.cardInset,
+        { backgroundColor: c.surface, borderColor: c.hairline },
+      ]}
+    >
+      {rows.map((row, i) => (
+        <RowView key={row.key} row={row} inset={inset} last={inset && i === rows.length - 1} />
       ))}
       {children}
     </View>
   );
 }
 
-function RowView({ row }: { row: Row }) {
+function RowView({ row, inset, last }: { row: Row; inset: boolean; last: boolean }) {
   const { c } = useTheme();
   const Icon = row.icon;
   const body: ReactNode = (
@@ -79,6 +90,8 @@ function RowView({ row }: { row: Row }) {
   );
   const style = [
     styles.row,
+    inset && styles.rowInset,
+    last && styles.rowLast,
     {
       backgroundColor: row.highlight ? c.primaryTint : 'transparent',
       borderBottomColor: c.divider,
@@ -119,6 +132,9 @@ const styles = StyleSheet.create({
     minHeight: 53,
     borderBottomWidth: 1,
   },
+  cardInset: { paddingVertical: 4, paddingHorizontal: 16 },
+  rowInset: { paddingHorizontal: 0 },
+  rowLast: { borderBottomWidth: 0 },
   lead: { width: 28 },
   text: { flex: 1, minWidth: 0 },
   subtitle: { lineHeight: 20 },

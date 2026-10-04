@@ -1,7 +1,9 @@
 import {
   aoife,
   midSentenceName,
+  isActionableDiagnosis,
   petNameOrFallback,
+  poisonLineFor,
   plantdexCounts,
   QUOTA_LIMITS,
   type CareBasics,
@@ -53,12 +55,15 @@ export type FixtureScenario =
   | 'not_a_plant'
   | 'not_sure'
   | 'likely'
+  | 'us'
   | 'error';
 
 export interface FixtureApiOptions {
   /** Pretend network time per call. 0 in tests; the app passes 300 so loading states are seen. */
   latencyMs?: number;
   scenario?: FixtureScenario;
+  /** The household's country, which decides the poison line a pet emergency shows. Default Ireland. */
+  countryCode?: string;
 }
 
 /** The free plan's basic schedule, and the 2-day recheck when the soil was still damp (spec §9). */
@@ -231,10 +236,12 @@ function createWorld(scenario: FixtureScenario): World {
 export class FixtureApi implements TendrilApi {
   latencyMs: number;
   private scenario: FixtureScenario;
+  private countryCode: string;
   private world: World;
 
-  constructor({ latencyMs = 0, scenario = 'default' }: FixtureApiOptions = {}) {
+  constructor({ latencyMs = 0, scenario = 'default', countryCode = 'IE' }: FixtureApiOptions = {}) {
     this.latencyMs = latencyMs;
+    this.countryCode = countryCode;
     this.scenario = scenario;
     this.world = createWorld(scenario);
   }
@@ -243,6 +250,7 @@ export class FixtureApi implements TendrilApi {
   setScenario(name: FixtureScenario): void {
     this.scenario = name;
     this.world = createWorld(name);
+    this.beforeClose.clear();
   }
 
   private async run<T>(read: () => T): Promise<T> {
@@ -379,12 +387,27 @@ export class FixtureApi implements TendrilApi {
       const w = this.world;
       this.summary(id);
       const open = status === 'alive';
+      const current = this.summary(id);
+      // Closing a live plant remembers how it stood, so putting it back (the Undo) restores it.
+      if (!open && current.status === 'alive')
+        this.beforeClose.set(id, {
+          careState: current.careState,
+          nextCheckOn: current.nextCheckOn,
+          tasks: w.tasks.filter((t) => t.plantId === id),
+        });
+      const prior = open ? this.beforeClose.get(id) : undefined;
+      if (open) this.beforeClose.delete(id);
       this.patchPlant(id, {
         status,
-        careState: open ? 'ok' : 'closed',
-        nextCheckOn: open ? addDays(FIXTURE_TODAY, CHECK_INTERVAL_DAYS) : null,
+        careState: open ? (prior?.careState ?? 'ok') : 'closed',
+        nextCheckOn: open
+          ? prior
+            ? prior.nextCheckOn
+            : addDays(FIXTURE_TODAY, CHECK_INTERVAL_DAYS)
+          : null,
         statusOn: open ? null : FIXTURE_TODAY,
       });
+      if (prior) w.tasks = [...w.tasks, ...prior.tasks];
       const cause = status === 'dead' ? (deathCause ?? null) : null;
       const detail = w.details[id];
       if (detail) detail.deathCause = cause;
@@ -548,7 +571,7 @@ export class FixtureApi implements TendrilApi {
       if (w.quota.diagnosis.used >= w.quota.diagnosis.limit) throw new Error('quota_exceeded');
       const result = this.diagnosisFor(`diag-${++w.counter}`, input.plantId);
       // A "not sure" result doesn't use the month's diagnosis (frame 4s).
-      if (result.planChange) w.quota.diagnosis.used += 1;
+      if (isActionableDiagnosis(result)) w.quota.diagnosis.used += 1;
       return clone(result);
     });
   }
@@ -710,8 +733,9 @@ export class FixtureApi implements TendrilApi {
           pet.animal === 'other' ? null : (entries.find((e) => e.animal === pet.animal) ?? null),
         matchProbability: detail?.matchProbability ?? null,
         vet: w.household.vet,
-        // Ireland has no confirmed poison line yet, so the vet is the only number (frame 4bi).
-        poisonLine: null,
+        // Ireland has no confirmed poison line yet, so the vet is the only number (frame 4bi). The
+        // 'us' scenario is the United States, so frame 4bh's ASPCA line is reachable.
+        poisonLine: poisonLineFor(this.scenario === 'us' ? 'US' : this.countryCode),
       });
     });
   }
@@ -747,6 +771,16 @@ export class FixtureApi implements TendrilApi {
   }
 
   // Internals. They run inside `run`, so a throw becomes a rejected promise.
+
+  /** What a plant looked like before it was closed, for putting it back. */
+  private beforeClose = new Map<
+    string,
+    {
+      careState: PlantSummary['careState'];
+      nextCheckOn: PlantSummary['nextCheckOn'];
+      tasks: CareTask[];
+    }
+  >();
 
   private summary(id: string): PlantSummary {
     const plant = this.world.plants.find((p) => p.id === id);

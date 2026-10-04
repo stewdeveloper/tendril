@@ -18,6 +18,7 @@ export interface TextFieldProps extends Pick<
   | 'secureTextEntry'
   | 'textContentType'
   | 'onSubmitEditing'
+  | 'maxLength'
 > {
   label: string;
   value: string;

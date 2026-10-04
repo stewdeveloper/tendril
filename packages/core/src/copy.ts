@@ -1,4 +1,9 @@
 import { soilCheckRange } from './care/basic.ts';
+import type { IsoDate } from './domain.ts';
+import { bandFor, bandWord, confidenceLabel, toPercent } from './confidence.ts';
+import { longDate } from './dates.ts';
+import { nonBreakingPhone } from './emergency.ts';
+
 /** Fixed lines from the UX brief's Copy table. Never use the word "safe". */
 export const copy = {
   galleryNote: "Gallery photos get identified but don't earn points.",
@@ -24,6 +29,52 @@ export const previewDaysLeft = (days: number) =>
   `Premium preview: ${days} ${days === 1 ? 'day' : 'days'} left. It ends on its own, and nothing is charged.`;
 export const pointsPendingReview = 'Points pending review';
 export const taskDueTitle = (nickname: string) => `Time to check ${nickname}'s soil.`;
+
+/** My Plants, plant detail, setup and label adoption (2d, 4i to 4p): the lines the frames fix. */
+export const plantsCopy = {
+  myPlants: 'My Plants',
+  addPlant: 'Add a plant',
+  emptyLine: 'No plants yet. Scan one, or scan the label it came with.',
+  scanPlant: 'Scan a plant',
+  scanPlantLabel: 'Scan a plant label',
+  nextSoilCheck: 'Next soil check',
+  checkInToday: 'Today',
+  carePlan: 'Care plan',
+  history: 'History',
+  nickname: 'Nickname',
+  lightTitle: 'Light in the room',
+  potTitle: 'Pot',
+  drainsTitle: 'Drains at the bottom?',
+  notSure: 'Not sure',
+  notSureNote:
+    "Not sure is fine. We'll start with the species' basic schedule and you can change it later.",
+  save: 'Save',
+  cancel: 'Cancel',
+  saveFailed: "Couldn't save your plant. Try again.",
+  labelUnknown: "We don't know this label. The code may be retired.",
+  labelUnknownBody: 'You can still scan the plant itself.',
+  scanThePlant: 'Scan the plant',
+  addToMyPlants: 'Add to my plants',
+  noIdentificationUsed: 'No identification used.',
+  checkHealth: 'Check its health',
+  markDied: 'Mark as died',
+  givenAway: 'Given away',
+  diedCauseTitle: 'What happened?',
+  diedCauseLine: 'Optional. We use this to give better advice.',
+  diedCauseOther: 'Anything else? (optional)',
+  statusFailed: "Couldn't update the plant. Try again.",
+} as const;
+
+/** "Set up Lily" (4m). */
+export const setupTitle = (name: string) => `Set up ${name}`;
+/** "From the label · Greenhouse Growers" (4o). */
+export const fromLabelLine = (grower: string) => `From the label · ${grower}`;
+/** The note on a plant that was given away (4k). */
+export const givenAwayNote = (on: IsoDate) =>
+  `Given away on ${longDate(on)}. Kept in your history.`;
+/** The note on a plant that died (4l): the cause when the person gave one. */
+export const diedNote = (on: IsoDate, cause: string | null) =>
+  `Marked as died on ${longDate(on)}${cause ? `: ${cause}` : ''}. We use this to give better advice.`;
 
 /** Proper adjectives and names that keep their capital when a plant name sits mid-sentence. */
 export const PROPER_FIRST_WORDS: readonly string[] = [
@@ -158,3 +209,66 @@ export const allDoneToday = (next?: { plantNickname: string; when: string }) =>
   next
     ? `All done for today. Next check: ${next.plantNickname}, ${next.when}.`
     : 'All done for today.';
+
+/** The longest nickname a plant can have. */
+export const NICKNAME_MAX = 40;
+/** A nickname is 1 to 40 characters once trimmed. The app and the server share this. */
+export const isValidNickname = (name: string): boolean => {
+  const length = name.trim().length;
+  return length >= 1 && length <= NICKNAME_MAX;
+};
+/** The snackbar after a plant is marked as given away; it carries the Undo. */
+export const givenAwaySnackbar = (nickname: string) => `${nickname} marked as given away.`;
+
+/** Diagnosis (4q to 4s) and the photo step that comes before it. */
+export const diagnosisCopy = {
+  photosTitle: 'Take photos',
+  photosLine:
+    'Add one to three photos of the leaves, stems or soil that worry you. Close up and in daylight works best.',
+  takePhoto: 'Take a photo',
+  choosePhoto: 'Choose from library',
+  removePhoto: 'Remove photo',
+  check: 'Check its health',
+  checking: 'Checking',
+  photosFull: 'That is three photos, the most we can use.',
+  permissionDenied: 'Allow photo access in your phone settings to add photos.',
+  failed: "Couldn't check your plant. Try again.",
+  changeToPlan: 'Change to your plan',
+  apply: 'Apply to care plan',
+  applyFailed: "Couldn't change your plan. Try again.",
+  tryPremium: 'Try Premium free for 7 days',
+  notNow: 'Not now',
+  notSureNote: "This didn't use your diagnosis.",
+  closePhoto: 'Take a close photo',
+} as const;
+/** "1 of 3 photos" under the photo step's picker. */
+export const photosCount = (n: number) => `${n} of 3 photos`;
+
+/** The pet emergency screen (4bh, 4bi). */
+export const emergencyCopy = {
+  callVet: 'Call your vet',
+  findVet: 'Find a vet nearby',
+  saveVet: 'Save your vet',
+  noVetNote: "You haven't saved a vet yet. Call your nearest vet now.",
+  /** A vet is saved, but the number has no digits to dial. */
+  vetNoNumber: (name: string) =>
+    `We can't dial the number saved for ${name}. Call your nearest vet now.`,
+  /** The screen with nothing known yet (still loading, or the lookup failed): the safe actions. */
+  fallbackTitle: 'If your pet ate a plant',
+  callNearestVet: 'Call your nearest vet now.',
+  title: (petName: string, speciesName: string) => `If ${petName} ate ${speciesName}`,
+  callPoisonLine: (name: string, phone: string) => `Call ${name} ${nonBreakingPhone(phone)}`,
+  /** "Source: ASPCA. Based on a very likely match, 94%." The match part only when there is one. */
+  sourceLine: (sourceName: string | null, matchProbability: number | null): string | null => {
+    const source = sourceName ? `Source: ${sourceName}.` : null;
+    const band = matchProbability == null ? null : bandFor(matchProbability);
+    // "Not sure" is not a kind of match, so it reads as the label: "Based on the match: Not sure, 34%."
+    const match =
+      matchProbability == null || band == null
+        ? null
+        : band === 'not_sure'
+          ? `Based on the match: ${confidenceLabel(matchProbability)}.`
+          : `Based on a ${bandWord(band).toLowerCase()} match, ${toPercent(matchProbability)}%.`;
+    return [source, match].filter(Boolean).join(' ') || null;
+  },
+} as const;
