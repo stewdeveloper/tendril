@@ -16,7 +16,7 @@ const DEFAULT_CENTER: MapCenter = { lat: 53.3498, lng: -6.2603 };
 const SAME = 0.00005;
 
 /**
- * The native map (3i): the area's circle and centre marker follow the map's centre as it is panned
+ * The native map (3i): the area's circle and centre marker follow the map's centre once a pan settles
  * (zoom is fixed, so 1 pt is always 20 m), and the handle on the circle's edge resizes it. Search
  * results move the map through `center`.
  */
@@ -59,7 +59,7 @@ export function HomeAreaMap({
           pitchEnabled={false}
           toolbarEnabled={false}
           showsUserLocation={false}
-          onRegionChange={(r) => {
+          onRegionChangeComplete={(r) => {
             reported.current = { lat: r.latitude, lng: r.longitude };
             onCenterChange?.(reported.current);
           }}

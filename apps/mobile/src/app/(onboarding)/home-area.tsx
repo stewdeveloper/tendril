@@ -1,3 +1,4 @@
+import { onboardingCopy } from '@tendril/core';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Snackbar } from '../../components';
@@ -49,7 +50,7 @@ export default function HomeAreaRoute() {
           }
         }}
       />
-      {failed ? <Snackbar text="Couldn't save your area. Try again." /> : null}
+      {failed ? <Snackbar text={onboardingCopy.homeAreaSaveFailed} /> : null}
     </>
   );
 }

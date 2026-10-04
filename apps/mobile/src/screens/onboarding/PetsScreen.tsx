@@ -6,7 +6,7 @@ import Dog from 'lucide-react-native/icons/dog';
 import Info from 'lucide-react-native/icons/info';
 import PawPrint from 'lucide-react-native/icons/paw-print';
 import Plus from 'lucide-react-native/icons/plus';
-import { useState, type ComponentType } from 'react';
+import { useRef, useState, type ComponentType } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Button, Card } from '../../components';
 import { DECORATIVE } from '../../components/decorative';
@@ -32,7 +32,7 @@ export interface PetsScreenProps {
   focusedRow?: number;
 }
 
-type Row = { animal: Animal; name: string };
+type Row = { id: number; animal: Animal; name: string };
 type IconComponent = ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
 
 const TILES: { key: Animal | 'none'; label: string; icon: IconComponent }[] = [
@@ -59,8 +59,9 @@ export function PetsScreen({
   focusedRow,
 }: PetsScreenProps) {
   const { c } = useTheme();
+  const nextId = useRef(initial.length);
   const [rows, setRows] = useState<Row[]>(() =>
-    initial.map((p) => ({ animal: p.animal, name: p.name ?? '' })),
+    initial.map((p, i) => ({ id: i, animal: p.animal, name: p.name ?? '' })),
   );
   const [none, setNone] = useState(initialNone);
   const has = (animal: Animal) => rows.some((r) => r.animal === animal);
@@ -74,23 +75,34 @@ export function PetsScreen({
     setRows((current) => {
       if (current.some((r) => r.animal === key)) return current.filter((r) => r.animal !== key);
       // Rows stay grouped cat, dog, other whatever order they were picked in.
-      return [...current, { animal: key, name: '' }].sort(
+      return [...current, { id: nextId.current++, animal: key, name: '' }].sort(
         (a, b) => ORDER.indexOf(a.animal) - ORDER.indexOf(b.animal),
       );
     });
   };
-  const rename = (index: number, name: string) =>
-    setRows((current) => current.map((r, i) => (i === index ? { ...r, name } : r)));
+  const rename = (id: number, name: string) =>
+    setRows((current) => current.map((r) => (r.id === id ? { ...r, name } : r)));
   const addAnother = (animal: Animal) =>
     setRows((current) => {
       const last = current.map((r) => r.animal).lastIndexOf(animal);
       const next = [...current];
-      next.splice(last + 1, 0, { animal, name: '' });
+      next.splice(last + 1, 0, { id: nextId.current++, animal, name: '' });
       return next;
     });
   const lastAnimal = rows.length > 0 ? rows[rows.length - 1]!.animal : null;
-  const submit = () =>
-    onContinue(rows.map((r) => ({ animal: r.animal, name: r.name.trim() || null })));
+  // There is no remove control, so a blank extra row is a mis-tap: keep a blank name only on the
+  // first row of its animal (the animal was ticked), and drop the rest.
+  const submit = () => {
+    const seen = new Set<Animal>();
+    const pets: PetDraft[] = [];
+    for (const r of rows) {
+      const name = r.name.trim();
+      const first = !seen.has(r.animal);
+      seen.add(r.animal);
+      if (name || first) pets.push({ animal: r.animal, name: name || null });
+    }
+    onContinue(pets);
+  };
   return (
     <OnboardingPage gap={20}>
       <OnboardingProgress step={3} onBack={onBack} />
@@ -148,18 +160,25 @@ export function PetsScreen({
       {rows.length > 0 ? (
         <View style={styles.names}>
           <AppText variant="caption" color={c.textSecondary}>
-            Names (optional)
+            {onboardingCopy.namesOptional}
           </AppText>
-          {rows.map((row, i) => (
-            <NameRow
-              key={i}
-              prefix={PREFIX[row.animal]}
-              label={`${PREFIX[row.animal]} name`}
-              value={row.name}
-              onChangeText={(text) => rename(i, text)}
-              focused={focusedRow === i}
-            />
-          ))}
+          {rows.map((row, i) => {
+            const same = rows.filter((r) => r.animal === row.animal);
+            const label =
+              same.length > 1
+                ? `${PREFIX[row.animal]} ${same.indexOf(row) + 1} name`
+                : `${PREFIX[row.animal]} name`;
+            return (
+              <NameRow
+                key={row.id}
+                prefix={PREFIX[row.animal]}
+                label={label}
+                value={row.name}
+                onChangeText={(text) => rename(row.id, text)}
+                focused={focusedRow === i}
+              />
+            );
+          })}
           {lastAnimal && rows.length < MAX_PETS ? (
             <Pressable
               accessibilityRole="button"

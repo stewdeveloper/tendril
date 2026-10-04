@@ -16,6 +16,7 @@ export default function SignInRoute() {
       showApple={Platform.OS === 'ios'}
       onApple={() => void continueWith('apple')}
       onGoogle={() => void continueWith('google')}
+      // Phase 2B Task 8: supabase mode sends the link from here (signIn('email', email)).
       // The link is what signs them in: the next step is the check-your-email screen.
       onEmail={(email) => router.push({ pathname: '/link-sent', params: { email } })}
       onBack={() => router.back()}

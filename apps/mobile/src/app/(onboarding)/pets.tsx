@@ -1,3 +1,4 @@
+import { onboardingCopy } from '@tendril/core';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Snackbar } from '../../components';
@@ -23,7 +24,7 @@ export default function PetsRoute() {
           }
         }}
       />
-      {failed ? <Snackbar text="Couldn't save your pets. Try again." /> : null}
+      {failed ? <Snackbar text={onboardingCopy.petsSaveFailed} /> : null}
     </>
   );
 }

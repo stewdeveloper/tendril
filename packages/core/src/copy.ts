@@ -87,6 +87,13 @@ export const onboardingCopy = {
     'Tendril needs the camera to take plant photos.',
     'Photos stay private unless you share one.',
   ],
+  orUseEmail: 'or use email',
+  emailRequired: 'Enter your email address.',
+  linkResent: 'Sent again. Check your email.',
+  namesOptional: 'Names (optional)',
+  skip: 'Skip',
+  petsSaveFailed: "Couldn't save your pets. Try again.",
+  homeAreaSaveFailed: "Couldn't save your area. Try again.",
   homeAreaSkipped: "Home area skipped. We'll ask again before your first public find.",
 } as const;
 

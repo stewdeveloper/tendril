@@ -1,4 +1,5 @@
 import { copy, onboardingCopy } from '@tendril/core';
+import { StyleSheet } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { ThemeProvider } from '../../theme';
 import { AgeScreen } from './AgeScreen';
@@ -199,13 +200,37 @@ describe('onboarding', () => {
     await fireEvent.changeText(screen.getByLabelText('Cat name'), ' Miso ');
     await fireEvent.changeText(screen.getByLabelText('Dog name'), 'Bran');
     await fireEvent.press(screen.getByRole('button', { name: 'Add another dog' }));
-    expect(screen.getAllByLabelText('Dog name')).toHaveLength(2);
+    await fireEvent.changeText(screen.getByLabelText('Dog 2 name'), 'Fern');
+    expect(screen.getByLabelText('Dog 1 name')).toBeTruthy();
+    expect(screen.getByLabelText('Dog 2 name')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
     // Cats come before dogs whatever order they were picked in; a blank name is saved as null.
     expect(onContinue).toHaveBeenCalledWith([
       { animal: 'cat', name: 'Miso' },
       { animal: 'dog', name: 'Bran' },
-      { animal: 'dog', name: null },
+      { animal: 'dog', name: 'Fern' },
+    ]);
+  });
+
+  it('pets: a mis-tapped Add another with a blank name does not save a phantom pet', async () => {
+    const onContinue = jest.fn();
+    await wrap(
+      <PetsScreen
+        initial={[
+          { animal: 'cat', name: '' },
+          { animal: 'dog', name: 'Bran' },
+        ]}
+        onContinue={onContinue}
+        onBack={() => {}}
+      />,
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'Add another dog' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Add another dog' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    // The blank cat is the first row of its animal, so it stays; the blank extra dogs go.
+    expect(onContinue).toHaveBeenCalledWith([
+      { animal: 'cat', name: null },
+      { animal: 'dog', name: 'Bran' },
     ]);
   });
 
@@ -239,6 +264,13 @@ describe('onboarding', () => {
       {...over}
     />
   );
+
+  it('home area: the map is laid out in flow, with no absolute offsets, so nothing overlaps', async () => {
+    await wrap(homeArea({ notFound: true }));
+    const map = StyleSheet.flatten(screen.getByTestId('home-area-map').props.style) ?? {};
+    expect(map.position).not.toBe('absolute');
+    expect(map.top).toBeUndefined();
+  });
 
   it('home area: skip and save, with the privacy line and no location prompt', async () => {
     const onSkip = jest.fn();

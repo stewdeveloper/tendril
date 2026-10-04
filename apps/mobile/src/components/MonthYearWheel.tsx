@@ -92,12 +92,16 @@ function Column({ label, items, index, flex, onIndex }: ColumnProps) {
     // Only the first placement: after that the list itself is the source of the index.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const clampIndex = (next: number) => Math.min(items.length - 1, Math.max(0, next));
+  // The highlight follows the scroll; the value is committed once it comes to rest.
   const settle = (next: number) => {
-    const clamped = Math.min(items.length - 1, Math.max(0, next));
+    const clamped = clampIndex(next);
     setShown(clamped);
     if (clamped !== index) onIndex(clamped);
   };
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) =>
+    setShown(clampIndex(Math.round(e.nativeEvent.contentOffset.y / ROW)));
+  const onRest = (e: NativeSyntheticEvent<NativeScrollEvent>) =>
     settle(Math.round(e.nativeEvent.contentOffset.y / ROW));
   const step = useCallback(
     (e: AccessibilityActionEvent) => {
@@ -132,6 +136,8 @@ function Column({ label, items, index, flex, onIndex }: ColumnProps) {
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
         onScroll={onScroll}
+        onMomentumScrollEnd={onRest}
+        onScrollEndDrag={onRest}
         initialNumToRender={items.length > 30 ? 12 : items.length}
         renderItem={({ item, index: i }) => {
           const distance = Math.abs(i - shown);

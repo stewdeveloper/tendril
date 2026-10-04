@@ -56,7 +56,7 @@ export function SignInScreen({
   const submit = () => {
     const trimmed = email.trim();
     // Only enough of a check to catch a slip: the link itself is the proof the address is real.
-    if (!/^\S+@\S+\.\S+$/.test(trimmed)) return setError('Enter your email address.');
+    if (!/^\S+@\S+\.\S+$/.test(trimmed)) return setError(onboardingCopy.emailRequired);
     setError(null);
     onEmail(trimmed);
   };
@@ -86,7 +86,7 @@ export function SignInScreen({
       <View style={styles.divider}>
         <View style={[styles.rule, { backgroundColor: c.border, opacity: 0.4 }]} />
         <AppText variant="caption" color={c.textSecondary}>
-          or use email
+          {onboardingCopy.orUseEmail}
         </AppText>
         <View style={[styles.rule, { backgroundColor: c.border, opacity: 0.4 }]} />
       </View>
