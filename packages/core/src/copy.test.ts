@@ -8,6 +8,8 @@ import {
   leaguePointsLine,
   diedNote,
   givenAwayNote,
+  givenAwaySnackbar,
+  isValidNickname,
   offlineSaved,
   streakBroken,
   taskDoneTitle,
@@ -125,5 +127,25 @@ describe('plant closed notes (4k, 4l)', () => {
     expect(diedNote('2026-08-20', null)).toBe(
       'Marked as died on 20 August. We use this to give better advice.',
     );
+  });
+});
+
+describe('given-away snackbar', () => {
+  it('names the plant', () => {
+    expect(givenAwaySnackbar('Lily')).toBe('Lily marked as given away.');
+  });
+});
+
+describe('isValidNickname', () => {
+  it('accepts 1 to 40 characters after trimming', () => {
+    expect(isValidNickname('Lily')).toBe(true);
+    expect(isValidNickname('  Lily  ')).toBe(true);
+    expect(isValidNickname('a'.repeat(40))).toBe(true);
+  });
+  it('refuses empty, blank and over-long names', () => {
+    expect(isValidNickname('')).toBe(false);
+    expect(isValidNickname('   ')).toBe(false);
+    expect(isValidNickname('a'.repeat(41))).toBe(false);
+    expect(isValidNickname(`  ${'a'.repeat(41)} `)).toBe(false);
   });
 });

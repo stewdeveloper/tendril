@@ -1,5 +1,5 @@
 import { plantsCopy, type PlantSetup } from '@tendril/core';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useAddPlant, useLabel, useScanResult } from '../../api/hooks';
 import { PlantSetupScreen } from '../../screens/plants/PlantSetupScreen';
@@ -32,7 +32,9 @@ export default function PlantSetupRoute() {
 
 function FromLabel({ source }: { source: Source & { source: 'label_qr' } }) {
   const label = useLabel(source.labelCode);
-  if (!label.data) return null;
+  if (label.data === undefined) return null;
+  // A code we do not know, or one that was retired: the label page explains it (4p).
+  if (label.data === null) return <Redirect href={`/l/${source.labelCode}`} />;
   return <Setup source={source} speciesName={label.data.species.commonName} />;
 }
 

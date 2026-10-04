@@ -243,6 +243,7 @@ export class FixtureApi implements TendrilApi {
   setScenario(name: FixtureScenario): void {
     this.scenario = name;
     this.world = createWorld(name);
+    this.beforeClose.clear();
   }
 
   private async run<T>(read: () => T): Promise<T> {
@@ -379,12 +380,27 @@ export class FixtureApi implements TendrilApi {
       const w = this.world;
       this.summary(id);
       const open = status === 'alive';
+      const current = this.summary(id);
+      // Closing a live plant remembers how it stood, so putting it back (the Undo) restores it.
+      if (!open && current.status === 'alive')
+        this.beforeClose.set(id, {
+          careState: current.careState,
+          nextCheckOn: current.nextCheckOn,
+          tasks: w.tasks.filter((t) => t.plantId === id),
+        });
+      const prior = open ? this.beforeClose.get(id) : undefined;
+      if (open) this.beforeClose.delete(id);
       this.patchPlant(id, {
         status,
-        careState: open ? 'ok' : 'closed',
-        nextCheckOn: open ? addDays(FIXTURE_TODAY, CHECK_INTERVAL_DAYS) : null,
+        careState: open ? (prior?.careState ?? 'ok') : 'closed',
+        nextCheckOn: open
+          ? prior
+            ? prior.nextCheckOn
+            : addDays(FIXTURE_TODAY, CHECK_INTERVAL_DAYS)
+          : null,
         statusOn: open ? null : FIXTURE_TODAY,
       });
+      if (prior) w.tasks = [...w.tasks, ...prior.tasks];
       const cause = status === 'dead' ? (deathCause ?? null) : null;
       const detail = w.details[id];
       if (detail) detail.deathCause = cause;
@@ -747,6 +763,16 @@ export class FixtureApi implements TendrilApi {
   }
 
   // Internals. They run inside `run`, so a throw becomes a rejected promise.
+
+  /** What a plant looked like before it was closed, for putting it back. */
+  private beforeClose = new Map<
+    string,
+    {
+      careState: PlantSummary['careState'];
+      nextCheckOn: PlantSummary['nextCheckOn'];
+      tasks: CareTask[];
+    }
+  >();
 
   private summary(id: string): PlantSummary {
     const plant = this.world.plants.find((p) => p.id === id);

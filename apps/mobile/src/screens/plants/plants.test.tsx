@@ -234,6 +234,22 @@ describe('plant setup', () => {
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ nickname: 'Big Lil' }));
   });
 
+  it('caps the nickname at 40 and refuses a longer one', async () => {
+    const onSave = jest.fn();
+    await wrap(
+      <PlantSetupScreen
+        speciesName="Peace lily"
+        initial={answered}
+        onSave={onSave}
+        onCancel={noop}
+      />,
+    );
+    expect(screen.getByLabelText('Nickname').props.maxLength).toBe(40);
+    await fireEvent.changeText(screen.getByLabelText('Nickname'), 'a'.repeat(41));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
   it('cancels', async () => {
     const onCancel = jest.fn();
     await wrap(

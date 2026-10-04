@@ -199,3 +199,13 @@ export const allDoneToday = (next?: { plantNickname: string; when: string }) =>
   next
     ? `All done for today. Next check: ${next.plantNickname}, ${next.when}.`
     : 'All done for today.';
+
+/** The longest nickname a plant can have. */
+export const NICKNAME_MAX = 40;
+/** A nickname is 1 to 40 characters once trimmed. The app and the server share this. */
+export const isValidNickname = (name: string): boolean => {
+  const length = name.trim().length;
+  return length >= 1 && length <= NICKNAME_MAX;
+};
+/** The snackbar after a plant is marked as given away; it carries the Undo. */
+export const givenAwaySnackbar = (nickname: string) => `${nickname} marked as given away.`;

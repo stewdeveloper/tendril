@@ -1,6 +1,6 @@
-import { plantsCopy, type PlantStatus } from '@tendril/core';
+import { givenAwaySnackbar, plantsCopy, type PlantStatus } from '@tendril/core';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActionSheetIOS, Linking, Platform, View } from 'react-native';
 import {
   useAppToday,
@@ -12,6 +12,8 @@ import {
 import { Snackbar, useHideTabBar } from '../../../../components';
 import { PlantDetailScreen } from '../../../../screens/plants/PlantDetailScreen';
 import { DiedCauseSheet, PlantActionsSheet } from '../../../../screens/plants/PlantStatusSheets';
+
+const UNDO_MS = 5000;
 
 type Menu = 'actions' | 'cause' | null;
 
@@ -25,6 +27,12 @@ export default function PlantDetailRoute() {
   const setStatus = useSetPlantStatus();
   const [menu, setMenu] = useState<Menu>(null);
   const [failed, setFailed] = useState(false);
+  const [undo, setUndo] = useState(false);
+  useEffect(() => {
+    if (!undo) return;
+    const timer = setTimeout(() => setUndo(false), UNDO_MS);
+    return () => clearTimeout(timer);
+  }, [undo]);
 
   // A plant that has died or been given away shows no tab bar (4k, 4l).
   useHideTabBar(plant.data != null && plant.data.status !== 'alive');
@@ -34,6 +42,16 @@ export default function PlantDetailRoute() {
     setFailed(false);
     try {
       await setStatus.mutateAsync({ id, status, deathCause });
+      setUndo(status === 'given_away');
+    } catch {
+      setFailed(true);
+    }
+  };
+
+  const undoGivenAway = async () => {
+    setUndo(false);
+    try {
+      await setStatus.mutateAsync({ id, status: 'alive' });
     } catch {
       setFailed(true);
     }
@@ -94,6 +112,12 @@ export default function PlantDetailRoute() {
         />
       ) : null}
       {failed ? <Snackbar text={plantsCopy.statusFailed} withTabBar /> : null}
+      {undo && !failed ? (
+        <Snackbar
+          text={givenAwaySnackbar(plant.data.nickname)}
+          onUndo={() => void undoGivenAway()}
+        />
+      ) : null}
     </View>
   );
 }

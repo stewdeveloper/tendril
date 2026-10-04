@@ -1,4 +1,6 @@
 import {
+  isValidNickname,
+  NICKNAME_MAX,
   plantsCopy,
   setupTitle,
   type Drainage,
@@ -55,6 +57,7 @@ export function PlantSetupScreen({
   const unsure =
     setup.light === 'unknown' || setup.potMaterial === 'unknown' || setup.drainage === 'unknown';
   const nickname = setup.nickname.trim();
+  const valid = isValidNickname(setup.nickname);
   return (
     <View style={[styles.root, { backgroundColor: c.background }]}>
       <ScrollView
@@ -79,6 +82,7 @@ export function PlantSetupScreen({
           value={setup.nickname}
           onChangeText={(nickname) => setSetup({ ...setup, nickname })}
           autoCapitalize="words"
+          maxLength={NICKNAME_MAX}
         />
         <Question title={plantsCopy.lightTitle}>
           <OptionPills
@@ -109,8 +113,8 @@ export function PlantSetupScreen({
           <Button
             label={plantsCopy.save}
             loading={saving}
-            disabled={nickname === ''}
-            onPress={() => nickname && onSave({ ...setup, nickname })}
+            disabled={!valid}
+            onPress={() => valid && onSave({ ...setup, nickname })}
           />
         </View>
         {error ? (

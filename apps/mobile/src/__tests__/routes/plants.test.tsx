@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { useState } from 'react';
 import { ActionSheetIOS, Platform, Text } from 'react-native';
 import { ApiProvider } from '../../api/ApiProvider';
 import { FixtureApi } from '../../api/fixture/FixtureApi';
@@ -98,6 +99,35 @@ describe('Plant detail route', () => {
     });
   });
 
+  it('"Check in" with no due task still goes to Today, with no params', async () => {
+    const api = new FixtureApi();
+    const real = await api.getToday();
+    jest.spyOn(api, 'getToday').mockResolvedValue({
+      ...real,
+      tasks: real.tasks.filter((t) => t.plantId !== 'monty'),
+    });
+    await renderRoute(<PlantDetailRoute />, api);
+    await fireEvent.press(await screen.findByRole('button', { name: 'Check in' }));
+    expect(routerMock.navigate).toHaveBeenCalledWith({ pathname: '/today', params: {} });
+  });
+
+  it('the tab bar comes back when a dead plant is left for the list', async () => {
+    paramsMock.current = { id: 'fern-dead' };
+    function Flow() {
+      const [onPlant, setOnPlant] = useState(true);
+      return onPlant ? (
+        <>
+          <PlantDetailRoute />
+          <Text onPress={() => setOnPlant(false)}>leave</Text>
+        </>
+      ) : null;
+    }
+    await renderRoute(<Flow />);
+    expect(await screen.findByText('bar:hidden')).toBeTruthy();
+    await fireEvent.press(screen.getByText('leave'));
+    expect(await screen.findByText('bar:shown')).toBeTruthy();
+  });
+
   it('back goes back, or to My Plants with nothing to go back to', async () => {
     await renderRoute(<PlantDetailRoute />);
     await fireEvent.press(await screen.findByRole('button', { name: 'Back' }));
@@ -141,6 +171,30 @@ describe('Plant detail route', () => {
       expect(spy).toHaveBeenCalledWith('monty', 'given_away', undefined);
       expect(await screen.findByText('bar:hidden')).toBeTruthy();
       expect(screen.queryByRole('button', { name: 'Check in' })).toBeNull();
+    });
+
+    it('given away offers Undo, which puts the plant back and brings the bar back', async () => {
+      const api = new FixtureApi();
+      const spy = jest.spyOn(api, 'setPlantStatus');
+      await renderRoute(<PlantDetailRoute />, api);
+      await fireEvent.press(await screen.findByRole('button', { name: 'More' }));
+      await choose('Given away');
+      expect(await screen.findByText('Monty marked as given away.')).toBeTruthy();
+      await fireEvent.press(screen.getByRole('button', { name: 'Undo' }));
+      await waitFor(() => expect(spy).toHaveBeenCalledTimes(2));
+      expect(spy).toHaveBeenLastCalledWith('monty', 'alive', undefined);
+      expect(await screen.findByText('bar:shown')).toBeTruthy();
+      expect(await screen.findByRole('button', { name: 'Check in' })).toBeTruthy();
+      expect(screen.queryByText('Monty marked as given away.')).toBeNull();
+    });
+
+    it('died has no Undo; its cause sheet is the confirm', async () => {
+      await renderRoute(<PlantDetailRoute />);
+      await fireEvent.press(await screen.findByRole('button', { name: 'More' }));
+      await choose('Mark as died');
+      await fireEvent.press(await screen.findByRole('button', { name: 'Mark as died' }));
+      await screen.findByText(/^Marked as died on /);
+      expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
     });
 
     it('died asks what happened first, and the cause is optional', async () => {
@@ -242,6 +296,12 @@ describe('Label route', () => {
 });
 
 describe('Setup route', () => {
+  it('an unknown label code goes to the label page, not a blank screen', async () => {
+    paramsMock.current = { source: 'label_qr', labelCode: 'NOPE-9999' };
+    await renderRoute(<SetupRoute />);
+    expect(await screen.findByText('redirect:/l/NOPE-9999')).toBeTruthy();
+  });
+
   it('saves a label plant with the label code, then opens it', async () => {
     paramsMock.current = { source: 'label_qr', labelCode: 'PL-0001' };
     const api = new FixtureApi();

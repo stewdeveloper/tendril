@@ -291,6 +291,21 @@ describe('FixtureApi scans and plants', () => {
     expect((await api.getPlants('our-flat')).find((p) => p.id === 'spidey')?.status).toBe('dead');
   });
 
+  it('puts a closed plant back: status, care state, date and its tasks', async () => {
+    const api = new FixtureApi();
+    const before = await api.getPlant('monty');
+    const tasksBefore = (await api.getToday()).tasks.filter((t) => t.plantId === 'monty');
+    await api.setPlantStatus('monty', 'given_away');
+    await api.setPlantStatus('monty', 'alive');
+    expect(await api.getPlant('monty')).toMatchObject({
+      status: 'alive',
+      careState: before.careState,
+      nextCheckOn: before.nextCheckOn,
+      statusOn: null,
+    });
+    expect((await api.getToday()).tasks.filter((t) => t.plantId === 'monty')).toEqual(tasksBefore);
+  });
+
   it('serves the two closed plants in history', async () => {
     const api = new FixtureApi();
     expect((await api.getPlant('fern-dead')).status).toBe('dead');
