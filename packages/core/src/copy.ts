@@ -344,3 +344,40 @@ export const placeTypeOptions: readonly { value: PlaceType; label: string }[] = 
   { value: 'garden_park', label: 'Garden or park' },
   { value: 'wild', label: 'Wild' },
 ];
+
+/** The new-species moment (4ab to 4ae) and the set-complete screen (4al). */
+export const momentCopy = {
+  newToPlantdex: 'New to your Plantdex',
+  reduceMotionNote: 'Reduce Motion is on, so this card appears with a fade only.',
+  points: 'Points',
+  plantdex: 'Plantdex',
+  continue: 'Continue',
+  share: 'Share',
+  setsBack: 'Sets',
+  setCompleteBadge: 'Legendary',
+} as const;
+export const plantdexSpecies = (n: number) => `${n} species`;
+export const setProgressValue = (found: number, total: number) => `${found} of ${total}`;
+/** "Set complete: 6 of 6." (4al). */
+export const setCompleteLine = (total: number) => `Set complete: ${total} of ${total}.`;
+/** What the Share sheet carries for a completed set. */
+export const setShareMessage = (name: string, total: number) =>
+  `I completed the ${name} set in Tendril: ${total} of ${total}.`;
+/** Why a find that is not held and not a gallery photo earned no points, in plain words. */
+export const noPointsReasonLine = (reason: string | null): string | null => {
+  switch (reason) {
+    case 'gallery':
+    case 'integrity':
+      return copy.galleryNote;
+    case 'location_off':
+      return resultCopy.locationOffNote;
+    case 'time_skew':
+      return "This photo's time didn't match your phone's clock, so it earns no points.";
+    case 'duplicate':
+      return "You've already earned points for this find.";
+    case 'daily_cap':
+      return "You've reached today's points limit. Your Plantdex still grows.";
+    default:
+      return null;
+  }
+};

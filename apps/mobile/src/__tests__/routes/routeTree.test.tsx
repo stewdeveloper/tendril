@@ -94,7 +94,7 @@ describe('route tree', () => {
   );
 
   it('detects a placeholder by its import, not by its route name', () => {
-    expect(rendersPlaceholder('scan/[id]/new-species')).toBe(true);
+    expect(rendersPlaceholder('settings/account')).toBe(true);
     expect(rendersPlaceholder('index')).toBe(false);
     expect(rendersPlaceholder('_layout')).toBe(false);
   });
