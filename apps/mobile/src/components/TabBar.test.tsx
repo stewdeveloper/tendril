@@ -70,14 +70,9 @@ describe('TabBar geometry', () => {
 });
 
 describe('TabBar (router state)', () => {
-  const routes = [
-    'today/index',
-    'plants/index',
-    'scan',
-    'collection/index',
-    'leagues/index',
-    'today/streaks',
-  ].map((name) => ({ key: `${name}-key`, name }));
+  const routes = ['today/index', 'plants', 'scan', 'collection/index', 'leagues/index'].map(
+    (name) => ({ key: `${name}-key`, name }),
+  );
   const setup = (focused: string, defaultPrevented = false) => {
     const navigation = {
       emit: jest.fn(() => ({ defaultPrevented })),
@@ -97,9 +92,9 @@ describe('TabBar (router state)', () => {
 
   beforeEach(() => mockPush.mockClear());
 
-  it('files the Streaks screen under Today', async () => {
-    await setup('today/streaks').view;
-    expect(screen.getByRole('tab', { name: 'Today' })).toBeSelected();
+  it('files a plant page under My Plants: the tab is the nested stack', async () => {
+    await setup('plants').view;
+    expect(screen.getByRole('tab', { name: 'My Plants' })).toBeSelected();
   });
 
   it('switches tabs through the navigator, with the tab press event', async () => {

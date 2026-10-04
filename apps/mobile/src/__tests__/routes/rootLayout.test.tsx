@@ -10,6 +10,8 @@ import { useSession, type SessionStatus } from '../../session/SessionProvider';
 // The real SafeAreaProvider renders nothing until native insets arrive.
 jest.mock(
   'react-native-safe-area-context',
+  // A jest.mock factory is hoisted above the imports, so it can only load the mock with require().
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   () => require('react-native-safe-area-context/jest/mock').default,
 );
 // The module-level FixtureApi (300 ms latency) isn't needed here and must not hold timers.
@@ -90,7 +92,17 @@ describe('RootLayout', () => {
     expect(SplashScreen.hideAsync).toHaveBeenCalled();
   });
 
-  it('guards exactly the route files that are not onboarding, the index redirect or the catalog', async () => {
+  it('leaves the sign-in callback reachable while signed out', async () => {
+    withStatus('signed_out');
+    await render(<RootLayout />);
+    // It is not one of the screens listed behind a guard, so the router still serves it.
+    expect(shownScreens()).not.toContain('auth/callback');
+    withStatus('ready');
+    await render(<RootLayout />);
+    expect(shownScreens()).not.toContain('auth/callback');
+  });
+
+  it('guards exactly the route files that are not onboarding, the index redirect, the catalog or the sign-in callback', async () => {
     withStatus('ready');
     await render(<RootLayout />);
     const files = routeNames();
@@ -99,6 +111,7 @@ describe('RootLayout', () => {
         !f.startsWith('(onboarding)/') &&
         !f.startsWith('(tabs)/') &&
         !f.startsWith('catalog/') &&
+        f !== 'auth/callback' &&
         f !== 'index',
     );
     expect(shownScreens().sort()).toEqual(['(tabs)', ...guarded].sort());

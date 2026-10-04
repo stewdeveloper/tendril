@@ -10,12 +10,11 @@ export default function TabsLayout() {
       screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: c.background } }}
     >
       <Tabs.Screen name="today/index" />
-      <Tabs.Screen name="plants/index" />
+      {/* A nested Stack: the list, and a plant's page above it with the bar still showing. */}
+      <Tabs.Screen name="plants" />
       <Tabs.Screen name="scan" />
       <Tabs.Screen name="collection/index" />
       <Tabs.Screen name="leagues/index" />
-      {/* Streaks opens from Today, so it has no tab of its own. TabBar files it under Today. */}
-      <Tabs.Screen name="today/streaks" options={{ href: null }} />
     </Tabs>
   );
 }

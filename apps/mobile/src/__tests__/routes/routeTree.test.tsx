@@ -24,12 +24,12 @@ const ROUTE_FILES = [
   '(onboarding)/home-area',
   '(onboarding)/first-scan',
   '(tabs)/today/index',
-  '(tabs)/today/streaks',
   '(tabs)/plants/index',
+  '(tabs)/plants/[id]/index',
   '(tabs)/scan',
   '(tabs)/collection/index',
   '(tabs)/leagues/index',
-  'plants/[id]/index',
+  'today/streaks',
   'plants/[id]/diagnosis',
   'plants/setup',
   'l/[code]',
@@ -72,8 +72,8 @@ describe('route tree', () => {
     expect(existsSync(join(APP, `${route}.tsx`))).toBe(true);
     const Screen = jest.requireActual(join(APP, route)).default;
     await wrap(<Screen />);
-    // Tab screens read the profile for their avatar letter.
-    if (/^\(tabs\)\/(?!today\/streaks)/.test(route))
+    // Tab screens read the profile for their avatar letter; a plant's page is a stack screen.
+    if (/^\(tabs\)\/(?!plants\/\[id\])/.test(route))
       expect(await screen.findByText('A')).toBeTruthy();
     expect(screen.getByRole('header')).toBeTruthy();
     expect(screen.getByText(/^(Design frames: |No design frame)/)).toBeTruthy();
@@ -84,6 +84,7 @@ describe('route tree', () => {
       '_layout',
       '(onboarding)/_layout',
       '(tabs)/_layout',
+      '(tabs)/plants/_layout',
       'index',
       'catalog/index',
     ]) {

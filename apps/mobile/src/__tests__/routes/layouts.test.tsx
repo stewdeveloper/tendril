@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react-native';
 import OnboardingLayout from '../../app/(onboarding)/_layout';
 import TabsLayout from '../../app/(tabs)/_layout';
+import PlantsLayout from '../../app/(tabs)/plants/_layout';
 import { useSession } from '../../session/SessionProvider';
 import { ThemeProvider } from '../../theme';
 
@@ -37,15 +38,21 @@ describe('OnboardingLayout', () => {
 });
 
 describe('TabsLayout', () => {
-  it('lists the five tabs in order and keeps Streaks off the bar', async () => {
+  it('lists the five tabs in order, My Plants as a nested stack', async () => {
     await wrap(<TabsLayout />);
     expect(texts()).toEqual([
       'tab:today/index',
-      'tab:plants/index',
+      'tab:plants',
       'tab:scan',
       'tab:collection/index',
       'tab:leagues/index',
-      'hidden:today/streaks',
     ]);
+  });
+});
+
+describe('PlantsLayout', () => {
+  it('stacks a plant page on the list, inside the My Plants tab', async () => {
+    await wrap(<PlantsLayout />);
+    expect(texts()).toEqual(['screen:index', 'screen:[id]/index']);
   });
 });

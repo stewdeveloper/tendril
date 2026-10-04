@@ -133,7 +133,7 @@ export function TabBarView({ active, onTab, onScan }: TabBarViewProps) {
   );
 }
 
-/** The tab a route belongs to: `today/index` and `today/streaks` are both Today. */
+/** The tab a route belongs to: `today/index` is Today, and `plants` (its nested stack) is My Plants. */
 function tabForRoute(routeName: string | undefined): TabKey | null {
   const first = routeName?.split('/')[0];
   return TABS.find((t) => t.key === first)?.key ?? null;

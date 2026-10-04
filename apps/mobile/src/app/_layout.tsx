@@ -15,13 +15,15 @@ const api = createApi();
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
 /**
- * Every route behind the `ready` guard: the tabs and each screen the tabs open. The rest of the
- * tree is not listed on purpose. `index` redirects, and `catalog` guards itself with
- * `catalogEnabled`, so it stays reachable at any point in the session.
+ * Every route behind the `ready` guard: the tabs and each screen the tabs open that has no tab bar
+ * in its frames. A plant's page is inside the My Plants tab, so it is not listed. The rest of the
+ * tree is not listed on purpose. `index` redirects, `catalog` guards itself with `catalogEnabled`,
+ * and `auth/callback` is where the sign-in link lands while still signed out, so those stay
+ * reachable at any point in the session.
  */
 const APP_ROUTES = [
   '(tabs)',
-  'plants/[id]/index',
+  'today/streaks',
   'plants/[id]/diagnosis',
   'plants/setup',
   'l/[code]',
@@ -42,7 +44,6 @@ const APP_ROUTES = [
   'settings/delete-account',
   'paywall',
   'pet-emergency',
-  'auth/callback',
 ] as const;
 
 export default function RootLayout() {
