@@ -11,7 +11,7 @@
     "lint": "prettier --check . && pnpm -r --if-present lint && deno lint packages/core/src supabase/functions",
     "format": "prettier --write .",
     "test:functions": "deno test --config supabase/functions/deno.json --allow-env --allow-net --allow-read supabase/functions/tests/",
-    "check:functions": "deno check --config supabase/functions/deno.json supabase/functions/*/index.ts",
+    "check:functions": "deno check --config supabase/functions/deno.json supabase/functions/*/index.ts supabase/functions/_shared/*.ts",
     "verify": "pnpm typecheck && pnpm test && pnpm lint",
     "db:start": "supabase start -x studio,postgres-meta,logflare,vector,imgproxy,supavisor",
     "db:reset": "supabase db reset",
