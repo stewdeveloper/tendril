@@ -93,14 +93,16 @@ function Column({ label, items, index, flex, onIndex }: ColumnProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const clampIndex = (next: number) => Math.min(items.length - 1, Math.max(0, next));
-  // The highlight follows the scroll; the value is committed once it comes to rest.
   const settle = (next: number) => {
     const clamped = clampIndex(next);
     setShown(clamped);
     if (clamped !== index) onIndex(clamped);
   };
+  // Committed on every scroll event, not only when it comes to rest: react-native-web emits no
+  // drag-end or momentum-end events for a mouse wheel or trackpad, and the highlighted row must
+  // never differ from the value Continue submits (it is the age gate's input).
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) =>
-    setShown(clampIndex(Math.round(e.nativeEvent.contentOffset.y / ROW)));
+    settle(Math.round(e.nativeEvent.contentOffset.y / ROW));
   const onRest = (e: NativeSyntheticEvent<NativeScrollEvent>) =>
     settle(Math.round(e.nativeEvent.contentOffset.y / ROW));
   const step = useCallback(
@@ -126,6 +128,7 @@ function Column({ label, items, index, flex, onIndex }: ColumnProps) {
     >
       <FlatList
         ref={list}
+        testID={`${label.toLowerCase()}-wheel`}
         data={items}
         keyExtractor={(item) => item}
         getItemLayout={(_, i) => ({ length: ROW, offset: ROW * i, index: i })}

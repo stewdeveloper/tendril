@@ -1,4 +1,4 @@
-import { copy, onboardingCopy } from '@tendril/core';
+import { copy, isAtLeast13, onboardingCopy } from '@tendril/core';
 import { StyleSheet } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { ThemeProvider } from '../../theme';
@@ -67,6 +67,29 @@ describe('onboarding', () => {
     await fireEvent(year, 'accessibilityAction', { nativeEvent: { actionName: 'decrement' } });
     await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
     expect(onContinue).toHaveBeenCalledWith({ year: 2025, month: 10 });
+  });
+
+  it('age wheel: scrolling with no end events still changes the submitted value, so Continue never submits a stale one', async () => {
+    const onContinue = jest.fn();
+    await wrap(
+      <AgeScreen
+        initial={{ year: 1998, month: 9 }}
+        maxYear={2026}
+        onContinue={onContinue}
+        onBack={() => {}}
+      />,
+    );
+    // 2015 is row 95 from 1920. Only scroll events fire, as with a mouse wheel on web.
+    await fireEvent.scroll(screen.getByTestId('year-wheel'), {
+      nativeEvent: { contentOffset: { x: 0, y: 95 * 44 } },
+    });
+    expect(screen.getByRole('adjustable', { name: 'Year' })).toHaveAccessibilityValue({
+      text: '2015',
+    });
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    expect(onContinue).toHaveBeenCalledWith({ year: 2015, month: 9 });
+    // 13 years before October 2026 is 2013 or later: this person is under the limit.
+    expect(isAtLeast13(onContinue.mock.calls[0][0], { year: 2026, month: 10 })).toBe(false);
   });
 
   it('age stop has no way back', async () => {
