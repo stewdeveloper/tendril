@@ -295,7 +295,7 @@ export function createHandler(deps: IdentifyDeps): (req: Request) => Promise<Res
         state: 'identified',
         suggestions,
         care: {
-          light: top.light ?? 'Light needs vary',
+          light: top.light,
           soilCheck: soilCheckLine(interval),
           warmth: top.warmth,
         },

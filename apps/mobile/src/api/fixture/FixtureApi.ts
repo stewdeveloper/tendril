@@ -821,7 +821,9 @@ export class FixtureApi implements TendrilApi {
         {
           icon: 'sun',
           title:
-            setup.light === 'unknown' && args.care ? args.care.light : LIGHT_TITLE[setup.light],
+            setup.light === 'unknown' && args.care?.light
+              ? args.care.light
+              : LIGHT_TITLE[setup.light],
           detail: 'From your setup answers',
         },
         ...(setup.potMaterial !== 'unknown' && setup.potSizeCm != null

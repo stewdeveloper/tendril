@@ -255,17 +255,24 @@ export function parseSetup(v: unknown): PlantSetup {
   };
 }
 
-/** observations.intent and place_type checks; add_plant needs a setup, log_find ignores it. */
+/**
+ * observations.intent and place_type checks. A plant you add lives at home, so add_plant takes a setup and no place;
+ * a find must say where it was (that decides whether its area may be shared), so log_find requires one.
+ */
 export function parseConfirm(body: unknown): ConfirmRequest {
   const o = obj(body);
   const action = oneOf(o.action, 'action', ['add_plant', 'log_find'] as const);
   const out: ConfirmRequest = { speciesId: assertUuid(o.speciesId, 'speciesId'), action };
-  if (o.placeType !== undefined && o.placeType !== null) {
+  const hasPlace = o.placeType !== undefined && o.placeType !== null;
+  if (action === 'add_plant') {
+    if (hasPlace) throw bad('placeType is only for finds.');
+    out.setup = parseSetup(o.setup);
+    if (o.householdId !== undefined && o.householdId !== null) {
+      out.householdId = assertUuid(o.householdId, 'householdId');
+    }
+  } else {
+    if (!hasPlace) throw bad('placeType is required for a find.');
     out.placeType = oneOf(o.placeType, 'placeType', ['shop', 'garden_park', 'wild'] as const);
-  }
-  if (action === 'add_plant') out.setup = parseSetup(o.setup);
-  if (o.householdId !== undefined && o.householdId !== null) {
-    out.householdId = assertUuid(o.householdId, 'householdId');
   }
   return out;
 }

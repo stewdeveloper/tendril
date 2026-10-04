@@ -9,7 +9,7 @@ import type { Db } from '../db.ts';
  */
 type Row = Record<string, any>;
 type Err = { code?: string; message: string };
-type Result = { data: any; error: Err | null };
+type Result = { data: any; error: Err | null; count?: number };
 
 const UNIQUES: Record<string, string[]> = {
   species: ['slug', 'scientific_name', 'provider_entity_id'],
@@ -69,8 +69,12 @@ export function fakeDb(seed: Record<string, any> = {}): FakeDb {
     private sort: { col: string } | null = null;
     private take: 'many' | 'one' | 'maybe' = 'many';
     constructor(private table: string) {}
-    select() {
+    private head = false;
+    private wantCount = false;
+    select(_cols?: string, o: { count?: string; head?: boolean } = {}) {
       if (this.op !== 'select') this.returning = true;
+      this.wantCount = !!o.count;
+      this.head = !!o.head;
       return this;
     }
     insert(p: any) {
@@ -131,6 +135,7 @@ export function fakeDb(seed: Record<string, any> = {}): FakeDb {
       let out: Row[] = [];
       if (this.op === 'select') {
         out = matched();
+        if (this.head) return { data: null, count: out.length, error: null } as Result;
       } else if (this.op === 'insert' || this.op === 'upsert') {
         for (const p of Array.isArray(this.payload) ? this.payload : [this.payload]) {
           const row: Row = { ...p };
@@ -295,6 +300,104 @@ export function fakeDb(seed: Record<string, any> = {}): FakeDb {
         occurred_at: a.p_now,
       });
       return ok(id);
+    },
+    srv_confirm_observation: (a) => {
+      const o = tables.observations!.find(
+        (r) => r.id === a.p_observation_id && r.user_id === a.p_uid,
+      );
+      if (!o) return err('P0404', 'observation not found');
+      const dexCount = () => tables.plantdex_entries!.filter((r) => r.user_id === a.p_uid).length;
+      if (o.status === 'confirmed') {
+        if (o.species_id !== a.p_species_id || o.intent !== a.p_action)
+          return err('P0409', 'already confirmed differently');
+        const e = tables.plantdex_entries!.find(
+          (r) => r.user_id === a.p_uid && r.species_id === o.species_id,
+        );
+        return ok({
+          plantId: o.plant_id ?? null,
+          duplicate: true,
+          newToPlantdex: e?.first_observation_id === o.id,
+          plantdexCount: dexCount(),
+          feedbackEntityId: null,
+        });
+      }
+      if (o.status !== 'identified') return err('P0409', 'observation is not identified');
+      const list: any[] = Array.isArray(o.suggestions) ? o.suggestions : [];
+      const at = list.findIndex((x) => x.speciesId === a.p_species_id);
+      if (at < 0) return err('22023', 'species is not one of the suggestions');
+      const sp = tables.species!.find((r) => r.id === a.p_species_id);
+      if (!sp) return err('22023', 'unknown species');
+      const mine = tables.household_members!.filter((m) => m.user_id === a.p_uid);
+      let household: string | undefined;
+      if (a.p_action === 'add_plant' && a.p_household_id) {
+        if (!mine.some((m) => m.household_id === a.p_household_id))
+          return err('P0403', 'not a member of this household');
+        household = a.p_household_id;
+      } else {
+        household = (mine.find((m) => m.role === 'owner') ?? mine[0])?.household_id;
+        if (!household) return err('P0404', 'no household');
+      }
+      const place = a.p_action === 'add_plant' ? 'home' : a.p_place_type;
+      if (!place) return err('22023', 'a find needs a place type');
+      let cell: string | null = null;
+      const loc = tables.observation_locations!.find((l) => l.observation_id === o.id);
+      if (loc && (place === 'wild' || place === 'shop') && !sp.sensitive) {
+        const m = /POINT\(([-\d.e+]+) ([-\d.e+]+)\)/.exec(String(loc.point));
+        const inside = m
+          ? (registry.srv_point_in_zone!({
+              p_uid: a.p_uid,
+              p_lat: Number(m[2]),
+              p_lng: Number(m[1]),
+            }).data as boolean)
+          : true;
+        if (!inside) cell = loc.cell_r5 ?? null;
+      }
+      Object.assign(o, {
+        species_id: a.p_species_id,
+        confidence: Math.round(Math.min(1, Math.max(0, list[at].probability)) * 10000) / 10000,
+        intent: a.p_action,
+        place_type: place,
+        household_id: household,
+        public_cell_r5: cell,
+        status: 'confirmed',
+        confirmed_at: a.p_now,
+      });
+      let plantId: string | null = null;
+      if (a.p_action === 'add_plant') {
+        const made = registry.srv_create_plant!({
+          p_uid: a.p_uid,
+          p_household_id: household,
+          p_species_id: a.p_species_id,
+          p_observation_id: o.id,
+          p_nickname: a.p_setup.nickname,
+          p_room: a.p_setup.room,
+          p_indoor: a.p_setup.indoor,
+          p_pot_size_cm: a.p_setup.potSizeCm,
+          p_pot_material: a.p_setup.potMaterial,
+          p_drainage: a.p_setup.drainage,
+          p_light: a.p_setup.light,
+          p_source: 'scan',
+          p_label_code: null,
+          p_first_check_on: a.p_first_check_on,
+          p_now: a.p_now,
+        });
+        plantId = made.data;
+        o.plant_id = plantId;
+      }
+      const dex = registry.srv_plantdex_record!({
+        p_uid: a.p_uid,
+        p_species_id: a.p_species_id,
+        p_category: a.p_action === 'add_plant' || sp.is_houseplant ? 'houseplant' : 'wild',
+        p_observation_id: o.id,
+        p_found_at: a.p_now,
+      }).data;
+      return ok({
+        plantId,
+        duplicate: false,
+        newToPlantdex: dex.newToPlantdex,
+        plantdexCount: dex.count,
+        feedbackEntityId: at === 0 ? null : (list[at].providerEntityId ?? null),
+      });
     },
     srv_bootstrap: (a) => {
       let profile = tables.profiles!.find((p) => p.id === a.p_uid);

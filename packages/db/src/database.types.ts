@@ -468,6 +468,9 @@ isOneToOne: false
 "srv_check_in":
 { Args: { "p_client_id": string,"p_create_water": boolean,"p_leaf_states": (string)[],"p_next_check_on": string,"p_occurred_at": string,"p_photo_path": string,"p_plant_id": string,"p_soil_dry": boolean,"p_today": string,"p_uid": string }; Returns: Json
                            },
+"srv_confirm_observation":
+{ Args: { "p_action": string,"p_first_check_on": string,"p_household_id": string,"p_now": string,"p_observation_id": string,"p_place_type": string,"p_setup": Json,"p_species_id": string,"p_uid": string }; Returns: Json
+                           },
 "srv_create_plant":
 { Args: { "p_drainage": string,"p_first_check_on": string,"p_household_id": string,"p_indoor": boolean,"p_label_code": string,"p_light": string,"p_nickname": string,"p_now": string,"p_observation_id": string,"p_pot_material": string,"p_pot_size_cm": number,"p_room": string,"p_source": string,"p_species_id": string,"p_uid": string }; Returns: string
                            },

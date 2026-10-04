@@ -221,6 +221,7 @@ Deno.test('input is validated against the database checks before any write', asy
     { setup: { ...setup, potMaterial: 'glass' } },
     { setup: { ...setup, drainage: 'maybe' } },
     { setup: undefined },
+    { placeType: 'wild' }, // add_plant is always at home
     { placeType: 'moon' },
     { action: 'steal' },
     { speciesId: 'nope' },
@@ -228,6 +229,32 @@ Deno.test('input is validated against the database checks before any write', asy
   for (const b of bad) assertEquals((await confirm(h, 'o1', b)).status, 400, JSON.stringify(b));
   assertEquals(db.tables.plants.length, 0);
   assertEquals(db.tables.observations[0]?.status, 'identified');
+});
+
+Deno.test('a find must say where it was', async () => {
+  const db = seed();
+  const { h } = make(db);
+  assertEquals((await post(h, '/o1/confirm', { speciesId: SP, action: 'log_find' })).status, 400);
+  assertEquals(db.tables.observations[0]?.status, 'identified');
+});
+
+Deno.test('a replay with a different species or action is a conflict', async () => {
+  const db = seed();
+  const { h } = make(db);
+  await confirm(h);
+  assertEquals((await confirm(h, 'o1', { speciesId: SP2 })).status, 409);
+  assertEquals((await find(h)).status, 409);
+});
+
+Deno.test('a replay sends no second provider feedback', async () => {
+  const db = seed();
+  db.providerTokens.o1 = 'tok';
+  const { h, p } = make(db);
+  const body = { speciesId: SP2, action: 'log_find', placeType: 'wild' };
+  await post(h, '/o1/confirm', body);
+  await post(h, '/o1/confirm', body);
+  await new Promise((r) => setTimeout(r, 0));
+  assertEquals(p.calls.length, 1);
 });
 
 Deno.test('log_find records a wild find without a plant', async () => {
@@ -247,12 +274,33 @@ Deno.test('log_find records a wild find without a plant', async () => {
   assertEquals(db.tables.observations[0]?.household_id, 'h1');
 });
 
-Deno.test('the public cell is the exact decimal string for an ordinary point', async () => {
+const find = (h: H, id = 'o1', body: Record<string, unknown> = {}) =>
+  post(h, `/${id}/confirm`, { speciesId: SP, action: 'log_find', placeType: 'wild', ...body });
+
+Deno.test('a wild find outside the zone shares its cell as the exact decimal string', async () => {
   const db = seed({ observation_locations: [point] });
   const { h } = make(db);
-  await confirm(h);
+  await find(h);
   assertEquals(db.tables.observations[0]?.public_cell_r5, BIG_CELL);
-  assertEquals(db.rpcCalls.filter((c) => c.fn === 'srv_point_in_zone').length, 1);
+});
+
+Deno.test('garden finds and add_plant never share a cell', async () => {
+  for (const placeType of ['garden_park']) {
+    const db = seed({ observation_locations: [point] });
+    const { h } = make(db);
+    await find(h, 'o1', { placeType });
+    assertEquals(db.tables.observations[0]?.public_cell_r5, null, placeType);
+  }
+  const db = seed({ observation_locations: [point] });
+  await confirm(make(db).h);
+  assertEquals(db.tables.observations[0]?.public_cell_r5, null);
+});
+
+Deno.test('the client never sends a cell or coordinates to the confirm function', async () => {
+  const db = seed({ observation_locations: [point] });
+  await find(make(db).h);
+  const args = JSON.stringify(db.rpcCalls.find((c) => c.fn === 'srv_confirm_observation')?.args);
+  assertEquals(/cell|lat|lng|point/i.test(args), false);
 });
 
 Deno.test('a sensitive species never gets a public cell', async () => {
@@ -279,7 +327,7 @@ Deno.test('a point inside the privacy zone never gets a public cell', async () =
     privacy_zones: [{ user_id: UID, center: 'SRID=4326;POINT(-6.261 53.351)', radius_m: 1500 }],
   });
   const { h } = make(db);
-  await confirm(h);
+  await find(h);
   assertEquals(db.tables.observations[0]?.public_cell_r5, null);
   assertEquals(db.tables.observations[0]?.status, 'confirmed');
 });
@@ -287,27 +335,9 @@ Deno.test('a point inside the privacy zone never gets a public cell', async () =
 Deno.test('an observation without a location has no public cell', async () => {
   const db = seed();
   const { h } = make(db);
-  await confirm(h);
+  await find(h);
   assertEquals(db.tables.observations[0]?.public_cell_r5, null);
 });
-
-Deno.test('a point as hex EWKB (what PostgREST returns) is understood', async () => {
-  // SRID=4326;POINT(-6.26 53.35), little endian
-  const hex = '0101000020E6100000' + doubleHex(-6.26) + doubleHex(53.35);
-  const db = seed({
-    observation_locations: [{ ...point, point: hex }],
-    privacy_zones: [{ user_id: UID, center: 'SRID=4326;POINT(-6.261 53.351)', radius_m: 1500 }],
-  });
-  const { h } = make(db);
-  await confirm(h);
-  assertEquals(db.tables.observations[0]?.public_cell_r5, null);
-  assertEquals(db.rpcCalls.find((c) => c.fn === 'srv_point_in_zone')?.args.p_lat, 53.35);
-});
-function doubleHex(n: number): string {
-  const b = new Uint8Array(8);
-  new DataView(b.buffer).setFloat64(0, n, true);
-  return Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
-}
 
 Deno.test(
   'a second find of the same species keeps the Plantdex count and adds a find',

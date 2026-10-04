@@ -41,7 +41,12 @@ const rpcLabel = {
 };
 
 function setup(label: unknown = rpcLabel) {
-  const db = fakeDb({ qr_codes: [{ code: 'PL-0001', status: 'active' }] });
+  const db = fakeDb({
+    qr_codes: [
+      { code: 'PL-0001', status: 'active' },
+      { code: 'PL-OLD1', status: 'retired' },
+    ],
+  });
   db.rpcImpl.public_label = (a) => ({
     data: String(a.p_code).trim().toUpperCase() === 'PL-0001' ? label : null,
     error: null,
@@ -102,7 +107,7 @@ Deno.test('labelFromRpc omits the soil line when there is no interval', () => {
     species: { ...rpcLabel.species, checkIntervalDays: null, light: null },
   });
   assertEquals(l.careLines, []);
-  assertEquals(l.care.light, 'Light needs vary');
+  assertEquals(l.care, { light: null, soilCheck: null, warmth: '18 to 27 °C' });
 });
 
 Deno.test('an unknown code is null with status 200', async () => {
@@ -119,6 +124,7 @@ Deno.test('events insert a scan for a known code; unknown codes are 404', async 
   assertEquals(db.tables.qr_scans[0]?.code, 'PL-0001');
   assertEquals(db.tables.qr_scans[0]?.event, 'app_open');
   assertEquals((await event(h, 'NOPE', { event: 'app_open', platform: 'ios' })).status, 404);
+  assertEquals((await event(h, 'PL-OLD1', { event: 'app_open', platform: 'ios' })).status, 404);
   assertEquals(db.tables.qr_scans.length, 1);
 });
 

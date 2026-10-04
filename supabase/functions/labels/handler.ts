@@ -42,7 +42,6 @@ export interface RpcLabel {
 
 export function labelFromRpc(r: RpcLabel): LabelInfo {
   const s = r.species;
-  const light = s.light ?? 'Light needs vary';
   const interval = s.checkIntervalDays;
   const range = interval === null ? null : soilCheckRange(interval);
   const toxicity: ToxicityEntry[] = r.toxicity.map((t) => ({
@@ -67,10 +66,8 @@ export function labelFromRpc(r: RpcLabel): LabelInfo {
     },
     growerName: r.growerName,
     care: {
-      light,
-      soilCheck: range
-        ? `Every ${range.min} to ${range.max} days`
-        : 'Check the soil before watering',
+      light: s.light,
+      soilCheck: range ? `Every ${range.min} to ${range.max} days` : null,
       warmth: s.warmth,
     },
     careLines: [
@@ -109,9 +106,15 @@ export function createHandler(deps: LabelsDeps): (req: Request) => Promise<Respo
       handle: async (req, params) => {
         const body = parseLabelEvent(await readJson(req));
         const code = normalise(params.code!);
+        // Only active codes take events, the same ones the label lookup resolves.
         const known =
           code.length <= 32
-            ? await db.from('qr_codes').select('code').eq('code', code).maybeSingle()
+            ? await db
+                .from('qr_codes')
+                .select('code')
+                .eq('code', code)
+                .eq('status', 'active')
+                .maybeSingle()
             : { data: null, error: null };
         if (known.error) throwDbError(known.error);
         if (!known.data) throw new ApiError('not_found', 'Label not found.');

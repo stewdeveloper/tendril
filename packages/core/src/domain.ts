@@ -48,8 +48,9 @@ export interface ToxicityEntry {
 }
 
 export interface CareBasics {
-  light: string;
-  soilCheck: string;
+  /** Null when we have no light advice for the species; screens leave the line out. */
+  light: string | null;
+  soilCheck: string | null;
   warmth: string | null;
 }
 
