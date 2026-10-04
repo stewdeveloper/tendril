@@ -1,9 +1,9 @@
 // The JPEG fixtures (gps.jpg, xmp.jpg, plain.jpg) are generated once with:
 //   deno run --config supabase/functions/deno.json --allow-write supabase/functions/tests/fixtures/make-gps-fixture.ts
-import { assertEquals, assertRejects } from '@std/assert';
+import { assert, assertEquals, assertRejects, assertThrows } from '@std/assert';
 import { ApiError, errorResponse, statusFor } from '../_shared/errors.ts';
 import { json, readJson, router } from '../_shared/http.ts';
-import { cellsFor, toBigint } from '../_shared/h3.ts';
+import { cellCentre, cellR7Text, cellsFor, toBigint } from '../_shared/h3.ts';
 import { assertNoGps, stripExif } from '../_shared/exif.ts';
 import { env, isLocalStack, secretKey } from '../_shared/env.ts';
 import { requireUser, supabaseUserVerifier } from '../_shared/auth.ts';
@@ -85,6 +85,24 @@ Deno.test('h3 cells are stable bigints', () => {
   assertEquals(typeof a.r5, 'bigint');
   assertEquals(a.r5 > 0n, true);
   assertEquals(a.r5, toBigint(a.r5Hex));
+});
+
+Deno.test('h3 r7 cells cross as decimal text and centre to 3 decimal places', () => {
+  const cell = cellR7Text(53.3498712, -6.2604491);
+  assert(/^\d+$/.test(cell), cell);
+  assert(BigInt(cell) > 2n ** 53n, 'an r7 cell is above 2^53, so it must stay text');
+  assertEquals(BigInt(cell), cellsFor(53.3498712, -6.2604491).r7);
+  const centre = cellCentre(cell);
+  assertEquals(centre.lat, Math.round(centre.lat * 1000) / 1000);
+  assertEquals(centre.lng, Math.round(centre.lng * 1000) / 1000);
+  assert(
+    Math.abs(centre.lat - 53.35) < 0.03 && Math.abs(centre.lng + 6.26) < 0.03,
+    'near the point',
+  );
+  assertEquals(cellR7Text(centre.lat, centre.lng), cell, 'the rounded centre stays in its cell');
+  for (const bad of ['', 'abc', '-1', '12.5', '1', '608533827635118079608533827635118079']) {
+    assertThrows(() => cellCentre(bad), Error, undefined, bad);
+  }
 });
 
 Deno.test('stripExif removes GPS from a JPEG', async () => {

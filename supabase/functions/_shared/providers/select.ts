@@ -5,16 +5,21 @@ import { type AppCheckMode, type AppCheckVerifier, appCheckVerifier } from './ap
 import { fakeIdentificationProvider } from './fake-identification.ts';
 import type { IdentificationProvider } from './identification.ts';
 import { plantIdProvider } from './plantid.ts';
+import { fakeWeatherProvider, type WeatherProvider } from './weather.ts';
+import { weatherKitProvider } from './weatherkit.ts';
 
 type FetchFn = (url: string | URL, init?: RequestInit) => Promise<Response>;
 
 let appCheckInstance: AppCheckVerifier | undefined;
 let providerInstance: IdentificationProvider | undefined;
+/** undefined: not chosen yet; null: no weather. */
+let weatherInstance: WeatherProvider | null | undefined;
 
 /** Clears the memoised instances; tests call this after changing env. */
 export function resetSelectionForTests(): void {
   appCheckInstance = undefined;
   providerInstance = undefined;
+  weatherInstance = undefined;
 }
 
 /** Fail closed: dev is honoured only on a local stack, and is the default only there. */
@@ -74,4 +79,48 @@ export function selectIdentificationProvider(fetchFn?: FetchFn): IdentificationP
   }
   providerInstance = plantIdProvider(key, fetchFn);
   return providerInstance;
+}
+
+const WEATHERKIT_ENV = [
+  'WEATHERKIT_TEAM_ID',
+  'WEATHERKIT_SERVICE_ID',
+  'WEATHERKIT_KEY_ID',
+  'WEATHERKIT_PRIVATE_KEY',
+] as const;
+
+/**
+ * Fail closed: `fake` is honoured only on a local stack, and is the default only there; anything else is WeatherKit,
+ * which needs every `WEATHERKIT_*` variable. Null means no weather (logged once): schedules run without it, never on
+ * made-up data. Memoised; `fetchFn` is only used when first built.
+ */
+export function selectWeatherProvider(fetchFn?: FetchFn): WeatherProvider | null {
+  if (weatherInstance !== undefined) return weatherInstance;
+  const local = isLocalStack();
+  if (env('WEATHER_PROVIDER', local ? 'fake' : 'weatherkit') === 'fake') {
+    if (local) {
+      weatherInstance = fakeWeatherProvider();
+    } else {
+      log('error', 'weather_fake_refused', {
+        reason: 'WEATHER_PROVIDER=fake outside a local stack',
+      });
+      weatherInstance = null;
+    }
+    return weatherInstance;
+  }
+  const missing = WEATHERKIT_ENV.filter((name) => !Deno.env.get(name));
+  if (missing.length > 0) {
+    log('warn', 'weather_unavailable', { missing });
+    weatherInstance = null;
+    return weatherInstance;
+  }
+  weatherInstance = weatherKitProvider(
+    {
+      teamId: Deno.env.get('WEATHERKIT_TEAM_ID')!,
+      serviceId: Deno.env.get('WEATHERKIT_SERVICE_ID')!,
+      keyId: Deno.env.get('WEATHERKIT_KEY_ID')!,
+      privateKey: Deno.env.get('WEATHERKIT_PRIVATE_KEY')!,
+    },
+    fetchFn,
+  );
+  return weatherInstance;
 }
