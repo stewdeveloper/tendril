@@ -1,5 +1,7 @@
 import {
   aoife,
+  midSentenceName,
+  petNameOrFallback,
   plantdexCounts,
   QUOTA_LIMITS,
   type CareBasics,
@@ -619,16 +621,7 @@ export class FixtureApi implements TendrilApi {
     return this.run(() => {
       const key = normaliseHandle(handle);
       if (KNOWN_HANDLES[key] === undefined) throw notFound(`handle ${key}`);
-      const { friends } = this.world;
-      if (friends.rows.some((r) => r.handle === key)) return;
-      friends.joined = true;
-      friends.rows.push({
-        rank: friends.rows.length + 1,
-        handle: key,
-        points: 0,
-        isYou: false,
-        pending: true,
-      });
+      // A request is not a friend until it is accepted, so the board does not change.
     });
   }
 
@@ -658,7 +651,12 @@ export class FixtureApi implements TendrilApi {
   savePets(pets: Omit<Pet, 'id'>[]) {
     return this.run(() => {
       const w = this.world;
-      w.household.pets = pets.map((p) => ({ ...p, id: `pet-${++w.counter}` }));
+      // A blank name is no name: the copy falls back to "your cat", "your dog" or "your pet".
+      w.household.pets = pets.map((p) => ({
+        ...p,
+        name: p.name?.trim() || null,
+        id: `pet-${++w.counter}`,
+      }));
     });
   }
 
@@ -701,9 +699,9 @@ export class FixtureApi implements TendrilApi {
         throw notFound(`species for ${input.plantId ?? input.speciesId ?? 'emergency'}`);
       const entries: ToxicityEntry[] = detail?.toxicity ?? aoife.speciesToxicity[species.id] ?? [];
       return clone({
-        petName: pet.name ?? (pet.animal === 'other' ? 'your pet' : `your ${pet.animal}`),
+        petName: petNameOrFallback(pet.name, pet.animal),
         animal: pet.animal,
-        speciesName: species.commonName.toLowerCase(),
+        speciesName: midSentenceName(species.commonName),
         // Toxicity data covers cats and dogs only; other animals stay unknown.
         toxicity:
           pet.animal === 'other' ? null : (entries.find((e) => e.animal === pet.animal) ?? null),

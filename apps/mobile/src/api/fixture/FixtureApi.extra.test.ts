@@ -336,11 +336,10 @@ describe('FixtureApi people, pets and Premium', () => {
       plantdexCount: 44,
     });
     expect(await api.findHandle('nobody')).toBeNull();
+    const before = await api.getFriends();
     await api.sendFriendRequest('lichenlou');
-    expect((await api.getFriends()).rows.at(-1)).toMatchObject({
-      handle: 'lichenlou',
-      pending: true,
-    });
+    // A request is not a friend until it is accepted.
+    expect(await api.getFriends()).toEqual(before);
     await expect(api.sendFriendRequest('nobody')).rejects.toThrow('not_found');
   });
 
@@ -353,6 +352,24 @@ describe('FixtureApi people, pets and Premium', () => {
     const pets = (await api.getHousehold()).pets;
     expect(pets.map((p) => p.animal)).toEqual(['cat', 'other']);
     expect(new Set(pets.map((p) => p.id)).size).toBe(2);
+  });
+
+  it('trims pet names, and a blank name falls back in the emergency copy', async () => {
+    const api = new FixtureApi();
+    await api.savePets([
+      { animal: 'cat', name: '  Miso ' },
+      { animal: 'dog', name: '   ' },
+    ]);
+    const pets = (await api.getHousehold()).pets;
+    expect(pets.map((p) => p.name)).toEqual(['Miso', null]);
+    const blank = await api.getEmergency({ speciesId: 'peace-lily', petId: pets[1]!.id });
+    expect(blank.petName).toBe('your dog');
+  });
+
+  it('keeps a proper first word capitalised in the emergency species name', async () => {
+    const api = new FixtureApi();
+    const info = await api.getEmergency({ plantId: 'monty', petId: 'pet-miso' });
+    expect(info.speciesName).toBe('Swiss cheese plant');
   });
 
   it('starts one 7-day preview, and it raises the limits', async () => {

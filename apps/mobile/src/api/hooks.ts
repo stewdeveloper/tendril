@@ -1,4 +1,4 @@
-import type { QuotaKind } from '@tendril/core';
+import type { PlantStatus, QuotaKind } from '@tendril/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApi } from './ApiProvider';
 import type { TendrilApi } from './types';
@@ -26,6 +26,7 @@ export const queryKeys = {
   friends: ['friends'],
   weekResult: ['weekResult'],
   profile: ['profile'],
+  households: ['households'],
   household: ['household'],
   entitlement: ['entitlement'],
   label: (code: string) => ['label', code],
@@ -98,6 +99,10 @@ export const useWeekResult = () => {
 export const useProfile = () => {
   const api = useApi();
   return useQuery({ queryKey: queryKeys.profile, queryFn: () => api.getProfile() });
+};
+export const useHouseholds = () => {
+  const api = useApi();
+  return useQuery({ queryKey: queryKeys.households, queryFn: () => api.getHouseholds() });
 };
 export const useHousehold = () => {
   const api = useApi();
@@ -183,5 +188,76 @@ export const useStartPreview = () => {
     mutationFn: () => api.startPreview(),
     // The preview raises both monthly limits.
     onSuccess: () => invalidate(['entitlement', 'quota', 'today']),
+  });
+};
+
+export const useIdentify = () => {
+  const api = useApi();
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (input: Input<'identify'>) => api.identify(input),
+    // A new scan result exists, and an identification (and with a health check a diagnosis) was used.
+    onSuccess: () => invalidate(['quota', 'scanResult']),
+  });
+};
+
+export const useSavePets = () => {
+  const api = useApi();
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (pets: Input<'savePets'>) => api.savePets(pets),
+    // Every pet check reads the household's pets: the plant, a label, a scan result and a species
+    // card, as does the emergency screen.
+    onSuccess: () =>
+      invalidate(['household', 'plant', 'label', 'scanResult', 'speciesCard', 'emergency']),
+  });
+};
+
+export const useSetPlantStatus = () => {
+  const api = useApi();
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (input: { id: string; status: PlantStatus; deathCause?: string }) =>
+      api.setPlantStatus(input.id, input.status, input.deathCause),
+    // A plant that has died or been given away leaves Today and keeps its place in the list.
+    onSuccess: () => invalidate(['plants', 'plant', 'today']),
+  });
+};
+
+export const useDiagnose = () => {
+  const api = useApi();
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (input: Input<'diagnose'>) => api.diagnose(input),
+    onSuccess: () => invalidate(['plant', 'quota']),
+  });
+};
+
+export const useApplyDiagnosis = () => {
+  const api = useApi();
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (diagnosisId: string) => api.applyDiagnosis(diagnosisId),
+    // Applying changes the plant's care plan, and so Today's tasks.
+    onSuccess: () => invalidate(['plant', 'plants', 'today', 'quota']),
+  });
+};
+
+export const useSendFriendRequest = () => {
+  const api = useApi();
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (handle: string) => api.sendFriendRequest(handle),
+    onSuccess: () => invalidate(['friends']),
+  });
+};
+
+export const useDeleteAccount = () => {
+  const api = useApi();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.deleteAccount(),
+    // Nothing cached belongs to the account any more.
+    onSuccess: () => client.invalidateQueries(),
   });
 };

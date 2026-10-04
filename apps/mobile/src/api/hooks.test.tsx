@@ -5,14 +5,24 @@ import { ApiProvider } from './ApiProvider';
 import { FixtureApi } from './fixture/FixtureApi';
 import {
   useAddPlant,
+  useApplyDiagnosis,
   useCheckIn,
   useConfirmScan,
+  useDeleteAccount,
+  useDiagnose,
   useEntitlement,
   useFinds,
+  useFriends,
+  useHousehold,
+  useHouseholds,
+  useIdentify,
   usePlant,
   usePlantdex,
   usePlants,
   useQuota,
+  useSavePets,
+  useSendFriendRequest,
+  useSetPlantStatus,
   useStartPreview,
   useToday,
 } from './hooks';
@@ -99,13 +109,12 @@ describe('API hooks', () => {
     await waitFor(() => expect(result.current.plants.data).toHaveLength(4));
   });
 
-  it('confirming a scan refreshes the Plantdex, finds and quota', async () => {
+  it('confirming a scan refreshes the Plantdex and finds', async () => {
     const { wrapper } = setup();
     const { result } = await renderHook(
       () => ({
         dex: usePlantdex('wild'),
         finds: useFinds(),
-        quota: useQuota('identification'),
         confirm: useConfirmScan(),
       }),
       { wrapper },
@@ -137,5 +146,101 @@ describe('API hooks', () => {
     await act(() => result.current.start.mutateAsync());
     await waitFor(() => expect(result.current.entitlement.data?.plan).toBe('premium'));
     await waitFor(() => expect(result.current.quota.data?.limit).toBe(60));
+  });
+
+  it('lists households', async () => {
+    const { wrapper } = setup();
+    const { result } = await renderHook(() => useHouseholds(), { wrapper });
+    await waitFor(() =>
+      expect(result.current.data?.map((h) => h.id)).toEqual(['our-flat', 'mams-house']),
+    );
+  });
+
+  it('identifying refreshes the quota', async () => {
+    const { wrapper } = setup();
+    const { result } = await renderHook(
+      () => ({ quota: useQuota('identification'), identify: useIdentify() }),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.quota.data).toBeDefined());
+    const before = result.current.quota.data!.used;
+    await act(() =>
+      result.current.identify.mutateAsync({
+        photoUris: ['file:///a.jpg'],
+        organs: ['leaf'],
+        captureSource: 'camera',
+        healthCheck: false,
+      }),
+    );
+    await waitFor(() => expect(result.current.quota.data?.used).toBe(before + 1));
+  });
+
+  it('saving pets refreshes the household', async () => {
+    const { wrapper } = setup();
+    const { result } = await renderHook(
+      () => ({ household: useHousehold(), save: useSavePets() }),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.household.data?.pets).toHaveLength(2));
+    await act(() => result.current.save.mutateAsync([{ animal: 'dog', name: 'Pip' }]));
+    await waitFor(() =>
+      expect(result.current.household.data?.pets.map((p) => p.name)).toEqual(['Pip']),
+    );
+  });
+
+  it('setting a plant status refreshes the plant and the list', async () => {
+    const { wrapper } = setup();
+    const { result } = await renderHook(
+      () => ({ plant: usePlant('monty'), set: useSetPlantStatus() }),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.plant.data?.status).toBe('alive'));
+    await act(() => result.current.set.mutateAsync({ id: 'monty', status: 'given_away' }));
+    await waitFor(() => expect(result.current.plant.data?.status).toBe('given_away'));
+  });
+
+  it('diagnosing refreshes the diagnosis quota, and applying the plant', async () => {
+    const { wrapper } = setup();
+    const { result } = await renderHook(
+      () => ({
+        quota: useQuota('diagnosis'),
+        plant: usePlant('monty'),
+        diagnose: useDiagnose(),
+        apply: useApplyDiagnosis(),
+      }),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.quota.data?.used).toBe(0));
+    let id = '';
+    await act(async () => {
+      id = (await result.current.diagnose.mutateAsync({ plantId: 'monty', photoUris: ['a'] })).id;
+    });
+    await waitFor(() => expect(result.current.quota.data?.used).toBe(1));
+    await act(() => result.current.apply.mutateAsync(id));
+    await waitFor(() => expect(result.current.plant.data?.careState).toBe('paused'));
+  });
+
+  it('a friend request refreshes the friends board without adding a row', async () => {
+    const { wrapper } = setup();
+    const { result } = await renderHook(
+      () => ({ friends: useFriends(), send: useSendFriendRequest() }),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.friends.data).toBeDefined());
+    const rows = result.current.friends.data!.rows.length;
+    await act(() => result.current.send.mutateAsync('lichenlou'));
+    expect(result.current.send.isSuccess).toBe(true);
+    await waitFor(() => expect(result.current.friends.data?.rows).toHaveLength(rows));
+  });
+
+  it('deleting the account refreshes everything', async () => {
+    const { wrapper } = setup();
+    const { result } = await renderHook(
+      () => ({ plants: usePlants('our-flat'), del: useDeleteAccount() }),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.plants.data).toHaveLength(3));
+    await act(() => result.current.del.mutateAsync());
+    await waitFor(() => expect(result.current.plants.data).toEqual([]));
   });
 });
